@@ -1,45 +1,23 @@
-# Web Crawler - Hướng Dẫn Cài Đặt và Sử Dụng
+# News scraper
+[![Python 3.10.7](https://img.shields.io/badge/python-3.10.7-blue)](https://www.python.org/downloads/release/python-3107/)
+[![BeautifulSoup 0.0.1](https://img.shields.io/badge/BeautifulSoup-0.0.1-purple)](https://pypi.org/project/bs4/)
+[![Requests 2.28.1](https://img.shields.io/badge/Requests-2.28.1-black)](https://pypi.org/project/requests/)
+[![tqdm 4.64.1](https://img.shields.io/badge/tqdm-4.64.1-orange)](https://pypi.org/project/tqdm/)  
 
-## 1. Yêu Cầu Hệ Thống
+Đang support 2 báo sau:
+- [VNExpress](https://vnexpress.net/)
+- [VietNamNet](https://vietnamnet.vn/)
 
-Trước khi bắt đầu, hãy đảm bảo đã cài đặt:
-
-- **Python** (phiên bản 3.8 trở lên)
-- **Google Chrome** (dành cho Selenium)
-- **ChromeDriver** (tương thích với phiên bản Chrome hiện tại)
-
-## 2. Cài Đặt Python
-
-Nếu chưa có Python, tải và cài đặt từ [trang chủ Python](https://www.python.org/downloads/).
-Sau khi cài đặt, kiểm tra phiên bản:
-
-```sh
-python --version
+## Cài đặt môi trường
+- Create virtual environment then install required packages:
+```
+pip install -r requirements.txt
 ```
 
-## 3. Cài Đặt Thư Viện Yêu Cầu
+## Cách dùng
+- Sửa file Cấu Hình `crawler_config.yml`.
 
-Chạy lệnh sau để cài đặt các thư viện cần thiết:
-
-```sh
-pip install selenium scrapy beautifulsoup4 requests lxml webdriver-manager
+## Run
 ```
-
-- `selenium`: Dùng để tự động điều khiển trình duyệt
-- `scrapy`: Hỗ trợ crawl dữ liệu mạnh mẽ
-- `beautifulsoup4`: Phân tích và trích xuất dữ liệu HTML
-- `requests`: Gửi yêu cầu HTTP
-- `lxml`: Phân tích cú pháp HTML/XML nhanh chóng
-- `webdriver-manager`: Tự động tải và cập nhật ChromeDriver
-
-## 4. Cài Đặt ChromeDriver
-
-Có thể tải ChromeDriver từ [trang chủ](https://chromedriver.chromium.org/downloads) hoặc sử dụng `webdriver-manager` để tự động cài đặt:
-
-```python
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-
-driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+python VNNewsCrawler.py --config crawler_config.yml
 ```
