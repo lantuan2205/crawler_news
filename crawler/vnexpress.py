@@ -5,13 +5,13 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 
 FILE = Path(__file__).resolve()
-ROOT = FILE.parents[1] 
+ROOT = FILE.parents[1]
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 from logger import log
 from crawler.base_crawler import BaseCrawler
-from utils.bs4_utils import get_text_from_tag
+from utils.beautifulSoup_utils import get_text_from_tag
 
 
 class VNExpressCrawler(BaseCrawler):
@@ -70,7 +70,7 @@ class VNExpressCrawler(BaseCrawler):
         titles = soup.find_all(class_="title-news")
 
         if (len(titles) == 0):
-            self.logger.info(f"Không tìm thấy bất kỳ bài báo nào ở {page_url} \nCó thể bạn đã gửi quá nhiều yêu cầu, hãy thử sử dụng ít công nhân hơn")
+            self.logger.info(f"Couldn't find any news in {page_url} \nMaybe you sent too many requests, try using less workers")
 
         articles_urls = list()
 

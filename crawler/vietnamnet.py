@@ -11,7 +11,7 @@ if str(ROOT) not in sys.path:
 
 from logger import log
 from crawler.base_crawler import BaseCrawler
-from utils.bs4_utils import get_text_from_tag
+from utils.beautifulSoup_utils import get_text_from_tag
 
 
 class VietNamNetCrawler(BaseCrawler):

@@ -9,7 +9,8 @@
 - [VietNamNet](https://vietnamnet.vn/)
 
 ## Cài đặt môi trường
-- Create virtual environment then install required packages:
+- Requirement: python 3.10
+- Tạo môi trường install package:
 ```
 pip install -r requirements.txt
 ```

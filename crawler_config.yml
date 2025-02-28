@@ -3,15 +3,15 @@ webname: "vnexpress"
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
-task: "url"
+task: "type"
 
 #Thông tin ghi log
 logger_fpath: "logger/logger_config.yml"
 urls_fpath: "urls.txt"
-output_dpath: "result"
+output_dpath: "result-vnexpress"
 num_workers: 1
 
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types
-article_type: "thoi-su"
+article_type: "the-thao"
 # Số page cần khi crawl
 total_pages: 1
