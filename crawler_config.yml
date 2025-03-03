@@ -1,5 +1,5 @@
 # Tên báo muốn crawl [vnexpress, vietnamnet]
-webname: "vnexpress"
+webname: "vietnamnet"
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -8,10 +8,10 @@ task: "type"
 #Thông tin ghi log
 logger_fpath: "logger/logger_config.yml"
 urls_fpath: "urls.txt"
-output_dpath: "result-vnexpress"
+output_dpath: "result-vietnamnet"
 num_workers: 1
 
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types
-article_type: "suc-khoe"
+article_type: "van-hoa"
 # Số page cần khi crawl
 total_pages: 1

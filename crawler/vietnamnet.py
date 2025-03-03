@@ -1,5 +1,6 @@
 import requests
 import sys
+import json
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -45,27 +46,46 @@ class VietNamNetCrawler(BaseCrawler):
         desc_tag = soup.find("h2", class_=["content-detail-sapo", "sm-sapo-mb-0"])
         p_tag = soup.find("div", class_=["maincontent", "main-content"])
 
+        date_tag = soup.find("div", class_="bread-crumb-detail__time")
+        published_date = date_tag.text.strip() if date_tag else "Không có thông tin"
+
+        img_tag = soup.find("img", class_="img-content")
+        if not img_tag:
+            img_meta = soup.find("meta", property="og:image")
+            image_url = img_meta["content"] if img_meta else "Không có ảnh"
+        else:
+            image_url = img_tag["src"]
+
+        comment_tags = soup.find_all("div", class_="comment-content")
+        comments = [comment.text.strip() for comment in comment_tags] if comment_tags else []
+
         if [var for var in (title_tag, desc_tag, p_tag) if var is None]:
-            return None, None, None
+           return None, None, None, None, None, None
         
         title = title_tag.text
         description = (get_text_from_tag(p) for p in desc_tag.contents)
         paragraphs = (get_text_from_tag(p) for p in p_tag.find_all("p"))
 
-        return title, description, paragraphs
+        return title, description, paragraphs, published_date, image_url, comments
 
     def write_content(self, url: str, output_fpath: str) -> bool:
-        title, description, paragraphs = self.extract_content(url)
+        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
                     
         if title == None:
             return False
 
+        article_data = {
+            "url": url,
+            "title": title,
+            "published_date": published_date,
+            "image_url": image_url,
+            "description": list(description),
+            "content": list(paragraphs),
+            "comments": comments
+        }
+
         with open(output_fpath, "w", encoding="utf-8") as file:
-            file.write(title + "\n")
-            for p in description:
-                file.write(p + "\n")
-            for p in paragraphs:                     
-                file.write(p + "\n")
+            json.dump(article_data, file, ensure_ascii=False, indent=4)
 
         return True
     
