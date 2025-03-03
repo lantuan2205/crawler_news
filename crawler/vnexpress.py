@@ -1,3 +1,4 @@
+import json
 import requests
 import sys
 from pathlib import Path
@@ -20,18 +21,26 @@ class VNExpressCrawler(BaseCrawler):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
         self.article_type_dict = {
-            0: "thoi-su",
-            1: "du-lich",
-            2: "the-gioi",
-            3: "kinh-doanh",
-            4: "khoa-hoc",
-            5: "giai-tri",
-            6: "the-thao",
-            7: "phap-luat",
-            8: "giao-duc",
-            9: "suc-khoe",
-            10: "doi-song"
-        }   
+            "0": "thoi-su",
+            "1": "the-gioi",
+            "2": "kinh-doanh",
+            "3": "cong-nghe",
+            "4": "khoa-hoc",
+            "5": "video",
+            "6": "podcasts",
+            "7": "goc-nhin",
+            "8": "bat-dong-san",
+            "9": "suc-khoe",
+            "10": "the-thao",
+            "11": "giai-tri",
+            "12": "phap-luat",
+            "13": "giao-duc",
+            "14": "doi-song",
+            "15": "xe",
+            "16": "du-lich",
+            "17": "y-kien",
+            "18": "tam-su",
+        }
 
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url).content
@@ -46,20 +55,40 @@ class VNExpressCrawler(BaseCrawler):
         description = (get_text_from_tag(p) for p in soup.find("p", class_="description").contents)
         paragraphs = (get_text_from_tag(p) for p in soup.find_all("p", class_="Normal"))
 
-        return title, description, paragraphs
+        # Lấy ngày đăng bài
+        time_element = soup.find("span", class_="date")
+        published_date = time_element.text.strip() if time_element else None
+
+        # Lấy ảnh đại diện
+        image_element = soup.find("meta", property="og:image")
+        image_url = image_element["content"] if image_element else None
+
+        comments = []
+        comment_section = soup.find("div", class_="box_comment")  # Kiểm tra class thật của VnExpress
+
+        if comment_section:
+            comment_tags = comment_section.find_all("div", class_="comment_content")  # Kiểm tra thẻ chứa nội dung bình luận
+            comments = [c.text.strip() for c in comment_tags]
+        return title, description, paragraphs, published_date, image_url, comments
 
     def write_content(self, url: str, output_fpath: str) -> bool:
-        title, description, paragraphs = self.extract_content(url)
+        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
                     
         if title == None:
             return False
 
+        article_data = {
+            "url": url,
+            "published_date": published_date,
+            "title": title,
+            "image_url": image_url,
+            "description": list(description),
+            "content": list(paragraphs),
+            "comments": list(comments) if comments else ["Không có bình luận"]
+        }
+
         with open(output_fpath, "w", encoding="utf-8") as file:
-            file.write(title + "\n")
-            for p in description:
-                file.write(p + "\n")
-            for p in paragraphs:                     
-                file.write(p + "\n")
+            json.dump(article_data, file, ensure_ascii=False, indent=4)
 
         return True
 

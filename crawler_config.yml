@@ -12,6 +12,6 @@ output_dpath: "result-vnexpress"
 num_workers: 1
 
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types
-article_type: "the-thao"
+article_type: "suc-khoe"
 # Số page cần khi crawl
 total_pages: 1

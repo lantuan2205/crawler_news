@@ -49,7 +49,7 @@ class BaseCrawler(ABC):
 
     def crawl_url_thread(self, output_dpath, url, index):
         file_index = str(index + 1).zfill(self.index_len)
-        output_fpath = "".join([output_dpath, "/url_", file_index, ".txt"])
+        output_fpath = "".join([output_dpath, "/url_", file_index, ".json"])
         is_success = self.write_content(url, output_fpath)
         if (not is_success):
             self.logger.debug(f"Crawling unsuccessfully: {url}")
