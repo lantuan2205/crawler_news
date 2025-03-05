@@ -1,6 +1,8 @@
 import json
 import requests
 import sys
+import time
+import random
 from pathlib import Path
 
 from bs4 import BeautifulSoup
@@ -14,6 +16,9 @@ from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+}
 
 class VNExpressCrawler(BaseCrawler):
 
@@ -43,7 +48,9 @@ class VNExpressCrawler(BaseCrawler):
         }
 
     def extract_content(self, url: str) -> tuple:
-        content = requests.get(url).content
+        content = requests.get(url, headers=headers).content
+        sleep_time = random.uniform(1, 2)
+        time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
 
         title = soup.find("h1", class_="title-detail") 
@@ -94,7 +101,9 @@ class VNExpressCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
-        content = requests.get(page_url).content
+        content = requests.get(page_url, headers=headers).content
+        sleep_time = random.uniform(1, 2)
+        time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
         titles = soup.find_all(class_="title-news")
 
@@ -108,3 +117,14 @@ class VNExpressCrawler(BaseCrawler):
             articles_urls.append(link.get("href"))
     
         return articles_urls
+
+    def get_all_articles(self, max_pages):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
+        
+        for category in self.article_type_dict.values():
+            for page in range(1, max_pages + 1):
+                urls = self.get_urls_of_type_thread(category, page)
+                all_articles.extend(urls)
+        
+        return all_articles

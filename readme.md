@@ -22,3 +22,20 @@ pip install -r requirements.txt
 ```
 python VNNewsCrawler.py --config crawler_config.yml
 ```
+
+
+
+### Run Service API
+
+- fastAPI, Uvicorn
+
+- Run: 
+```
+ uvicorn crawl_request:app --host 0.0.0.0 --port 8000 --reload
+```
+
+- Check SwaggerAPI
+```
+http://127.0.0.1:8000/docs
+```
+
