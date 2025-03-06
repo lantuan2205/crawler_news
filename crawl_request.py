@@ -45,7 +45,8 @@ def crawl_article(request: ArticleRequest):
 
     # Nếu chỉ có domain, crawl toàn bộ bài báo của domain đó
     if request.domain and not request.category:
-        crawler = CRAWLERS.get(request.domain)
+        domain = request.domain.split("/")[2]
+        crawler = CRAWLERS.get(domain)
         if not crawler:
             return {"status": "error", "error": f"Không hỗ trợ crawl từ {request.domain}"}
         max_pages = 1 if request.page is None else request.page
@@ -55,7 +56,8 @@ def crawl_article(request: ArticleRequest):
 
     # Nếu có domain + category, crawl danh sách bài báo của category đó
     if request.domain and request.category:
-        crawler = CRAWLERS.get(request.domain)
+        domain = request.domain.split("/")[2]
+        crawler = CRAWLERS.get(domain)
         if not crawler:
             return {"status": "error", "error": f"Không hỗ trợ crawl từ {request.domain}"}
 
