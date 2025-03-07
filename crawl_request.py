@@ -76,6 +76,7 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
 
     return {
         "title": title,
+        "url": url,
         "published_date": published_date,
         "image_url": image_url,
         "description": list(description),
