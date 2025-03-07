@@ -9,8 +9,18 @@ def main(config_fpath):
     config = utils.get_config(config_fpath)
     log.setup_logging(log_dir=config["output_dpath"], 
                       config_fpath=config["logger_fpath"])
-    crawler = get_crawler(**config)
-    crawler.start_crawling()
+    webnames = config.get("webnames", [])
+    for webname in webnames:
+        print(f"🚀 Bắt đầu crawl báo: {webname}")
+
+        # Tạo một bản config mới cho từng báo
+        custom_config = config.copy()
+        custom_config["webname"] = webname
+        custom_config["output_dpath"] = f"{config['output_dpath']}/{webname}"
+
+        # Khởi tạo crawler với config mới
+        crawler = get_crawler(**custom_config)
+        crawler.start_crawling()
 
 
 if __name__ == "__main__":
