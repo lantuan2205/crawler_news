@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, List, Dict
 from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
+from ui_checker import UIChecker
 
 app = FastAPI()
 
@@ -31,6 +32,11 @@ def crawl_article(request: ArticleRequest):
     # Nếu có URL → Chỉ crawl bài báo đó
     if request.url:
         domain = request.url.split("/")[2]
+        # check UI
+        base_url = "https://" + domain
+        ui_checker = UIChecker(base_url)
+        if ui_checker.check_ui_change(base_url):
+            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
         crawler = CRAWLERS.get(domain)
 
         if not crawler:
@@ -45,6 +51,10 @@ def crawl_article(request: ArticleRequest):
 
     # Nếu chỉ có domain, crawl toàn bộ bài báo của domain đó
     if request.domain and not request.category:
+        # check UI
+        ui_checker = UIChecker(request.domain)
+        if ui_checker.check_ui_change(request.domain):
+            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
         domain = request.domain.split("/")[2]
         crawler = CRAWLERS.get(domain)
         if not crawler:
@@ -56,6 +66,10 @@ def crawl_article(request: ArticleRequest):
 
     # Nếu có domain + category, crawl danh sách bài báo của category đó
     if request.domain and request.category:
+        # check UI
+        ui_checker = UIChecker(request.domain)
+        if ui_checker.check_ui_change(request.domain):
+            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
         domain = request.domain.split("/")[2]
         crawler = CRAWLERS.get(domain)
         if not crawler:
