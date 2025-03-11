@@ -16,7 +16,7 @@ Dự án này hướng dẫn cách triển khai một ứng dụng FastAPI cùng
 Trong thư mục gốc của dự án, chạy lệnh sau để xây dựng image Docker:
 
 ```bash
-docker-compose build
+docker compose build
 ```
 
 ### 2. Khởi động dịch vụ
@@ -24,7 +24,7 @@ docker-compose build
 Sau khi xây dựng xong, khởi động dịch vụ bằng lệnh:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 Lệnh này sẽ chạy container ở chế độ nền.
@@ -34,7 +34,7 @@ Lệnh này sẽ chạy container ở chế độ nền.
 Để xem logs của dịch vụ, sử dụng lệnh:
 
 ```bash
-docker-compose logs -f
+docker compose logs -f
 ```
 
 ### 4. Truy cập API
