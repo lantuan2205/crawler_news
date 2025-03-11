@@ -1,5 +1,5 @@
 # Tên báo muốn crawl [vnexpress, vietnamnet]
-webname: ["vnexpress", "vietnamnet"]
+webnames: ["vnexpress", "vietnamnet"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -11,7 +11,11 @@ urls_fpath: "urls.txt"
 output_dpath: "result"
 num_workers: 1
 
-# Nếu task == "type" thì  article_type là chuyên mục báo or All types
-article_type: "All"
+# Nếu task == "type" thì  article_type là chuyên mục báo or All types task == "all"
+article_type: "all"
 # Số page cần khi crawl
 total_pages: 1
+ui_hash_file: "./ui_hashes.json"
+news_sites:
+  vnexpress: "https://vnexpress.net"
+  dantri: "https://dantri.com.vn"
