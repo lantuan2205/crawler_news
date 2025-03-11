@@ -10,8 +10,11 @@ def run_cron_job():
         cmd = ["python", "./VNNewsCrawler.py", "--config", "crawler_config.yml"]
         subprocess.run(cmd)
 
-        # Chạy vào 00:00 ngày hôm sau
-        next_run_time = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
+        # Xác định thời gian chạy tiếp theo vào 12:00 PM ngày hôm sau
+        next_run_time = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        if now >= next_run_time:  # Nếu đã qua 12h trưa hôm nay, đặt lại thành trưa ngày mai
+            next_run_time += timedelta(days=1)
+
         sleep_time = (next_run_time - datetime.now()).total_seconds()
         
         print(f"Next run at: {next_run_time.strftime('%Y-%m-%d %H:%M:%S')}")
