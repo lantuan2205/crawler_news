@@ -78,7 +78,7 @@ class VNExpressCrawler(BaseCrawler):
             comments = [c.text.strip() for c in comment_tags]
         return title, description, paragraphs, published_date, image_url, comments
 
-    def write_content(self, url: str, output_fpath: str) -> bool:
+    def write_content(self, url: str) -> bool:
         title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
                     
         if title == None:
@@ -94,10 +94,7 @@ class VNExpressCrawler(BaseCrawler):
             "comments": list(comments) if comments else ["Không có bình luận"]
         }
 
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(article_data, file, ensure_ascii=False, indent=4)
-
-        return True
+        return article_data
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"

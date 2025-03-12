@@ -28,7 +28,7 @@ class VietNamNetCrawler(BaseCrawler):
         self.base_url = "https://vietnamnet.vn"
         self.article_type_dict = {
             0: "thoi-su",
-            # 1: "kinh-doanh",
+            1: "kinh-doanh",
             # 2: "the-thao",
             # 3: "van-hoa",
             # 4: "giai-tri",
@@ -77,7 +77,7 @@ class VietNamNetCrawler(BaseCrawler):
 
         return title, description, paragraphs, published_date, image_url, comments
 
-    def write_content(self, url: str, output_fpath: str) -> bool:
+    def write_content(self, url: str) -> bool:
         title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
                     
         if title == None:
@@ -93,10 +93,10 @@ class VietNamNetCrawler(BaseCrawler):
             "comments": comments
         }
 
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(article_data, file, ensure_ascii=False, indent=4)
+        # with open(output_fpath, "w", encoding="utf-8") as file:
+        #     json.dump(article_data, file, ensure_ascii=False, indent=4)
 
-        return True
+        return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number}"

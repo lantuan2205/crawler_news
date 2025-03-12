@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import concurrent.futures
-
+import json
 from tqdm import tqdm
 
 from utils.utils import init_output_dirs, create_dir, read_file
@@ -16,7 +16,7 @@ class BaseCrawler(ABC):
         return title, description, paragraphs
 
     @abstractmethod
-    def write_content(self, url, output_fpath):
+    def write_content(self, url):
         return True
     
     @abstractmethod
@@ -27,35 +27,33 @@ class BaseCrawler(ABC):
     def start_crawling(self):
         error_urls = list()
         if self.task=="url":
-            error_urls = self.crawl_urls(self.urls_fpath, self.output_dpath)
+            error_urls = self.crawl_urls(self.urls_fpath, None)
         elif self.task=="type":
             error_urls = self.crawl_types()
 
-        self.logger.info(f"The number of failed URL: {len(error_urls)}")
-
-    def crawl_urls(self, urls_fpath, output_dpath):
+    def crawl_urls(self, urls_fpath, article_type):
         self.logger.info(f"Start crawling urls from {urls_fpath} file...")
-        create_dir(output_dpath)
         urls = list(read_file(urls_fpath))
         num_urls = len(urls)
         self.index_len = len(str(num_urls))
 
-        args = ([output_dpath]*num_urls, urls, range(num_urls))
+        results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            results = list(tqdm(executor.map(self.crawl_url_thread, *args), total=num_urls, desc="URLs"))
-    
-        self.logger.info(f"Saving crawling result into {output_dpath} directory...")
-        return [result for result in results if result is not None]
+            for result in tqdm(executor.map(self.crawl_url_thread, urls), total=num_urls, desc="URLs"):
+                if result:
+                    results.append(result)
 
-    def crawl_url_thread(self, output_dpath, url, index):
-        file_index = str(index + 1).zfill(self.index_len)
-        output_fpath = "".join([output_dpath, "/url_", file_index, ".json"])
-        is_success = self.write_content(url, output_fpath)
-        if (not is_success):
+        grouped_results = {}
+        for article in results:
+            grouped_results.setdefault(article_type, []).append(article)
+        return grouped_results
+
+    def crawl_url_thread(self, url):
+        data = self.write_content(url)
+        if data is None:
             self.logger.debug(f"Crawling unsuccessfully: {url}")
-            return url
-        else:
             return None
+        return {"url": url, "data": data}
 
     def crawl_types(self):
         urls_dpath, results_dpath = init_output_dirs(self.output_dpath)
@@ -79,23 +77,24 @@ class BaseCrawler(ABC):
 
         # crawling urls
         self.logger.info(f"Crawling from urls of {article_type}...")
-        results_type_dpath = "/".join([results_dpath, article_type])
-        error_urls = self.crawl_urls(articles_urls_fpath, results_type_dpath)
+        data = self.crawl_urls(articles_urls_fpath, article_type)
         
-        return error_urls
+        return data
 
     def crawl_all_types(self, urls_dpath, results_dpath):
         total_error_urls = list()
-        
+        json_data =[]
         num_types = len(self.article_type_dict) 
         for i in range(num_types):
             article_type = self.article_type_dict[i]
-            error_urls = self.crawl_type(article_type, urls_dpath, results_dpath)
-            self.logger.info(f"The number of failed {article_type} URL: {len(error_urls)}")
+            data = self.crawl_type(article_type, urls_dpath, results_dpath)
+            json_data.append(data)
             self.logger.info("-" * 79)
-            total_error_urls.extend(error_urls)
         
-        return total_error_urls
+        output_fpath = "".join([results_dpath, "/articles", ".json"])
+        with open(output_fpath, "w", encoding="utf-8") as file:
+            json.dump(json_data, file, ensure_ascii=False, indent=4)
+        return True
 
     def get_urls_of_type(self, article_type):
         articles_urls = list()
