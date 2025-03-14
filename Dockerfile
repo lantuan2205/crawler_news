@@ -4,17 +4,17 @@ FROM python:3.10
 # Set thư mục làm việc
 WORKDIR /app
 
-# Copy toàn bộ code vào container
+# Copy toàn bộ code
 COPY . .
 
-# Cài đặt dependencies
+# Cài đặt các dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Cài đặt supervisor
+# Cài đặt Supervisor
 RUN apt-get update && apt-get install -y supervisor
 
-# Copy file cấu hình supervisor
+# Copy file cấu hình Supervisord
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Chạy supervisor để quản lý API và cronjob
+# Chạy Supervisor để quản lý API, Cronjob, Worker
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
