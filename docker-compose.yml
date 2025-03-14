@@ -1,4 +1,5 @@
 version: "3.8"
+
 services:
   app:
     build: .
@@ -6,3 +7,30 @@ services:
     ports:
       - "8000:8000"
     restart: always
+    depends_on:
+      - rabbitmq
+    environment:
+      RABBITMQ_HOST: rabbitmq  # Chỉ định RabbitMQ bằng tên service
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: my_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"    # AMQP port (cho ứng dụng)
+      - "15672:15672"  # Web UI (truy cập http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  worker:
+      build: .
+      container_name: fastapi_worker
+      restart: always
+      depends_on:
+        - rabbitmq
+        - app
+      environment:
+        RABBITMQ_HOST: rabbitmq
+        API_URL: http://app:8000/crawl
+      command: ["python", "worker.py"]  # Chạy script lắng nghe RabbitMQ
