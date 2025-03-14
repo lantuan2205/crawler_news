@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
 from ui_checker import UIChecker
+import re
 
 app = FastAPI()
 
@@ -12,74 +13,52 @@ CRAWLERS = {
     "vietnamnet.vn": VietNamNetCrawler()
 }
 
-class ArticleRequest(BaseModel):
-    url: Optional[str] = Field(None, description="URL cụ thể của bài báo")
-    domain: Optional[str] = Field(None, description="Tên miền website")
-    category: Optional[str] = Field(None, description="Thể loại bài báo")
-    page: Optional[int] = Field(1, description="Số trang bài báo")
+class RequestBody(BaseModel):
+    source: str = Field(..., description="Nguồn dữ liệu (VD: NEWS)")
+    action: str = Field(..., description="Loại hành động (VD: ARTICLE)")
+    body: Dict[str, Optional[str | List[str]]] = Field(..., description="Thông tin chính của yêu cầu")
+    params: Optional[Dict[str, Optional[str | int]]] = Field(None, description="Tham số tùy chọn")
 
 @app.post("/crawl")
-def crawl_article(request: ArticleRequest):
+def crawl_article(request: RequestBody):
+    if request.source != "NEWS" or request.action != "ARTICLE":
+        return {"status": "error", "error": "Sai source hoặc action"}
+
+    body = request.body
+    params = request.params or {}
+
+    url = body.get("url")
+    # keywords = body.get("keywords", [])
+    # max_articles = params.get("maxArticles")
+    from_date = params.get("fromDate")
+
     response = {
         "status": "success",
-        "domain": request.domain,
-        "category": request.category,
-        "page": request.page,
+        "url": url,
+        # "keywords": keywords,
+        # "maxArticles": max_articles,
+        "fromDate": from_date,
         "articles": [],
         "error": ""
     }
-
-    # Nếu có URL → Chỉ crawl bài báo đó
-    if request.url:
-        domain = request.url.split("/")[2]
-        # check UI
-        base_url = "https://" + domain
-        ui_checker = UIChecker(base_url)
-        if ui_checker.check_ui_change(base_url):
-            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
-        crawler = CRAWLERS.get(domain)
-
-        if not crawler:
-            return {"status": "error", "error": f"Không hỗ trợ crawl từ {domain}"}
-
-        article = get_article_details(crawler, request.url)
+    domain = url.split("/")[2]
+    crawler = CRAWLERS.get(domain)
+    # Xử lý khi URL là bài viết cụ thể (chứa slug hoặc ID bài viết)
+    if re.search(r'\d{6,}.html$', url):
+        article = get_article_details(crawler, url)
         if not article:
             return {"status": "error", "error": "Không tìm thấy bài viết hoặc URL không hợp lệ"}
-
         response["articles"].append(article)
         return response
 
-    # Nếu chỉ có domain, crawl toàn bộ bài báo của domain đó
-    if request.domain and not request.category:
-        # check UI
-        ui_checker = UIChecker(request.domain)
-        if ui_checker.check_ui_change(request.domain):
-            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
-        domain = request.domain.split("/")[2]
-        crawler = CRAWLERS.get(domain)
-        if not crawler:
-            return {"status": "error", "error": f"Không hỗ trợ crawl từ {request.domain}"}
-        max_pages = 1 if request.page is None else request.page
-        urls = crawler.get_all_articles(max_pages)
+    # Xử lý khi URL là trang chủ hoặc danh mục
+    elif url.endswith(domain):
+        urls = crawler.get_all_articles(1)
         response["articles"] = [get_article_details(crawler, url) for url in urls]
         return response
 
-    # Nếu có domain + category, crawl danh sách bài báo của category đó
-    if request.domain and request.category:
-        # check UI
-        ui_checker = UIChecker(request.domain)
-        if ui_checker.check_ui_change(request.domain):
-            return {"status": "error", "error": "Giao diện trang VNExpress đã thay đổi!"}
-        domain = request.domain.split("/")[2]
-        crawler = CRAWLERS.get(domain)
-        if not crawler:
-            return {"status": "error", "error": f"Không hỗ trợ crawl từ {request.domain}"}
-
-        urls = crawler.get_urls_of_type_thread(request.category, request.page)
-        response["articles"] = [get_article_details(crawler, url) for url in urls]
-        return response
-
-    return {"status": "error", "error": "Cần cung cấp ít nhất một trong các tham số: url, domain, category"}
+    else:
+        return {"status": "error", "error": "URL không hợp lệ hoặc chưa được hỗ trợ"}
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
