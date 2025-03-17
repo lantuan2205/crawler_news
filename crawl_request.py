@@ -5,6 +5,7 @@ from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
 from ui_checker import UIChecker
 import re
+import json
 
 app = FastAPI()
 
@@ -19,25 +20,30 @@ class RequestBody(BaseModel):
     body: Dict[str, Optional[str | List[str]]] = Field(..., description="Thông tin chính của yêu cầu")
     params: Optional[Dict[str, Optional[str | int]]] = Field(None, description="Tham số tùy chọn")
 
-@app.post("/crawl")
-def crawl_article(request: RequestBody):
-    if request.source != "NEWS" or request.action != "ARTICLE":
+@app.post("/crawl/")
+def crawl_article(data: dict):
+    print(f"Processing message1111111111111: {data}")
+    parsed_data = json.loads(data["message"])
+
+    # Truy cập vào các phần tử bên trong
+    source = parsed_data["source"]
+    action = parsed_data["action"]
+    url = parsed_data["body"]["url"]
+    if source != "NEWS" or action != "ARTICLE":
         return {"status": "error", "error": "Sai source hoặc action"}
 
-    body = request.body
-    params = request.params or {}
+    # body = data.body
+    # params = data.params or {}
 
-    url = body.get("url")
+ 
     # keywords = body.get("keywords", [])
     # max_articles = params.get("maxArticles")
-    from_date = params.get("fromDate")
 
     response = {
         "status": "success",
         "url": url,
         # "keywords": keywords,
         # "maxArticles": max_articles,
-        "fromDate": from_date,
         "articles": [],
         "error": ""
     }
@@ -49,16 +55,9 @@ def crawl_article(request: RequestBody):
         if not article:
             return {"status": "error", "error": "Không tìm thấy bài viết hoặc URL không hợp lệ"}
         response["articles"].append(article)
+        print(f"======================response======================", response)
         return response
 
-    # Xử lý khi URL là trang chủ hoặc danh mục
-    elif url.endswith(domain):
-        urls = crawler.get_all_articles(1)
-        response["articles"] = [get_article_details(crawler, url) for url in urls]
-        return response
-
-    else:
-        return {"status": "error", "error": "URL không hợp lệ hoặc chưa được hỗ trợ"}
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""

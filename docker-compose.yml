@@ -17,8 +17,8 @@ services:
     image: "rabbitmq:3-management"
     container_name: rabbitmq
     ports:
-      - "5672:5672"  # Cổng AMQP để Consumer kết nối
-      - "15672:15672"  # Cổng quản lý RabbitMQ Web UI
+      - "5673:5672"  # Cổng AMQP để Consumer kết nối
+      - "15673:15672"  # Cổng quản lý RabbitMQ Web UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest

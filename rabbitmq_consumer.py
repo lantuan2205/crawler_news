@@ -5,7 +5,7 @@ import requests
 # Lấy thông tin RabbitMQ từ biến môi trường
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "test_queue")
-API_URL = "http://127.0.0.1:8000/process_message"
+API_URL = "http://127.0.0.1:8000/crawl"
 
 def callback(ch, method, properties, body):
     message = body.decode()
