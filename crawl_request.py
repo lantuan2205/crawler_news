@@ -57,7 +57,16 @@ def crawl_article(data: dict):
         response["articles"].append(article)
         print(f"======================response======================", response)
         return response
+    # Xử lý khi URL là trang chủ hoặc danh mục
+    elif url.endswith(domain):
+        urls = crawler.get_all_articles(1)
+        response["articles"] = [get_article_details(crawler, url) for url in urls]
+        print(f"=======================Processing 1 trang bao: {response}")
+        save_output_to_json(response)
+        return response
 
+    else:
+        return {"status": "error", "error": "URL không hợp lệ hoặc chưa được hỗ trợ"}
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
