@@ -1,24 +1,25 @@
 version: "3.8"
 
 services:
-  app:
+  fastapi_worker:
     build: .
-    container_name: fastapi_with_cron_worker
+    container_name: fastapi_worker
     ports:
-      - "8000:8000"
-    restart: always
-    depends_on:
-      - rabbitmq
+      - "8000:8000"  # Mở cổng API
     environment:
-      RABBITMQ_HOST: rabbitmq  # Chỉ định RabbitMQ bằng tên service
+      RABBITMQ_HOST: rabbitmq  # Kết nối đến RabbitMQ container
+      RABBITMQ_QUEUE: test_queue
+    depends_on:
+      - rabbitmq  # Đảm bảo RabbitMQ chạy trước
+    restart: always
 
   rabbitmq:
     image: "rabbitmq:3-management"
-    container_name: my_rabbitmq
-    restart: always
+    container_name: rabbitmq
     ports:
-      - "5673:5672"    # AMQP port (cho ứng dụng)
-      - "15673:15672"  # Web UI (truy cập http://localhost:15672)
+      - "5672:5672"  # Cổng AMQP để Consumer kết nối
+      - "15672:15672"  # Cổng quản lý RabbitMQ Web UI
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    restart: always

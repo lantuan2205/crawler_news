@@ -76,3 +76,13 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "content": list(paragraphs),
         "comments": list(comments) if comments else ["Không có bình luận"]
     }
+
+
+@app.get("/")
+def read_root():
+    return {"message": "API is running"}
+
+@app.post("/process_message/")
+def process_message(data: dict):
+    print(f"Processing message: {data}")
+    return {"status": "processed"}
