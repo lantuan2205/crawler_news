@@ -1,9 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
-from ui_checker import UIChecker
 import re
 import json
 
@@ -17,61 +16,69 @@ CRAWLERS = {
 class RequestBody(BaseModel):
     source: str = Field(..., description="Nguồn dữ liệu (VD: NEWS)")
     action: str = Field(..., description="Loại hành động (VD: ARTICLE)")
-    body: Dict[str, Optional[str | List[str]]] = Field(..., description="Thông tin chính của yêu cầu")
-    params: Optional[Dict[str, Optional[str | int]]] = Field(None, description="Tham số tùy chọn")
+    body: Dict[str, Optional[Union[str, List[str]]]] = Field(..., description="Thông tin chính của yêu cầu")
+    params: Optional[Dict[str, Optional[Union[str, int]]]] = Field(None, description="Tham số tùy chọn")
 
 @app.post("/crawl/")
 def crawl_article(data: dict):
-    print(f"Processing message1111111111111: {data}")
-    parsed_data = json.loads(data["message"])
+    print(f"Processing message: {data}")
 
-    # Truy cập vào các phần tử bên trong
-    source = parsed_data["source"]
-    action = parsed_data["action"]
-    url = parsed_data["body"]["url"]
+    try:
+        parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
+    except (json.JSONDecodeError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+
+    source = parsed_data.get("source")
+    action = parsed_data.get("action")
+    url = parsed_data.get("body", {}).get("url")
+
     if source != "NEWS" or action != "ARTICLE":
-        return {"status": "error", "error": "Sai source hoặc action"}
+        raise HTTPException(status_code=400, detail="Sai source hoặc action")
 
-    # body = data.body
-    # params = data.params or {}
+    if not url:
+        raise HTTPException(status_code=400, detail="URL không được để trống")
 
- 
-    # keywords = body.get("keywords", [])
-    # max_articles = params.get("maxArticles")
+    domain = url.split("/")[2]
+    crawler = CRAWLERS.get(domain)
+
+    if not crawler:
+        raise HTTPException(status_code=400, detail="Không hỗ trợ domain này")
 
     response = {
         "status": "success",
         "url": url,
-        # "keywords": keywords,
-        # "maxArticles": max_articles,
         "articles": [],
         "error": ""
     }
-    domain = url.split("/")[2]
-    crawler = CRAWLERS.get(domain)
-    # Xử lý khi URL là bài viết cụ thể (chứa slug hoặc ID bài viết)
+
+    # Xử lý URL bài viết cụ thể (chứa ID hoặc slug)
     if re.search(r'\d{6,}.html$', url):
         article = get_article_details(crawler, url)
         if not article:
-            return {"status": "error", "error": "Không tìm thấy bài viết hoặc URL không hợp lệ"}
+            raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc URL không hợp lệ")
         response["articles"].append(article)
-        print(f"======================response======================", response)
-        return response
-    # Xử lý khi URL là trang chủ hoặc danh mục
+    # Xử lý URL trang chủ hoặc danh mục
     elif url.endswith(domain):
-        urls = crawler.get_all_articles(1)
-        response["articles"] = [get_article_details(crawler, url) for url in urls]
-        print(f"=======================Processing 1 trang bao: {response}")
-        save_output_to_json(response)
-        return response
+        try:
+            urls = crawler.get_all_articles(1)
+            response["articles"] = [get_article_details(crawler, article_url) for article_url in urls if article_url]
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Lỗi khi lấy danh sách bài viết: {e}")
 
     else:
-        return {"status": "error", "error": "URL không hợp lệ hoặc chưa được hỗ trợ"}
+        raise HTTPException(status_code=400, detail="URL không hợp lệ hoặc chưa được hỗ trợ")
+
+    print(f"======================response======================", response["articles"])
+    return response
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
-    title, description, paragraphs, published_date, image_url, comments = crawler.extract_content(url)
-    
+    try:
+        title, description, paragraphs, published_date, image_url, comments = crawler.extract_content(url)
+    except Exception as e:
+        print(f"Lỗi khi lấy nội dung bài báo: {e}")
+        return None
+
     if not title:
         return None
 
@@ -85,7 +92,6 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "comments": list(comments) if comments else ["Không có bình luận"]
     }
 
-
 @app.get("/")
 def read_root():
     return {"message": "API is running"}
@@ -94,3 +100,4 @@ def read_root():
 def process_message(data: dict):
     print(f"Processing message: {data}")
     return {"status": "processed"}
+
