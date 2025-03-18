@@ -1,7 +1,7 @@
 import pika
 import os
 import requests
-
+import json
 # Lấy thông tin RabbitMQ từ biến môi trường
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "test_queue")
@@ -39,7 +39,7 @@ def callback(ch, method, properties, body):
 
         # Lưu articles vào file JSON
         if "articles" in data and data["articles"]:
-            save_to_json(data["articles"], OUTPUT_FILE)
+            save_to_json(data["articles"])
 
             # Gửi file JSON lên API khác
             # send_json_to_api(OUTPUT_FILE)
