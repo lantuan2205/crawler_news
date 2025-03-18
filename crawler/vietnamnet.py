@@ -84,12 +84,13 @@ class VietNamNetCrawler(BaseCrawler):
             return False
 
         article_data = {
+            "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
             "title": title,
-            "published_date": published_date,
-            "image_url": image_url,
-            "description": list(description),
-            "content": list(paragraphs),
+            "publishedDate": published_date,
+            "imageUrl": image_url,
+            "description": " ".join(list(description)),
+            "content": ",".join(list(paragraphs)),
             "comments": comments
         }
 

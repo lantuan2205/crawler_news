@@ -67,8 +67,6 @@ def crawl_article(data: dict):
 
     else:
         raise HTTPException(status_code=400, detail="URL không hợp lệ hoặc chưa được hỗ trợ")
-
-    print(f"======================response======================", response["articles"])
     return response
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
@@ -83,13 +81,14 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         return None
 
     return {
+        "dataSource": "/".join(url.split("/")[:3]),
         "title": title,
         "url": url,
-        "published_date": published_date,
-        "image_url": image_url,
-        "description": list(description),
-        "content": list(paragraphs),
-        "comments": list(comments) if comments else ["Không có bình luận"]
+        "publishedDate": published_date,
+        "imageUrl": image_url,
+        "description": " ".join(list(description)),
+        "content": ",".join(list(paragraphs)),
+        "comments": list(comments) if comments else [""]
     }
 
 @app.post("/api/upload")

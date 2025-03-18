@@ -85,13 +85,14 @@ class VNExpressCrawler(BaseCrawler):
             return False
 
         article_data = {
+            "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
-            "published_date": published_date,
+            "publishedDate": published_date,
             "title": title,
-            "image_url": image_url,
-            "description": list(description),
-            "content": list(paragraphs),
-            "comments": list(comments) if comments else ["Không có bình luận"]
+            "imageUrl": image_url,
+            "description": " ".join(list(description)),
+            "content": ",".join(list(paragraphs)),
+            "comments": list(comments) if comments else [""]
         }
 
         return article_data

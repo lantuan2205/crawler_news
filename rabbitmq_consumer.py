@@ -54,7 +54,7 @@ def callback(ch, method, properties, body):
 
     # Gửi message đến API xử lý
     try:
-        response = requests.post(API_URL, json={"message": message}, timeout=10)
+        response = requests.post(API_URL, json={"message": message})
         response.raise_for_status()
     except requests.RequestException as e:
         print(f"[] [Lỗi API] {e}")
