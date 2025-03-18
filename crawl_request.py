@@ -32,7 +32,7 @@ def crawl_article(data: dict):
     action = parsed_data.get("action")
     url = parsed_data.get("body", {}).get("url")
 
-    if source != "NEWS" or action != "ARTICLE":
+    if source != "NEWS" or action != "ALL":
         raise HTTPException(status_code=400, detail="Sai source hoặc action")
 
     if not url:

@@ -2,47 +2,49 @@ import pika
 import os
 import requests
 import json
-# Lấy thông tin RabbitMQ từ biến môi trường
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
-RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "test_queue")
+
+# Cấu hình RabbitMQ
+RABBITMQ_HOST = "192.168.132.250"
+RABBITMQ_PORT = 5672
+RABBITMQ_USER = "guest"
+RABBITMQ_PASS = "guest"
+RABBITMQ_VHOST = "/"
+
+RABBITMQ_QUEUE = "news.crawler.queue"
+RABBITMQ_ROUTING_KEY = "news.crawler.route"
+
 API_URL = "http://127.0.0.1:8000/crawl"
-UPLOAD_API_URL = "http://127.0.0.1:8000/upload"
 OUTPUT_FILE = "crawl_result.json"
 
+# Hàm lưu dữ liệu vào file JSON
 def save_to_json(data):
-    """Lưu kết quả crawl vào file JSON"""
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-    print(f" Dữ liệu đã được lưu vào {OUTPUT_FILE}")
+    try:
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f"✅ Dữ liệu đã lưu vào {OUTPUT_FILE}")
+    except IOError as e:
+        print(f"❌ Lỗi khi ghi file {OUTPUT_FILE}: {e}")
 
-def send_json_to_api():
-    """Gửi file JSON đến API để lưu trữ"""
-    if not os.path.exists(OUTPUT_FILE):
-        print(" [] Không tìm thấy file JSON để upload")
-        return
-    files = {"file": open(OUTPUT_FILE, "rb")}
-    response = requests.post(UPLOAD_API_URL, files=files)
-
-    print(f" [] Upload API Response: {response.status_code}: {response.text}")
-
-
+# Hàm xử lý khi nhận được message từ RabbitMQ
 def callback(ch, method, properties, body):
     message = body.decode()
     print(f" [x] Received: {message}")
 
-    # Gửi message đến API nội bộ
-    response = requests.post(API_URL, json={"message": message})
-    print(f" [API Response] {response.status_code}: {response.text}")
+    # Gửi message đến API xử lý
+    try:
+        response = requests.post(API_URL, json={"message": message}, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        print(f"❌ [Lỗi API] {e}")
+        return
+
     if response.status_code == 200:
         data = response.json()
         print(f"✅ [API Response] {response.status_code}: {data}")
 
-        # Lưu articles vào file JSON
+        # Lưu dữ liệu vào file nếu có bài viết
         if "articles" in data and data["articles"]:
             save_to_json(data["articles"])
-
-            # Gửi file JSON lên API khác
-            # send_json_to_api(OUTPUT_FILE)
         else:
             print("⚠️ Không có bài viết nào để lưu.")
     else:
@@ -50,15 +52,34 @@ def callback(ch, method, properties, body):
 
     ch.basic_ack(delivery_tag=method.delivery_tag)  # Xác nhận đã xử lý message
 
+# Kết nối đến RabbitMQ
 def main():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
+    credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASS)
+    parameters = pika.ConnectionParameters(
+        host=RABBITMQ_HOST,
+        port=RABBITMQ_PORT,
+        virtual_host=RABBITMQ_VHOST,
+        credentials=credentials
+    )
 
-    channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
-    channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+    try:
+        connection = pika.BlockingConnection(parameters)
+        channel = connection.channel()
 
-    print(" [*] Waiting for messages. To exit press CTRL+C")
-    channel.start_consuming()
+        # Khai báo queue (nếu chưa tồn tại)
+        channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
+
+        # Ràng buộc queue với routing key
+        channel.queue_bind(exchange="amq.direct", queue=RABBITMQ_QUEUE, routing_key=RABBITMQ_ROUTING_KEY)
+
+        # Lắng nghe queue
+        channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+
+        print(f" [*] Đang lắng nghe queue '{RABBITMQ_QUEUE}' trên {RABBITMQ_HOST}:{RABBITMQ_PORT} ...")
+        channel.start_consuming()
+
+    except pika.exceptions.AMQPConnectionError as e:
+        print(f"❌ Lỗi kết nối RabbitMQ: {e}")
 
 if __name__ == "__main__":
     main()
