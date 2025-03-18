@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Union
 from crawler.vnexpress import VNExpressCrawler
