@@ -25,6 +25,22 @@ def save_to_json(data):
     except IOError as e:
         print(f"❌ Lỗi khi ghi file {OUTPUT_FILE}: {e}")
 
+def send_json_to_api():
+    """Gửi file JSON đến API để lưu trữ"""
+    if not os.path.exists(OUTPUT_FILE):
+        print(" [] Không tìm thấy file JSON để upload")
+        return
+
+    with open(OUTPUT_FILE, "rb") as f:
+        files = {"file": f}
+        data = {"data": "NEWS_INFO"}  # Thêm metadata
+
+        try:
+            response = requests.post(UPLOAD_API_URL, files=files, data=data)
+            print(f" [] Upload API Response: {response.status_code}: {response.text}")
+        except requests.RequestException as e:
+            print(f" ❌ Lỗi khi gửi file: {e}")
+
 # Hàm xử lý khi nhận được message từ RabbitMQ
 def callback(ch, method, properties, body):
     message = body.decode()
@@ -45,6 +61,7 @@ def callback(ch, method, properties, body):
         # Lưu dữ liệu vào file nếu có bài viết
         if "articles" in data and data["articles"]:
             save_to_json(data["articles"])
+            send_json_to_api()
         else:
             print("⚠️ Không có bài viết nào để lưu.")
     else:
