@@ -92,15 +92,6 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "comments": list(comments) if comments else ["Không có bình luận"]
     }
 
-# @app.get("/")
-# def read_root():
-#     return {"message": "API is running"}
-
-# @app.post("/process_message/")
-# def process_message(data: dict):
-#     print(f"Processing message: {data}")
-#     return {"status": "processed"}
-
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), data: str = Form(...)):
     """
