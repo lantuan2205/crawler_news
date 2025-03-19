@@ -109,7 +109,7 @@ def crawl_article(data: dict):
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
     try:
-        title, description, paragraphs, published_date, image_url, comments = crawler.extract_content(url)
+        title, description, paragraphs, published_date, image_url, comments, author = crawler.extract_content(url)
     except Exception as e:
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
@@ -121,6 +121,7 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "dataSource": "/".join(url.split("/")[:3]),
         "title": title,
         "url": url,
+        "author": author,
         "publishedDate": clean_date(published_date),
         "imageUrl": image_url,
         "description": " ".join(list(description)),

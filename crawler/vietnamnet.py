@@ -75,10 +75,17 @@ class VietNamNetCrawler(BaseCrawler):
         description = (get_text_from_tag(p) for p in desc_tag.contents)
         paragraphs = (get_text_from_tag(p) for p in p_tag.find_all("p"))
 
-        return title, description, paragraphs, published_date, image_url, comments
+        author_tag = soup.find("div", class_="article-detail-author__main")
+        if author_tag:
+            author_name = author_tag.find("span", class_="name") or author_tag.find("a")
+            author = author_name.text.strip() if author_name else ""
+        else:
+            author = ""
+
+        return title, description, paragraphs, published_date, image_url, comments, author
 
     def write_content(self, url: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
+        title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
                     
         if title == None:
             return False
@@ -87,6 +94,7 @@ class VietNamNetCrawler(BaseCrawler):
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
             "title": title,
+            "author": author,
             "publishedDate": published_date,
             "imageUrl": image_url,
             "description": " ".join(list(description)),

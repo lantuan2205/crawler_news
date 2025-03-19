@@ -60,7 +60,14 @@ class VNExpressCrawler(BaseCrawler):
 
         # some sport news have location-stamp child tag inside description tag
         description = (get_text_from_tag(p) for p in soup.find("p", class_="description").contents)
-        paragraphs = (get_text_from_tag(p) for p in soup.find_all("p", class_="Normal"))
+        paragraph_tags = soup.find_all("p", class_="Normal")
+        if paragraph_tags:
+            author = paragraph_tags[-1].text.strip()  # Lấy tác giả từ thẻ cuối
+            del paragraph_tags[-1]  # Xóa để tránh lặp
+        else:
+            author = None
+
+        paragraphs = (get_text_from_tag(p) for p in paragraph_tags)
 
         # Lấy ngày đăng bài
         time_element = soup.find("span", class_="date")
@@ -76,10 +83,10 @@ class VNExpressCrawler(BaseCrawler):
         if comment_section:
             comment_tags = comment_section.find_all("div", class_="comment_content")  # Kiểm tra thẻ chứa nội dung bình luận
             comments = [c.text.strip() for c in comment_tags]
-        return title, description, paragraphs, published_date, image_url, comments
+        return title, description, paragraphs, published_date, image_url, comments, author
 
     def write_content(self, url: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
+        title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
                     
         if title == None:
             return False
@@ -88,6 +95,7 @@ class VNExpressCrawler(BaseCrawler):
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
             "publishedDate": published_date,
+            "author": author,
             "title": title,
             "imageUrl": image_url,
             "description": " ".join(list(description)),
