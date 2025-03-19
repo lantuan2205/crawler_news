@@ -28,7 +28,7 @@ class VietNamNetCrawler(BaseCrawler):
         self.base_url = "https://vietnamnet.vn"
         self.article_type_dict = {
             0: "thoi-su",
-            1: "kinh-doanh",
+            # 1: "kinh-doanh",
             # 2: "the-thao",
             # 3: "van-hoa",
             # 4: "giai-tri",

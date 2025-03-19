@@ -4,8 +4,11 @@ from typing import Optional, List, Dict, Union
 from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
 import re
+import os
+import requests
 import json
 from datetime import datetime
+import time
 
 app = FastAPI()
 
@@ -14,12 +17,42 @@ CRAWLERS = {
     "vietnamnet.vn": VietNamNetCrawler()
 }
 
-class RequestBody(BaseModel):
-    source: str = Field(..., description="Nguồn dữ liệu (VD: NEWS)")
-    action: str = Field(..., description="Loại hành động (VD: ARTICLE)")
-    body: Dict[str, Optional[Union[str, List[str]]]] = Field(..., description="Thông tin chính của yêu cầu")
-    params: Optional[Dict[str, Optional[Union[str, int]]]] = Field(None, description="Tham số tùy chọn")
+OUTPUT_FILE = "crawl_result.json"
+UPLOAD_API_HOST = "192.168.132.250"
+UPLOAD_API_PORT = "8080"
+UPLOAD_API_ENDPOINT = "/api/upload"
+UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
 
+# Hàm lưu dữ liệu vào file JSON
+def save_to_json(data):
+    """Lưu dữ liệu vào file JSON"""
+    try:
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f" Dữ liệu đã lưu vào {OUTPUT_FILE}")
+    except IOError as e:
+        print(f" Lỗi khi ghi file {OUTPUT_FILE}: {e}")
+
+def send_json_to_api():
+    """Gửi file JSON đến API để lưu trữ"""
+    if not os.path.exists(OUTPUT_FILE):
+        print(" [] Không tìm thấy file JSON để upload")
+        return
+    print(" [] upload")
+    with open(OUTPUT_FILE, "rb") as f:
+        files = {"file": f}
+        data = {"data": "NEWS_INFO"}  # Thêm metadata
+
+        try:
+            response = requests.post(UPLOAD_API_URL, files=files, data=data)
+            print(f" [] Upload API Response: {response}")
+
+        except requests.RequestException as e:
+            print(f" [] Lỗi khi gửi file: {e}")
+    # Nếu gửi thành công, xoá file JSON
+    if response.status_code == 200:
+        os.remove(OUTPUT_FILE)
+        print(f"🗑 File {OUTPUT_FILE} đã bị xóa sau khi gửi!")
 
 def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
@@ -95,7 +128,7 @@ def crawl_article(data: dict):
             raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc URL không hợp lệ")
         response["articles"].append(article)
     # Xử lý URL trang chủ hoặc danh mục
-    elif url.endswith(domain):
+    elif url.rstrip("/").endswith(domain):
         try:
             urls = crawler.get_all_articles(1)
             response["articles"] = [get_article_details(crawler, article_url) for article_url in urls if article_url]
@@ -117,7 +150,7 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
     if not title:
         return None
 
-    return {
+    article_data = {
         "dataSource": "/".join(url.split("/")[:3]),
         "title": title,
         "url": url,
@@ -128,6 +161,11 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "content": ",".join(list(paragraphs)),
         "comments": list(comments) if comments else [""]
     }
+    save_to_json(article_data)
+    send_json_to_api()
+    time.sleep(1)
+
+    return article_data
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), data: str = Form(...)):

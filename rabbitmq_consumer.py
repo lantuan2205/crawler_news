@@ -65,11 +65,11 @@ def callback(ch, method, properties, body):
         print(f"[] [API Response] {response.status_code}: {data}")
 
         # Lưu dữ liệu vào file nếu có bài viết
-        if "articles" in data and data["articles"]:
-            save_to_json(data["articles"][0])
-            send_json_to_api()
-        else:
-            print("[] Không có bài viết nào để lưu.")
+        # if "articles" in data and data["articles"]:
+        #     save_to_json(data["articles"][0])
+        #     send_json_to_api()
+        # else:
+        #     print("[] Không có bài viết nào để lưu.")
     else:
         print(f"[] [API Error] {response.status_code}: {response.text}")
 
