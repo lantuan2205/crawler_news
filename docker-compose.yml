@@ -7,19 +7,11 @@ services:
     ports:
       - "8000:8000"  # Mở cổng API
     environment:
-      RABBITMQ_HOST: rabbitmq  # Kết nối đến RabbitMQ container
-      RABBITMQ_QUEUE: test_queue
-    depends_on:
-      - rabbitmq  # Đảm bảo RabbitMQ chạy trước
-    restart: always
-
-  rabbitmq:
-    image: "rabbitmq:3-management"
-    container_name: rabbitmq
-    ports:
-      - "5673:5672"  # Cổng AMQP để Consumer kết nối
-      - "15673:15672"  # Cổng quản lý RabbitMQ Web UI
-    environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_HOST: "192.168.132.250"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "guest"
+      RABBITMQ_PASS: "guest"
+      RABBITMQ_VHOST: "/"
+      RABBITMQ_QUEUE: "news.crawler.queue"
+      RABBITMQ_ROUTING_KEY: "news.crawler.route"
     restart: always

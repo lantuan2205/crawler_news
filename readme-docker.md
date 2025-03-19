@@ -11,7 +11,7 @@ Dự án này hướng dẫn cách triển khai một ứng dụng FastAPI cùng
 
 ## Hướng dẫn sử dụng
 
-### 1. Xây dựng image Docker
+### 1. Build image Docker
 
 Trong thư mục gốc của dự án, chạy lệnh sau để xây dựng image Docker:
 
@@ -21,7 +21,7 @@ docker compose build
 
 ### 2. Khởi động dịch vụ
 
-Sau khi xây dựng xong, khởi động dịch vụ bằng lệnh:
+Sau khi build xong, khởi động dịch vụ bằng lệnh:
 
 ```bash
 docker compose up -d
