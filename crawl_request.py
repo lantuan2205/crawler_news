@@ -5,6 +5,7 @@ from crawler.vnexpress import VNExpressCrawler
 from crawler.vietnamnet import VietNamNetCrawler
 import re
 import json
+from datetime import datetime
 
 app = FastAPI()
 
@@ -18,6 +19,42 @@ class RequestBody(BaseModel):
     action: str = Field(..., description="Loại hành động (VD: ARTICLE)")
     body: Dict[str, Optional[Union[str, List[str]]]] = Field(..., description="Thông tin chính của yêu cầu")
     params: Optional[Dict[str, Optional[Union[str, int]]]] = Field(None, description="Tham số tùy chọn")
+
+
+def clean_date(text_date):
+    """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
+    # Loại bỏ phần "Thứ ..., ngày"
+    text_date = re.sub(r"Thứ\s\w+,?\s*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
+
+    # Thay dấu "-" bằng dấu ","
+    text_date = text_date.replace(" - ", ", ")
+
+    # Chuẩn hóa ngày/tháng/năm thành dạng 2 chữ số (nếu thiếu)
+    match_date = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
+    if match_date:
+        day, month, year = match_date.groups()
+        text_date = text_date.replace(match_date.group(), f"{int(day):02}/{int(month):02}/{year}")
+
+    # Chuyển định dạng "00:20 AM" thành 24h (00:20)
+    match_time = re.search(r"(\d{1,2}):(\d{2})\s?(AM|PM)?", text_date, re.IGNORECASE)
+    if match_time:
+        hour, minute, period = match_time.groups()
+        hour = int(hour)
+        if period:
+            if period.upper() == "PM" and hour != 12:
+                hour += 12
+            elif period.upper() == "AM" and hour == 12:
+                hour = 0
+        text_date = text_date.replace(match_time.group(), f"{hour:02}:{minute}")
+
+    # Đảm bảo có dấu "," giữa ngày và giờ nếu thiếu
+    text_date = re.sub(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})", r"\1, \2", text_date)
+
+    # Đảm bảo có (GMT+7) nếu chưa có
+    if "(GMT+7)" not in text_date:
+        text_date += " (GMT+7)"
+
+    return text_date
 
 @app.post("/crawl/")
 def crawl_article(data: dict):
@@ -84,7 +121,7 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
         "dataSource": "/".join(url.split("/")[:3]),
         "title": title,
         "url": url,
-        "publishedDate": published_date,
+        "publishedDate": clean_date(published_date),
         "imageUrl": image_url,
         "description": " ".join(list(description)),
         "content": ",".join(list(paragraphs)),
