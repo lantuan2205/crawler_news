@@ -16,11 +16,11 @@ pip install -r requirements.txt
 ```
 
 ## Cách dùng
-- Sửa file Cấu Hình `crawler_config.yml`.
+- Sửa file Cấu Hình `config/crawler_config.yml`.
 
 ## Run
 ```
-python VNNewsCrawler.py --config crawler_config.yml
+python VNNewsCrawler.py --config config/crawler_config.yml
 ```
 
 
@@ -31,7 +31,7 @@ python VNNewsCrawler.py --config crawler_config.yml
 
 - Run: 
 ```
- uvicorn crawl_request:app --host 0.0.0.0 --port 8000 --reload
+ uvicorn app.crawl_request:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 - Check SwaggerAPI
