@@ -7,7 +7,7 @@ def run_cron_job():
         now = datetime.now()
         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] Running daily cron job...")
 
-        cmd = ["python", "./VNNewsCrawler.py", "--config", "crawler_config.yml"]
+        cmd = ["python", "./VNNewsCrawler.py", "--config", "config/crawler_config.yml"]
         subprocess.run(cmd)
 
         # Xác định thời gian chạy tiếp theo vào 12:00 PM ngày hôm sau
