@@ -3,7 +3,7 @@ import argparse
 from logger import log
 from utils import utils
 from crawler.factory import get_crawler
-from ui_checker import UIChecker
+from utils.ui_checker import UIChecker
 
 
 def main(config_fpath):

@@ -95,17 +95,3 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
     time.sleep(1)
 
     return article_data
-
-@app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...), data: str = Form(...)):
-    """
-    API nhận file JSON nhưng KHÔNG lưu vào thư mục.
-    Chỉ trả về thông tin file và metadata.
-    """
-    return {
-        "message": "File received successfully",
-        "filename": file.filename,
-        "content_type": file.content_type,
-        "size": file.size,
-        "data": data
-    }
