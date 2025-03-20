@@ -6,6 +6,7 @@ import random
 import time
 
 from bs4 import BeautifulSoup
+from utils.service_utils import clean_date
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -85,17 +86,17 @@ class VietNamNetCrawler(BaseCrawler):
         return title, description, paragraphs, published_date, image_url, comments, author
 
     def write_content(self, url: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
-                    
-        if title == None:
-            return False
-
+        try:
+            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+        except Exception as e:
+            print(f"Lỗi khi xử lý URL {url}: {e}")  
+            return None
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
             "title": title,
             "author": author,
-            "publishedDate": published_date,
+            "publishedDate": clean_date(published_date),
             "imageUrl": image_url,
             "description": " ".join(list(description)),
             "content": ",".join(list(paragraphs)),

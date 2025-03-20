@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.service_utils import clean_date
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -86,15 +87,15 @@ class VNExpressCrawler(BaseCrawler):
         return title, description, paragraphs, published_date, image_url, comments, author
 
     def write_content(self, url: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
-                    
-        if title == None:
-            return False
-
+        try:
+            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+        except Exception as e:
+            print(f"Lỗi khi xử lý URL {url}: {e}")       
+            return None
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
-            "publishedDate": published_date,
+            "publishedDate": clean_date(published_date),
             "author": author,
             "title": title,
             "imageUrl": image_url,
