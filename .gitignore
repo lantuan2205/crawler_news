@@ -9,4 +9,5 @@ venv/
 .env
 
 # Bỏ qua folder output
+result/
 result-*/

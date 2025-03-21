@@ -6,6 +6,7 @@ import random
 import time
 
 from bs4 import BeautifulSoup
+from utils.service_utils import clean_date
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -28,21 +29,21 @@ class VietNamNetCrawler(BaseCrawler):
         self.base_url = "https://vietnamnet.vn"
         self.article_type_dict = {
             0: "thoi-su",
-            1: "kinh-doanh",
-            2: "the-thao",
-            3: "van-hoa",
-            4: "giai-tri",
-            5: "the-gioi",
-            6: "doi-song",
-            7: "giao-duc",
-            8: "suc-khoe",
-            9: "thong-tin-truyen-thong",
-            10: "phap-luat",
-            11: "oto-xe-may",
-            12: "bat-dong-san",
-            13: "du-lich",
-            14: "chinh-tri",
-            15: "ban-doc",
+            # 1: "kinh-doanh",
+            # 2: "the-thao",
+            # 3: "van-hoa",
+            # 4: "giai-tri",
+            # 5: "the-gioi",
+            # 6: "doi-song",
+            # 7: "giao-duc",
+            # 8: "suc-khoe",
+            # 9: "thong-tin-truyen-thong",
+            # 10: "phap-luat",
+            # 11: "oto-xe-may",
+            # 12: "bat-dong-san",
+            # 13: "du-lich",
+            # 14: "chinh-tri",
+            # 15: "ban-doc",
         }   
         
     def extract_content(self, url: str) -> tuple:
@@ -75,28 +76,37 @@ class VietNamNetCrawler(BaseCrawler):
         description = (get_text_from_tag(p) for p in desc_tag.contents)
         paragraphs = (get_text_from_tag(p) for p in p_tag.find_all("p"))
 
-        return title, description, paragraphs, published_date, image_url, comments
+        author_tag = soup.find("div", class_="article-detail-author__main")
+        if author_tag:
+            author_name = author_tag.find("span", class_="name") or author_tag.find("a")
+            author = author_name.text.strip() if author_name else ""
+        else:
+            author = ""
 
-    def write_content(self, url: str, output_fpath: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
-                    
-        if title == None:
-            return False
+        return title, description, paragraphs, published_date, image_url, comments, author
 
+    def write_content(self, url: str) -> bool:
+        try:
+            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+        except Exception as e:
+            print(f"Lỗi khi xử lý URL {url}: {e}")  
+            return None
         article_data = {
+            "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
             "title": title,
-            "published_date": published_date,
-            "image_url": image_url,
-            "description": list(description),
-            "content": list(paragraphs),
+            "author": author,
+            "publishedDate": clean_date(published_date),
+            "imageUrl": image_url,
+            "description": " ".join(list(description)),
+            "content": ",".join(list(paragraphs)),
             "comments": comments
         }
 
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(article_data, file, ensure_ascii=False, indent=4)
+        # with open(output_fpath, "w", encoding="utf-8") as file:
+        #     json.dump(article_data, file, ensure_ascii=False, indent=4)
 
-        return True
+        return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number}"

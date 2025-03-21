@@ -15,6 +15,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.service_utils import clean_date
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -26,25 +27,25 @@ class VNExpressCrawler(BaseCrawler):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
         self.article_type_dict = {
-            "0": "thoi-su",
-            "1": "the-gioi",
-            "2": "kinh-doanh",
-            "3": "cong-nghe",
-            "4": "khoa-hoc",
-            "5": "video",
-            "6": "podcasts",
-            "7": "goc-nhin",
-            "8": "bat-dong-san",
-            "9": "suc-khoe",
-            "10": "the-thao",
-            "11": "giai-tri",
-            "12": "phap-luat",
-            "13": "giao-duc",
-            "14": "doi-song",
-            "15": "xe",
-            "16": "du-lich",
-            "17": "y-kien",
-            "18": "tam-su",
+            0: "thoi-su",
+            # 1: "the-gioi",
+            # 2: "kinh-doanh",
+            # 3: "cong-nghe",
+            # 4: "khoa-hoc",
+            # 5: "video",
+            # 6: "podcasts",
+            # 7: "goc-nhin",
+            # 8: "bat-dong-san",
+            # 9: "suc-khoe",
+            # 10: "the-thao",
+            # 11: "giai-tri",
+            # 12: "phap-luat",
+            # 13: "giao-duc",
+            # 14: "doi-song",
+            # 15: "xe",
+            # 16: "du-lich",
+            # 17: "y-kien",
+            # 18: "tam-su",
         }
 
     def extract_content(self, url: str) -> tuple:
@@ -60,7 +61,14 @@ class VNExpressCrawler(BaseCrawler):
 
         # some sport news have location-stamp child tag inside description tag
         description = (get_text_from_tag(p) for p in soup.find("p", class_="description").contents)
-        paragraphs = (get_text_from_tag(p) for p in soup.find_all("p", class_="Normal"))
+        paragraph_tags = soup.find_all("p", class_="Normal")
+        if paragraph_tags:
+            author = paragraph_tags[-1].text.strip()  # Lấy tác giả từ thẻ cuối
+            del paragraph_tags[-1]  # Xóa để tránh lặp
+        else:
+            author = None
+
+        paragraphs = (get_text_from_tag(p) for p in paragraph_tags)
 
         # Lấy ngày đăng bài
         time_element = soup.find("span", class_="date")
@@ -76,28 +84,27 @@ class VNExpressCrawler(BaseCrawler):
         if comment_section:
             comment_tags = comment_section.find_all("div", class_="comment_content")  # Kiểm tra thẻ chứa nội dung bình luận
             comments = [c.text.strip() for c in comment_tags]
-        return title, description, paragraphs, published_date, image_url, comments
+        return title, description, paragraphs, published_date, image_url, comments, author
 
-    def write_content(self, url: str, output_fpath: str) -> bool:
-        title, description, paragraphs, published_date, image_url, comments = self.extract_content(url)
-                    
-        if title == None:
-            return False
-
+    def write_content(self, url: str) -> bool:
+        try:
+            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+        except Exception as e:
+            print(f"Lỗi khi xử lý URL {url}: {e}")       
+            return None
         article_data = {
+            "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
-            "published_date": published_date,
+            "publishedDate": clean_date(published_date),
+            "author": author,
             "title": title,
-            "image_url": image_url,
-            "description": list(description),
-            "content": list(paragraphs),
-            "comments": list(comments) if comments else ["Không có bình luận"]
+            "imageUrl": image_url,
+            "description": " ".join(list(description)),
+            "content": ",".join(list(paragraphs)),
+            "comments": list(comments) if comments else [""]
         }
 
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(article_data, file, ensure_ascii=False, indent=4)
-
-        return True
+        return article_data
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
