@@ -21,7 +21,7 @@ CRAWLERS = {
 @app.post("/crawl/")
 def crawl_article(data: dict):
     print(f"Processing message: {data}")
-
+    print(f"START crawling.....")
     try:
         parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
     except (json.JSONDecodeError, TypeError):
@@ -36,7 +36,7 @@ def crawl_article(data: dict):
 
     if not url:
         raise HTTPException(status_code=400, detail="URL không được để trống")
-
+    
     domain = url.split("/")[2]
     crawler = CRAWLERS.get(domain)
 
@@ -56,7 +56,6 @@ def crawl_article(data: dict):
         if not article:
             raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc URL không hợp lệ")
         response["articles"].append(article)
-    # Xử lý URL trang chủ hoặc danh mục
     elif url.rstrip("/").endswith(domain):
         try:
             urls = crawler.get_all_articles(1)
@@ -66,10 +65,12 @@ def crawl_article(data: dict):
 
     else:
         raise HTTPException(status_code=400, detail="URL không hợp lệ hoặc chưa được hỗ trợ")
+    print(f"Finished crawling..............")
     return response
 
 def get_article_details(crawler, url: str) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
+    print(f"=====================Đang lấy thông tin url: {url}")
     try:
         title, description, paragraphs, published_date, image_url, comments, author = crawler.extract_content(url)
     except Exception as e:
@@ -95,3 +96,4 @@ def get_article_details(crawler, url: str) -> Optional[Dict]:
     time.sleep(1)
 
     return article_data
+

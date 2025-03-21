@@ -57,7 +57,7 @@ def main():
         channel.queue_bind(exchange="amq.direct", queue=RABBITMQ_QUEUE, routing_key=RABBITMQ_ROUTING_KEY)
 
         # Lắng nghe queue
-        channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback)
+        channel.basic_consume(queue=RABBITMQ_QUEUE, on_message_callback=callback, auto_ack=True)
 
         print(f" [*] Đang lắng nghe queue '{RABBITMQ_QUEUE}' trên {RABBITMQ_HOST}:{RABBITMQ_PORT} ...")
         channel.start_consuming()
