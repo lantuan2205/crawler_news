@@ -5,12 +5,71 @@ import requests
 import json
 from datetime import datetime
 import time
+from pathlib import Path
+from utils.mongodb_utils import save_article, save_image_metadata, save_category
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
 UPLOAD_API_PORT = "8080"
 UPLOAD_API_ENDPOINT = "/api/upload"
 UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
+
+def save_to_db(data, output_file=None):
+    """
+    Lưu dữ liệu vào MongoDB
+    
+    Args:
+        data (dict/list): Dữ liệu cần lưu
+        output_file (str, optional): Không sử dụng trong MongoDB, giữ lại để tương thích
+    
+    Returns:
+        str: ID của bản ghi đã lưu hoặc None nếu có lỗi
+    """
+    try:
+        if isinstance(data, list):
+            # Nếu là danh sách bài viết
+            saved_ids = []
+            for article in data:
+                # Lưu metadata ảnh nếu có
+                if 'imageUrl' in article and article['imageUrl']:
+                    image_data = {
+                        'image_url': article['imageUrl'],
+                        'local_path': article.get('localImagePath', ''),
+                        'file_size': article.get('imageSize', 0)
+                    }
+                    save_image_metadata(image_data)
+                
+                # Lưu bài viết
+                result = save_article(article)
+                if result:
+                    saved_ids.append(str(result.inserted_id))
+            
+            print(f"✅ Đã lưu {len(saved_ids)} bài viết vào MongoDB")
+            return saved_ids
+            
+        elif isinstance(data, dict):
+            # Nếu là một bài viết đơn lẻ
+            # Lưu metadata ảnh nếu có
+            if 'imageUrl' in data and data['imageUrl']:
+                image_data = {
+                    'image_url': data['imageUrl'],
+                    'local_path': data.get('localImagePath', ''),
+                    'file_size': data.get('imageSize', 0)
+                }
+                save_image_metadata(image_data)
+            
+            # Lưu bài viết
+            result = save_article(data)
+            if result:
+                print(f"✅ Đã lưu bài viết vào MongoDB với ID: {result.inserted_id}")
+                return str(result.inserted_id)
+        
+        return None
+        
+    except Exception as e:
+        print(f"❌ Lỗi khi lưu dữ liệu vào MongoDB: {e}")
+        return None
+
 
 # Hàm lưu dữ liệu vào file JSON
 def save_to_json(data):

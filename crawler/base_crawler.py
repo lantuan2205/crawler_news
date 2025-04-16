@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 
 from utils.utils import init_output_dirs, create_dir, read_file
-from utils.service_utils import save_to_json, send_json_to_api
+from utils.service_utils import save_to_json, send_json_to_api, save_to_db
 class BaseCrawler(ABC):
 
     @abstractmethod
@@ -54,6 +54,7 @@ class BaseCrawler(ABC):
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
+        save_to_db(data)
         save_to_json(data)
         send_json_to_api()
         time.sleep(1)

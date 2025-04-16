@@ -1,0 +1,7 @@
+mongodb:
+  uri: "mongodb://localhost:27017/"
+  database: "news_scraper"
+  collections:
+    articles: "articles"
+    images: "images"
+    categories: "categories" 
