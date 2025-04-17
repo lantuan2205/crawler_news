@@ -103,11 +103,11 @@ def send_json_to_api():
 
 def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
-    # Loại bỏ phần "Thứ ..., ngày"
-    text_date = re.sub(r"Thứ\s\w+,?\s*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
+    # Loại bỏ phần "Thứ ..., ngày", "Chủ Nhật, ngày", hoặc "Thứ ... -" / "Chủ Nhật -"
+    text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
 
     # Thay dấu "-" bằng dấu ","
-    text_date = text_date.replace(" - ", ", ")
+    text_date = text_date.replace(" - ", ", ").replace(" -", ",").replace("- ", ",")
 
     # Chuẩn hóa ngày/tháng/năm thành dạng 2 chữ số (nếu thiếu)
     match_date = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
