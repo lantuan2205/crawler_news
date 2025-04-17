@@ -1,5 +1,5 @@
 # Tên báo muốn crawl [vnexpress, vietnamnet]
-webnames: ["vietnamnet","vnexpress"]
+webnames: ["vietnamnet"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]

@@ -1,9 +1,12 @@
 import requests
 import sys
 import json
+import os
 from pathlib import Path
 import random
 import time
+from datetime import datetime
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from utils.service_utils import clean_date
@@ -16,6 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.mongodb_utils import save_image_metadata
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -44,7 +48,52 @@ class VietNamNetCrawler(BaseCrawler):
             # 13: "du-lich",
             # 14: "chinh-tri",
             # 15: "ban-doc",
-        }   
+        }
+        # Tạo thư mục lưu ảnh
+        self.image_dir = Path("data/images")
+        self.image_dir.mkdir(parents=True, exist_ok=True)
+
+    def download_image(self, image_url, article_title, category, published_date):
+        """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
+        try:
+            # Tạo cấu trúc thư mục: vietnamnet/category/date
+            newspaper_name = "vietnamnet"
+            date_parts = clean_date(published_date).split(',')[0].strip()  # Lấy phần trước dấu phẩy
+            day, month, year = date_parts.split('/')  # Tách ngày, tháng, năm
+            date_folder = f"{day}-{month}-{year}"  # Tạo định dạng mới
+            
+            # Tạo đường dẫn thư mục đầy đủ
+            article_dir = self.image_dir / newspaper_name / category / date_folder
+            article_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Tải ảnh
+            response = requests.get(image_url, headers=headers)
+            response.raise_for_status()
+            
+            # Xử lý URL ảnh
+            # 1. Loại bỏ các tham số query (sau dấu ?)
+            clean_url = image_url.split('?')[0]
+            # 2. Lấy phần tên file từ URL
+            image_filename = Path(clean_url).name
+            # 3. Tạo đường dẫn đầy đủ
+            image_path = article_dir / image_filename
+            
+            with open(image_path, 'wb') as f:
+                f.write(response.content)
+            
+            # Lưu metadata vào MongoDB
+            image_data = {
+                'image_url': image_url,
+                'local_path': str(image_path),
+                'file_size': os.path.getsize(image_path)
+            }
+            save_image_metadata(image_data)
+            
+            return str(image_path)
+            
+        except Exception as e:
+            print(f"Lỗi khi tải ảnh {image_url}: {e}")
+            return None
         
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url, headers=headers).content
@@ -52,61 +101,96 @@ class VietNamNetCrawler(BaseCrawler):
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
 
-        title_tag = soup.find("h1", class_="content-detail-title") 
+        title_tag = soup.find("h1", class_="content-detail-title")
         desc_tag = soup.find("h2", class_=["content-detail-sapo", "sm-sapo-mb-0"])
-        p_tag = soup.find("div", class_=["maincontent", "main-content"])
+        main_content_tag = soup.find("div", class_=["maincontent", "main-content"])
 
         date_tag = soup.find("div", class_="bread-crumb-detail__time")
         published_date = date_tag.text.strip() if date_tag else "Không có thông tin"
 
+        # Lấy ảnh đại diện (ưu tiên ảnh img-content, sau đó meta og:image)
+        image_url = "Không có ảnh"
         img_tag = soup.find("img", class_="img-content")
-        if not img_tag:
-            img_meta = soup.find("meta", property="og:image")
-            image_url = img_meta["content"] if img_meta else "Không có ảnh"
-        else:
+        if img_tag and img_tag.get("src"):
             image_url = img_tag["src"]
+        else:
+            img_meta = soup.find("meta", property="og:image")
+            if img_meta and img_meta.get("content"):
+                image_url = img_meta["content"]
+
+        # Lấy tất cả các ảnh trong nội dung bài viết (cập nhật theo cấu trúc HTML Vietnamnet)
+        content_images = []
+        if main_content_tag:
+            img_tags = main_content_tag.find_all("img")
+            for img in img_tags:
+                img_url_content = img.get("src") or img.get("data-original")
+                if img_url_content and not img_url_content.startswith("data:image"):
+                    content_images.append(urljoin("https://vietnamnet.vn", img_url_content) if img_url_content.startswith("/") else img_url_content)
+                elif img.find_parent("picture"):
+                    source = img.find_previous("source")
+                    if source and source.get("data-srcset"):
+                        srcset = source["data-srcset"].split(',')[0].strip().split()[0].strip()
+                        content_images.append(urljoin("https://vietnamnet.vn", srcset))
 
         comment_tags = soup.find_all("div", class_="comment-content")
         comments = [comment.text.strip() for comment in comment_tags] if comment_tags else []
 
-        if [var for var in (title_tag, desc_tag, p_tag) if var is None]:
-           return None, None, None, None, None, None
-        
+        if not all([title_tag, desc_tag, main_content_tag]):
+            return None, None, None, None, None, None, None, None
+
         title = title_tag.text
         description = (get_text_from_tag(p) for p in desc_tag.contents)
         paragraphs = (get_text_from_tag(p) for p in p_tag.find_all("p"))
 
-        author_tag = soup.find("div", class_="article-detail-author__main")
-        if author_tag:
-            author_name = author_tag.find("span", class_="name") or author_tag.find("a")
-            author = author_name.text.strip() if author_name else ""
-        else:
-            author = ""
+        author = ""
+        author_box = soup.find("div", class_="article-detail-author")
+        if author_box:
+            name_span = author_box.find("span", class_="name")
+            if name_span:
+                author = name_span.text.strip()
+            else:
+                link_author = author_box.find("a")
+                if link_author:
+                    author = link_author.text.strip()
 
-        return title, description, paragraphs, published_date, image_url, comments, author
+        return title, description, paragraphs, published_date, image_url, comments, author, content_images
 
-    def write_content(self, url: str) -> bool:
+    def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+            title, description, paragraphs, published_date, image_url, comments, author, content_images = self.extract_content(url)
+            if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
+                return None
+            
+            # Lấy thể loại từ URL
+            category = article_type
+                
+            # Tải và lưu ảnh nội dung
+            content_image_paths = []
+            for img_url in content_images:
+                if img_url:
+                    img_path = self.download_image(img_url, title, category, published_date)
+                    if img_path:
+                        content_image_paths.append(img_path)
+            
+            article_data = {
+                "dataSource": "/".join(url.split("/")[:3]),
+                "url": url,
+                "title": title,
+                "author": author,
+                "publishedDate": clean_date(published_date),
+                "imageUrl": image_url,
+                "description": " ".join(list(description)),
+                "content": ",".join(list(paragraphs)),
+                "comments": comments,
+                "contentImageUrls": content_images,
+                "localContentImagePaths": content_image_paths
+            }
+
+            return article_data
+            
         except Exception as e:
-            print(f"Lỗi khi xử lý URL {url}: {e}")  
+            print(f"Lỗi khi xử lý URL {url}: {e}")       
             return None
-        article_data = {
-            "dataSource": "/".join(url.split("/")[:3]),
-            "url": url,
-            "title": title,
-            "author": author,
-            "publishedDate": clean_date(published_date),
-            "imageUrl": image_url,
-            "description": " ".join(list(description)),
-            "content": ",".join(list(paragraphs)),
-            "comments": comments
-        }
-
-        # with open(output_fpath, "w", encoding="utf-8") as file:
-        #     json.dump(article_data, file, ensure_ascii=False, indent=4)
-
-        return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number-1}"

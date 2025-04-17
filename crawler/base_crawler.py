@@ -40,7 +40,7 @@ class BaseCrawler(ABC):
 
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            for result in tqdm(executor.map(self.crawl_url_thread, urls), total=num_urls, desc="URLs"):
+            for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
                 if result:
                     results.append(result)
 
@@ -49,14 +49,15 @@ class BaseCrawler(ABC):
             grouped_results.setdefault(article_type, []).append(article)
         return grouped_results
 
-    def crawl_url_thread(self, url):
-        data = self.write_content(url)
+    def crawl_url_thread(self, url, article_type):
+        data = self.write_content(url, article_type)
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
-        save_to_db(data)
+        data['article_type'] = article_type
         save_to_json(data)
-        send_json_to_api()
+        save_to_db(data)
+        # send_json_to_api()
         time.sleep(1)
         return {"url": url, "data": data}
 
@@ -96,9 +97,9 @@ class BaseCrawler(ABC):
             json_data.append(data)
             self.logger.info("-" * 79)
         
-        output_fpath = "".join([results_dpath, "/articles", ".json"])
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(json_data, file, ensure_ascii=False, indent=4)
+        # output_fpath = "".join([results_dpath, "/articles", ".json"])
+        # with open(output_fpath, "w", encoding="utf-8") as file:
+        #     json.dump(json_data, file, ensure_ascii=False, indent=4)
         return True
 
     def get_urls_of_type(self, article_type):

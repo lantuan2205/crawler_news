@@ -3,7 +3,9 @@ import requests
 import sys
 import time
 import random
+import os
 from pathlib import Path
+from datetime import datetime
 
 from bs4 import BeautifulSoup
 
@@ -16,6 +18,7 @@ from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.service_utils import clean_date
+from utils.mongodb_utils import save_image_metadata
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -27,24 +30,69 @@ class VNExpressCrawler(BaseCrawler):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
         self.article_type_dict = {
-            0: "thoi-su",
-            1: "the-gioi",
-            2: "kinh-doanh",
-            3: "cong-nghe",
-            4: "khoa-hoc",
-            5: "goc-nhin",
-            6: "bat-dong-san",
-            7: "suc-khoe",
-            8: "the-thao",
-            9: "giai-tri",
-            10: "phap-luat",
-            11: "giao-duc",
-            12: "doi-song",
-            13: "xe",
-            14: "du-lich",
-            15: "y-kien",
-            16: "tam-su",
+            0: "the-gioi",
+            # 1: "the-gioi",
+            # 2: "kinh-doanh",
+            # 3: "cong-nghe",
+            # 4: "khoa-hoc",
+            # 5: "goc-nhin",
+            # 6: "bat-dong-san",
+            # 7: "suc-khoe",
+            # 8: "the-thao",
+            # 9: "giai-tri",
+            # 10: "phap-luat",
+            # 11: "giao-duc",
+            # 12: "doi-song",
+            # 13: "xe",
+            # 14: "du-lich",
+            # 15: "y-kien",
+            # 16: "tam-su",
         }
+        # Tạo thư mục lưu ảnh
+        self.image_dir = Path("data/images")
+        self.image_dir.mkdir(parents=True, exist_ok=True)
+
+    def download_image(self, image_url, article_title, category, published_date):
+        """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
+        try:
+            # Tạo cấu trúc thư mục: vnexpress/category/date
+            newspaper_name = "vnexpress"
+            date_parts = clean_date(published_date).split(',')[0].strip()  # Lấy phần trước dấu phẩy
+            day, month, year = date_parts.split('/')  # Tách ngày, tháng, năm
+            date_folder = f"{day}-{month}-{year}"  # Tạo định dạng mới
+            
+            # Tạo đường dẫn thư mục đầy đủ
+            article_dir = self.image_dir / newspaper_name / category / date_folder
+            article_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Tải ảnh
+            response = requests.get(image_url, headers=headers)
+            response.raise_for_status()
+            
+            # Xử lý URL ảnh
+            # 1. Loại bỏ các tham số query (sau dấu ?)
+            clean_url = image_url.split('?')[0]
+            # 2. Lấy phần tên file từ URL
+            image_filename = Path(clean_url).name
+            # 3. Tạo đường dẫn đầy đủ
+            image_path = article_dir / image_filename
+            
+            with open(image_path, 'wb') as f:
+                f.write(response.content)
+            
+            # Lưu metadata vào MongoDB
+            image_data = {
+                'image_url': image_url,
+                'local_path': str(image_path),
+                'file_size': os.path.getsize(image_path)
+            }
+            save_image_metadata(image_data)
+            
+            return str(image_path)
+            
+        except Exception as e:
+            print(f"Lỗi khi tải ảnh {image_url}: {e}")
+            return None
 
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url, headers=headers).content
@@ -82,27 +130,49 @@ class VNExpressCrawler(BaseCrawler):
         if comment_section:
             comment_tags = comment_section.find_all("div", class_="comment_content")  # Kiểm tra thẻ chứa nội dung bình luận
             comments = [c.text.strip() for c in comment_tags]
-        return title, description, paragraphs, published_date, image_url, comments, author
 
-    def write_content(self, url: str) -> bool:
+        # Lấy tất cả các ảnh trong nội dung bài viết
+        image_tags = soup.find_all("img", class_="lazy") # VNExpress thường dùng class "lazy" cho ảnh trong nội dung
+        content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]
+    
+        return title, description, paragraphs, published_date, image_url, comments, author, content_image_urls
+
+    def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, paragraphs, published_date, image_url, comments, author = self.extract_content(url)
+            title, description, paragraphs, published_date, image_url, comments, author, content_image_urls = self.extract_content(url)
+            if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
+                return None
+            
+            # Lấy thể loại từ URL
+            category = article_type
+                
+            # Tải và lưu ảnh nội dung
+            content_image_paths = []
+            for img_url in content_image_urls:
+                if img_url:
+                    img_path = self.download_image(img_url, title, category, published_date)
+                    if img_path:
+                        content_image_paths.append(img_path)
+            
+            article_data = {
+                "dataSource": "/".join(url.split("/")[:3]),
+                "url": url,
+                "publishedDate": clean_date(published_date),
+                "author": author,
+                "title": title,
+                "imageUrl": image_url,
+                "description": " ".join(list(description)),
+                "content": ",".join(list(paragraphs)),
+                "comments": list(comments) if comments else [""],
+                "contentImageUrls": content_image_urls,
+                "localContentImagePaths": content_image_paths
+            }
+
+            return article_data
+            
         except Exception as e:
             print(f"Lỗi khi xử lý URL {url}: {e}")       
             return None
-        article_data = {
-            "dataSource": "/".join(url.split("/")[:3]),
-            "url": url,
-            "publishedDate": clean_date(published_date),
-            "author": author,
-            "title": title,
-            "imageUrl": image_url,
-            "description": " ".join(list(description)),
-            "content": ",".join(list(paragraphs)),
-            "comments": list(comments) if comments else [""]
-        }
-
-        return article_data
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
