@@ -5,8 +5,10 @@ import os
 from pathlib import Path
 import random
 import time
-from datetime import datetime
 from urllib.parse import urljoin
+import paramiko
+from io import BytesIO
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from utils.service_utils import clean_date
@@ -49,52 +51,74 @@ class VietNamNetCrawler(BaseCrawler):
             # 14: "chinh-tri",
             # 15: "ban-doc",
         }
-        # Tạo thư mục lưu ảnh
-        self.image_dir = Path("data/images")
-        self.image_dir.mkdir(parents=True, exist_ok=True)
 
     def download_image(self, image_url, article_title, category, published_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
         try:
-            # Tạo cấu trúc thư mục: vietnamnet/category/date
+
+            # === CẤU HÌNH SSH đến máy B ===
+            ssh_host = "192.168.161.230"
+            ssh_user = "htsc"
+            ssh_password = "Htsc@123"
+            remote_base_dir = "/mnt/data/news"
+            # Tạo cấu trúc thư mục: vnexpress/category/date
             newspaper_name = "vietnamnet"
-            date_parts = clean_date(published_date).split(',')[0].strip()  # Lấy phần trước dấu phẩy
-            day, month, year = date_parts.split('/')  # Tách ngày, tháng, năm
-            date_folder = f"{day}-{month}-{year}"  # Tạo định dạng mới
-            
+            date_parts = clean_date(published_date).split(',')[0].strip()
+            day, month, year = date_parts.split('/')
+            date_folder = f"{day}-{month}-{year}"
+
             # Tạo đường dẫn thư mục đầy đủ
-            article_dir = self.image_dir / newspaper_name / category / date_folder
-            article_dir.mkdir(parents=True, exist_ok=True)
-            
+            remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
+
+            clean_url = image_url.split('?')[0]
+            image_filename = Path(clean_url).name
+            remote_path = remote_dir / image_filename
+
             # Tải ảnh
             response = requests.get(image_url, headers=headers)
             response.raise_for_status()
-            
+            image_data = BytesIO(response.content)
+
+
+            # Kết nối SSH/SFTP
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(ssh_host, username=ssh_user, password=ssh_password)
+            sftp = ssh.open_sftp()
+
             # Xử lý URL ảnh
-            # 1. Loại bỏ các tham số query (sau dấu ?)
-            clean_url = image_url.split('?')[0]
-            # 2. Lấy phần tên file từ URL
-            image_filename = Path(clean_url).name
-            # 3. Tạo đường dẫn đầy đủ
-            image_path = article_dir / image_filename
-            
-            with open(image_path, 'wb') as f:
-                f.write(response.content)
-            
+            # Tạo thư mục nếu chưa có (đệ quy)
+            path_parts = str(remote_dir).split('/')
+            current = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current += f'/{part}'
+                try:
+                    sftp.stat(current)
+                except IOError:
+                    sftp.mkdir(current)
+
+            # Ghi ảnh vào máy B
+            with sftp.open(str(remote_path), 'wb') as remote_file:
+                remote_file.write(image_data.getbuffer())
+
+            sftp.close()
+            ssh.close()
             # Lưu metadata vào MongoDB
             image_data = {
                 'image_url': image_url,
-                'local_path': str(image_path),
-                'file_size': os.path.getsize(image_path)
+                'local_path': str(remote_path),
+                'file_size': len(image_data.getbuffer())
             }
             save_image_metadata(image_data)
-            
-            return str(image_path)
-            
+
+            return str(remote_path)
+
         except Exception as e:
             print(f"Lỗi khi tải ảnh {image_url}: {e}")
             return None
-        
+
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url, headers=headers).content
         sleep_time = random.uniform(1, 2)
@@ -140,7 +164,7 @@ class VietNamNetCrawler(BaseCrawler):
 
         title = title_tag.text
         description = (get_text_from_tag(p) for p in desc_tag.contents)
-        paragraphs = (get_text_from_tag(p) for p in p_tag.find_all("p"))
+        paragraphs = (get_text_from_tag(p) for p in main_content_tag.find_all("p"))
 
         author = ""
         author_box = soup.find("div", class_="article-detail-author")
@@ -158,7 +182,7 @@ class VietNamNetCrawler(BaseCrawler):
     def write_content(self, url: str, article_type: str) -> bool:
         try:
             title, description, paragraphs, published_date, image_url, comments, author, content_images = self.extract_content(url)
-            if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
+            if not title:
                 return None
             
             # Lấy thể loại từ URL
