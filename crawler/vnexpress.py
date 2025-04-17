@@ -6,7 +6,9 @@ import random
 import os
 from pathlib import Path
 from datetime import datetime
-
+import paramiko
+from io import BytesIO
+from pathlib import Path
 from bs4 import BeautifulSoup
 
 FILE = Path(__file__).resolve()
@@ -31,65 +33,87 @@ class VNExpressCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.article_type_dict = {
             0: "the-gioi",
-            # 1: "the-gioi",
-            # 2: "kinh-doanh",
-            # 3: "cong-nghe",
-            # 4: "khoa-hoc",
-            # 5: "goc-nhin",
-            # 6: "bat-dong-san",
-            # 7: "suc-khoe",
-            # 8: "the-thao",
-            # 9: "giai-tri",
-            # 10: "phap-luat",
-            # 11: "giao-duc",
-            # 12: "doi-song",
-            # 13: "xe",
-            # 14: "du-lich",
-            # 15: "y-kien",
-            # 16: "tam-su",
+            1: "the-gioi",
+            2: "kinh-doanh",
+            3: "cong-nghe",
+            4: "khoa-hoc",
+            5: "goc-nhin",
+            6: "bat-dong-san",
+            7: "suc-khoe",
+            8: "the-thao",
+            9: "giai-tri",
+            10: "phap-luat",
+            11: "giao-duc",
+            12: "doi-song",
+            13: "xe",
+            14: "du-lich",
+            15: "y-kien",
+            16: "tam-su",
         }
-        # Tạo thư mục lưu ảnh
-        self.image_dir = Path("data/images")
-        self.image_dir.mkdir(parents=True, exist_ok=True)
 
     def download_image(self, image_url, article_title, category, published_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
         try:
+
+            # === CẤU HÌNH SSH đến máy B ===
+            ssh_host = "192.168.161.230"
+            ssh_user = "htsc"
+            ssh_password = "Htsc@123"
+            remote_base_dir = "/mnt/data/news"
             # Tạo cấu trúc thư mục: vnexpress/category/date
             newspaper_name = "vnexpress"
             date_parts = clean_date(published_date).split(',')[0].strip()  # Lấy phần trước dấu phẩy
             day, month, year = date_parts.split('/')  # Tách ngày, tháng, năm
             date_folder = f"{day}-{month}-{year}"  # Tạo định dạng mới
-            
+
             # Tạo đường dẫn thư mục đầy đủ
-            article_dir = self.image_dir / newspaper_name / category / date_folder
-            article_dir.mkdir(parents=True, exist_ok=True)
-            
+            remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
+
+            clean_url = image_url.split('?')[0]
+            image_filename = Path(clean_url).name
+            remote_path = remote_dir / image_filename
+
             # Tải ảnh
             response = requests.get(image_url, headers=headers)
             response.raise_for_status()
-            
+            image_data = BytesIO(response.content)
+
+
+            # Kết nối SSH/SFTP
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(ssh_host, username=ssh_user, password=ssh_password)
+            sftp = ssh.open_sftp()
+
             # Xử lý URL ảnh
-            # 1. Loại bỏ các tham số query (sau dấu ?)
-            clean_url = image_url.split('?')[0]
-            # 2. Lấy phần tên file từ URL
-            image_filename = Path(clean_url).name
-            # 3. Tạo đường dẫn đầy đủ
-            image_path = article_dir / image_filename
-            
-            with open(image_path, 'wb') as f:
-                f.write(response.content)
-            
+            # Tạo thư mục nếu chưa có (đệ quy)
+            path_parts = str(remote_dir).split('/')
+            current = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current += f'/{part}'
+                try:
+                    sftp.stat(current)
+                except IOError:
+                    sftp.mkdir(current)
+
+            # Ghi ảnh vào máy B
+            with sftp.open(str(remote_path), 'wb') as remote_file:
+                remote_file.write(image_data.getbuffer())
+
+            sftp.close()
+            ssh.close()
             # Lưu metadata vào MongoDB
             image_data = {
                 'image_url': image_url,
-                'local_path': str(image_path),
-                'file_size': os.path.getsize(image_path)
+                'local_path': str(remote_path),
+                'file_size': len(image_data.getbuffer())
             }
             save_image_metadata(image_data)
-            
-            return str(image_path)
-            
+
+            return str(remote_path)
+
         except Exception as e:
             print(f"Lỗi khi tải ảnh {image_url}: {e}")
             return None
@@ -100,7 +124,7 @@ class VNExpressCrawler(BaseCrawler):
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
 
-        title = soup.find("h1", class_="title-detail") 
+        title = soup.find("h1", class_="title-detail")
         if title == None:
             return None, None, None
         title = title.text
@@ -134,7 +158,7 @@ class VNExpressCrawler(BaseCrawler):
         # Lấy tất cả các ảnh trong nội dung bài viết
         image_tags = soup.find_all("img", class_="lazy") # VNExpress thường dùng class "lazy" cho ảnh trong nội dung
         content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]
-    
+
         return title, description, paragraphs, published_date, image_url, comments, author, content_image_urls
 
     def write_content(self, url: str, article_type: str) -> bool:
@@ -142,10 +166,10 @@ class VNExpressCrawler(BaseCrawler):
             title, description, paragraphs, published_date, image_url, comments, author, content_image_urls = self.extract_content(url)
             if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
                 return None
-            
+
             # Lấy thể loại từ URL
             category = article_type
-                
+
             # Tải và lưu ảnh nội dung
             content_image_paths = []
             for img_url in content_image_urls:
@@ -153,7 +177,6 @@ class VNExpressCrawler(BaseCrawler):
                     img_path = self.download_image(img_url, title, category, published_date)
                     if img_path:
                         content_image_paths.append(img_path)
-            
             article_data = {
                 "dataSource": "/".join(url.split("/")[:3]),
                 "url": url,
@@ -169,9 +192,9 @@ class VNExpressCrawler(BaseCrawler):
             }
 
             return article_data
-            
+
         except Exception as e:
-            print(f"Lỗi khi xử lý URL {url}: {e}")       
+            print(f"Lỗi khi xử lý URL {url}: {e}")
             return None
 
     def get_urls_of_type_thread(self, article_type, page_number):
@@ -190,16 +213,16 @@ class VNExpressCrawler(BaseCrawler):
         for title in titles:
             link = title.find_all("a")[0]
             articles_urls.append(link.get("href"))
-    
+
         return articles_urls
 
     def get_all_articles(self, max_pages):
         """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
         all_articles = []
-        
+
         for category in self.article_type_dict.values():
             for page in range(1, max_pages + 1):
                 urls = self.get_urls_of_type_thread(category, page)
                 all_articles.extend(urls)
-        
+
         return all_articles
