@@ -32,7 +32,7 @@ class VNExpressCrawler(BaseCrawler):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
         self.article_type_dict = {
-            0: "the-gioi",
+            0: "thoi-su",
             1: "the-gioi",
             2: "kinh-doanh",
             3: "cong-nghe",
