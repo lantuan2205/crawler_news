@@ -1,5 +1,5 @@
-# Tên báo muốn crawl [vnexpress, vietnamnet]
-webnames: ["vietnamnet"]
+# Tên báo muốn crawl [vnexpress, vietnamnet, dantri]
+webnames: ["dantri"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -19,3 +19,4 @@ ui_hash_file: "./ui_hashes.json"
 news_sites:
   vnexpress: "https://vnexpress.net"
   vietnamnet: "https://vietnamnet.vn/"
+  dantri: "https://dantri.com.vn/"
