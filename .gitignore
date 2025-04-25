@@ -1,0 +1,13 @@
+# Bỏ qua thư mục `__pycache__` và file biên dịch Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Bỏ qua môi trường ảo
+venv/
+.env
+
+# Bỏ qua folder output
+result/
+result-*/

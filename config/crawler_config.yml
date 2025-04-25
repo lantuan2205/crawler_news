@@ -1,0 +1,27 @@
+# Tên báo muốn crawl [vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa]
+webnames: ["vtcnews"]
+
+# Có thể crawl theo url hoặc chuyên mục của báo
+# tasks = ["url", "type"]
+task: "type"
+
+#Thông tin ghi log
+logger_fpath: "logger/logger_config.yml"
+urls_fpath: "urls.txt"
+output_dpath: "result"
+num_workers: 1
+
+# Nếu task == "type" thì  article_type là chuyên mục báo or All types task == "all"
+article_type: "all"
+# Số page cần khi crawl
+total_pages: 500
+ui_hash_file: "./ui_hashes.json"
+news_sites:
+  vnexpress: "https://vnexpress.net"
+  vietnamnet: "https://vietnamnet.vn/"
+  dantri: "https://dantri.com.vn/"
+  tapchitoaan: "https://tapchitoaan.vn/"
+  quandoinhandan: "https://www.qdnd.vn/"
+  baovanhoa: "https://baovanhoa.vn/"
+  tapchidientu: "https://vietq.vn/"
+  vtcnews: "https://vtcnews.vn/"

@@ -1,0 +1,12 @@
+requests==2.31.0
+beautifulsoup4==4.12.2
+pymongo==4.6.1
+python-dotenv==1.0.0
+loguru==0.7.2
+pathlib==1.0.1
+urllib3==2.1.0
+tqdm==4.64.1
+fastapi
+uvicorn
+pika
+python-multipart

@@ -1,0 +1,17 @@
+version: "3.8"
+
+services:
+  fastapi_worker:
+    build: .
+    container_name: fastapi_worker
+    ports:
+      - "8000:8000"  # Mở cổng API
+    environment:
+      RABBITMQ_HOST: "192.168.132.250"
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: "guest"
+      RABBITMQ_PASS: "guest"
+      RABBITMQ_VHOST: "/"
+      RABBITMQ_QUEUE: "news.crawler.queue"
+      RABBITMQ_ROUTING_KEY: "news.crawler.route"
+    restart: always
