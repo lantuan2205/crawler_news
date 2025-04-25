@@ -56,7 +56,7 @@ class BaseCrawler(ABC):
             return None
         data['article_type'] = article_type
         save_to_json(data)
-        save_to_db(data)
+        # save_to_db(data)
         # send_json_to_api()
         time.sleep(1)
         return {"url": url, "data": data}
