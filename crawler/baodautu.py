@@ -24,71 +24,25 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class VTCNewsCrawler(BaseCrawler):
+class BaoDauTuCrawler(BaseCrawler):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://vtcnews.vn"
+        self.base_url = "https://baodautu.vn/"
         self.article_type_dict = {
-            0: "chinh-tri-47",
-            # 1: "quan-su-49",
-            # 2: "bao-ve-nguoi-tieu-dung-51",
-            # 3: "thoi-su-quoc-te-53",
-            # 4: "tin-tuc-bien-dong-55",
-            # 5: "tin-tuc-su-kien-56",
-            # 6: "ban-tin-113-online-58",
-            # 7: "chuyen-vu-an-59",
-            # 8: "hoa-hau-60",
-            # 9: "nhac-62",
-            # 10: "sao-the-gioi-63",
-            # 11: "sao-viet-64",
-            # 12: "bong-da-anh-66",
-            # 13: "benh-va-thuoc-68",
-            # 14: "dinh-duong-69",
-            # 15: "nguoi-dep-va-xe-72",
-            # 16: "tu-van-73",
-            # 17: "gioi-tinh-90",
-            # 18: "gioi-tre-85",
-            # 19: "thi-truong-100",
-            # 20: "lich-thi-dau-bong-da-101",
-            # 21: "tin-tuc-trong-ngay-105",
-            # 22: "bat-dong-san-112",
-            # 23: "tin-gia-vang-113",
-            # 24: "bong-da-viet-nam-115",
-            # 25: "du-lich-195",
-            # 26: "tin-tuc-202",
-            # 27: "khoe-dep-203",
-            # 28: "tu-van-204",
-            # 29: "dien-dan-207",
-            # 30: "du-hoc-208",
-            # 31: "chuyen-bon-phuong-209",
-            # 32: "y-kien-211",
-            # 33: "gia-dinh-212",
-            # 34: "tuyen-sinh-220",
-            # 35: "an-sinh-239",
-            # 36: "thu-thuat-267",
-            # 37: "hom-thu-phap-luat-268",
-            # 38: "chuyen-doi-so-271",
-            # 39: "phong-chong-chay-no-272",
-            # 40: "v-league-274",
-            # 41: "ky-nguyen-vuon-minh-285",
-            # 42: "nguoi-viet-bon-phuong-292",
-            # 43: "tin-xe-247-293",
-            # 44: "trai-nghiem-294",
-            # 45: "thi-truong-295",
-            # 46: "xe-dien-296"
-
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-
+            0: "thoi-su-d1",
+            1: "dau-tu-d2",
+            2: "batdongsan/chuyen%20dong-thi-truong-c31",
+            3: "du-an--quy-hoach-c32",
+            4: "chuyen-lang-chuyen-pho-c33",
+            5: "kien-truc-phong-thuy-c35",
+            6: "vat-lieu-cong-nghe-c34",
+            7: "quoc-te-d54",
+            8: "doanh-nghiep-d3",
+            9: "doanh-nhan-d4",
+            10: "ngan-hang--bao-hiem-d5",
+            11: "tai-chinh-chung-khoan-d6"
                                                                                                 
         }   
         
@@ -100,8 +54,8 @@ class VTCNewsCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: vtcnews/category/date
-            newspaper_name = "vtcnews"
+            # Tạo cấu trúc thư mục: baodautu/category/date
+            newspaper_name = "baodautu"
             date_parts = clean_date(published_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -158,31 +112,28 @@ class VTCNewsCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
+            response = requests.get(url, headers=headers)
+
             response = requests.get(url)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Trích xuất tiêu đề
-            title_tag = soup.find("header", class_="mb5").find("h1")
-            title = title_tag.get_text(strip=True) if title_tag else None
-
-            description = soup.select_one('h2')
-            description = description.get_text(strip=True) if description else ''
-
-            content_elements = soup.select('.edittor-content p')
-            content = '\n'.join(p.get_text(strip=True) for p in content_elements if p.get_text(strip=True))
+            title = soup.find("div", class_="title-detail").text.strip()
 
             # Trích xuất ngày viết bài
-            date_tag = soup.find('span', class_='time-update')
-            publish_date = date_tag.get_text(strip=True) if date_tag else None
+            author = soup.find("a", class_="author").text.strip()
+            publish_date = soup.find("span", class_="post-time").text.strip(" -")
+
+            description = soup.find("div", class_="sapo_detail").text.strip()
+
+            content_div = soup.find("div", id="content_detail_news")
+            paragraphs = content_div.find_all("p")
+            content = "\n\n".join(p.get_text(strip=True) for p in paragraphs)
 
             # Lấy các URL ảnh và alt text từ các thẻ img trong thẻ figure
-            figures = soup.select("figure.expNoEdit img")
-            content_images = [img.get("data-src") for img in figures if img.get("data-src")]
-
-            # Trích xuất tác giả
-            author = soup.select_one('.author-make span')
-            author = author.get_text(strip=True) if author else ''
+            images = content_div.find_all("img")
+            content_images = [img['src'] for img in images if img.get('src')]
 
             return title, description, content, publish_date, author, content_images
 
@@ -192,6 +143,7 @@ class VTCNewsCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
+        
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -227,7 +179,7 @@ class VTCNewsCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
-        page_url = f"https://vtcnews.vn/{article_type}/trang-{page_number}.html"
+        page_url = f"https://baodautu.vn/{article_type}/p{page_number}"
         
         try:
             response = requests.get(page_url, headers=headers)
@@ -239,18 +191,13 @@ class VTCNewsCrawler(BaseCrawler):
             return []
 
         soup = BeautifulSoup(response.content, "html.parser")
-        articles = soup.find_all("article")
         urls = []
 
-        for article in articles:
-            # Tìm <h3> hoặc <h2>
-            heading = article.find(["h3", "h2"])
-            if heading:
-                a_tag = heading.find("a")
-                if a_tag and a_tag.get("href"):
-                    url = a_tag["href"]
-                    full_url = "https://vtcnews.vn/" + url
-                    urls.append(full_url)
+        # Tìm tất cả thẻ <a> có trong danh sách bài viết
+        for li in soup.select("ul.list_news_home li"):
+            a_tag = li.find("a", href=True)
+            if a_tag:
+                urls.append(a_tag["href"])
 
         return urls
 
