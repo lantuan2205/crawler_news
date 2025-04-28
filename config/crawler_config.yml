@@ -1,5 +1,5 @@
-# Tên báo muốn crawl [baotintuc, baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa]
-webnames: ["baotintuc"]
+# Tên báo muốn crawl [baovephapluat, baotintuc, baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa]
+webnames: ["baovephapluat"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -27,3 +27,4 @@ news_sites:
   vtcnews: "https://vtcnews.vn/"
   baodautu: "https://baodautu.vn/"
   baotintuc: "https://baotintuc.vn/"
+  baovephapluat: "https://baovephapluat.vn/"
