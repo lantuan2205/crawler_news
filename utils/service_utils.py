@@ -7,6 +7,7 @@ from datetime import datetime
 import time
 from pathlib import Path
 from utils.mongodb_utils import save_article, save_image_metadata, save_category
+import unicodedata
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
@@ -104,6 +105,7 @@ def send_json_to_api():
 def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
     # Loại bỏ phần "Thứ ..., ngày", "Chủ Nhật, ngày", hoặc "Thứ ... -" / "Chủ Nhật -"
+    text_date = unicodedata.normalize('NFC', text_date)
     text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
 
     # Thay dấu "-" bằng dấu ","
@@ -136,6 +138,15 @@ def clean_date(text_date):
 
         # Đảm bảo có dấu "," giữa ngày và giờ nếu thiếu
         text_date = re.sub(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})", r"\1, \2", text_date)
+
+    # Xử lý cho trường hợp có múi giờ và ngày tháng giờ kết hợp như "Thứ Sáu, 04/10/2024 16:40:00 +07:00"
+    match_timezone = re.search(r"(\d{2}/\d{2}/\d{4})\s*(\d{2}:\d{2}):\d{2}\s*\+?\d{1,2}:\d{2}", text_date)
+    if match_timezone:
+        date, time = match_timezone.groups()
+        text_date = f"{date}, {time} (GMT+7)"
+
+    # Loại bỏ giây (nếu có) và múi giờ (+07:00) nếu có
+    text_date = re.sub(r"(:\d{2})\s?\+?\d{1,2}:\d{2}", "", text_date)
 
     # Đảm bảo có (GMT+7) nếu chưa có
     if "(GMT+7)" not in text_date:
