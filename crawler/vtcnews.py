@@ -32,52 +32,52 @@ class VTCNewsCrawler(BaseCrawler):
         self.base_url = "https://vtcnews.vn"
         self.article_type_dict = {
             0: "chinh-tri-47",
-            # 1: "quan-su-49",
-            # 2: "bao-ve-nguoi-tieu-dung-51",
-            # 3: "thoi-su-quoc-te-53",
-            # 4: "tin-tuc-bien-dong-55",
-            # 5: "tin-tuc-su-kien-56",
-            # 6: "ban-tin-113-online-58",
-            # 7: "chuyen-vu-an-59",
-            # 8: "hoa-hau-60",
-            # 9: "nhac-62",
-            # 10: "sao-the-gioi-63",
-            # 11: "sao-viet-64",
-            # 12: "bong-da-anh-66",
-            # 13: "benh-va-thuoc-68",
-            # 14: "dinh-duong-69",
-            # 15: "nguoi-dep-va-xe-72",
-            # 16: "tu-van-73",
-            # 17: "gioi-tinh-90",
-            # 18: "gioi-tre-85",
-            # 19: "thi-truong-100",
-            # 20: "lich-thi-dau-bong-da-101",
-            # 21: "tin-tuc-trong-ngay-105",
-            # 22: "bat-dong-san-112",
-            # 23: "tin-gia-vang-113",
-            # 24: "bong-da-viet-nam-115",
-            # 25: "du-lich-195",
-            # 26: "tin-tuc-202",
-            # 27: "khoe-dep-203",
-            # 28: "tu-van-204",
-            # 29: "dien-dan-207",
-            # 30: "du-hoc-208",
-            # 31: "chuyen-bon-phuong-209",
-            # 32: "y-kien-211",
-            # 33: "gia-dinh-212",
-            # 34: "tuyen-sinh-220",
-            # 35: "an-sinh-239",
-            # 36: "thu-thuat-267",
-            # 37: "hom-thu-phap-luat-268",
-            # 38: "chuyen-doi-so-271",
-            # 39: "phong-chong-chay-no-272",
-            # 40: "v-league-274",
-            # 41: "ky-nguyen-vuon-minh-285",
-            # 42: "nguoi-viet-bon-phuong-292",
-            # 43: "tin-xe-247-293",
-            # 44: "trai-nghiem-294",
-            # 45: "thi-truong-295",
-            # 46: "xe-dien-296"
+            1: "quan-su-49",
+            2: "bao-ve-nguoi-tieu-dung-51",
+            3: "thoi-su-quoc-te-53",
+            4: "tin-tuc-bien-dong-55",
+            5: "tin-tuc-su-kien-56",
+            6: "ban-tin-113-online-58",
+            7: "chuyen-vu-an-59",
+            8: "hoa-hau-60",
+            9: "nhac-62",
+            10: "sao-the-gioi-63",
+            11: "sao-viet-64",
+            12: "bong-da-anh-66",
+            13: "benh-va-thuoc-68",
+            14: "dinh-duong-69",
+            15: "nguoi-dep-va-xe-72",
+            16: "tu-van-73",
+            17: "gioi-tinh-90",
+            18: "gioi-tre-85",
+            19: "thi-truong-100",
+            20: "lich-thi-dau-bong-da-101",
+            21: "tin-tuc-trong-ngay-105",
+            22: "bat-dong-san-112",
+            23: "tin-gia-vang-113",
+            24: "bong-da-viet-nam-115",
+            25: "du-lich-195",
+            26: "tin-tuc-202",
+            27: "khoe-dep-203",
+            28: "tu-van-204",
+            29: "dien-dan-207",
+            30: "du-hoc-208",
+            31: "chuyen-bon-phuong-209",
+            32: "y-kien-211",
+            33: "gia-dinh-212",
+            34: "tuyen-sinh-220",
+            35: "an-sinh-239",
+            36: "thu-thuat-267",
+            37: "hom-thu-phap-luat-268",
+            38: "chuyen-doi-so-271",
+            39: "phong-chong-chay-no-272",
+            40: "v-league-274",
+            41: "ky-nguyen-vuon-minh-285",
+            42: "nguoi-viet-bon-phuong-292",
+            43: "tin-xe-247-293",
+            44: "trai-nghiem-294",
+            45: "thi-truong-295",
+            46: "xe-dien-296"
 
             # 22: "tu-van-tieu-dung-sub15",
             # 22: "tu-van-tieu-dung-sub15",
@@ -102,13 +102,14 @@ class VTCNewsCrawler(BaseCrawler):
             remote_base_dir = "/mnt/data/news"
             # Tạo cấu trúc thư mục: vtcnews/category/date
             newspaper_name = "vtcnews"
+            
             date_parts = clean_date(published_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
-
+            
             # Tạo đường dẫn thư mục đầy đủ
             remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
-
+            
             clean_url = image_url.split('?')[0]
             image_filename = Path(clean_url).name
             remote_path = remote_dir / image_filename

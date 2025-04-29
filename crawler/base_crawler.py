@@ -74,10 +74,12 @@ class BaseCrawler(ABC):
         self.logger.info(f"Crawl articles type {article_type}")
         error_urls = list()
         
+        valid_article_type = article_type.replace("/", "-")
+
         # getting urls
         self.logger.info(f"Getting urls of {article_type}...")
         articles_urls = self.get_urls_of_type(article_type)
-        articles_urls_fpath = "/".join([urls_dpath, f"{article_type}.txt"])
+        articles_urls_fpath = "/".join([urls_dpath, f"{valid_article_type}.txt"])
         with open(articles_urls_fpath, "w") as urls_file:
             urls_file.write("\n".join(articles_urls)) 
 

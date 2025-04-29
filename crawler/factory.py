@@ -21,7 +21,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "vtcnews": VTCNewsCrawler,
             "baodautu": BaoDauTuCrawler,
             "baotintuc": BaoTinTucCrawler,
-            "baovephapluat": BaoVePhapLuatCrawler
+            "baovephapluat": BaoVePhapLuatCrawler,
             "baodantoc": BaoDanTocCrawler
             }
 
