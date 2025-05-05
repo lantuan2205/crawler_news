@@ -52,7 +52,7 @@ class TapChiToaAnCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: tapchitoaan/category/date
+            # Tạo cấu trúc thư mục: dantri/category/date
             newspaper_name = "tapchitoaan"
             date_parts = clean_date(published_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
@@ -186,19 +186,23 @@ class TapChiToaAnCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://tapchitoaan.vn/{article_type}?page={page_number}"
+        articles_urls = []
         
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
-            response.raise_for_status()  # Kiểm tra nếu request thất bại
+            response.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error fetching {page_url}: {e}")
             return []
 
         soup = BeautifulSoup(response.content, "html.parser")
         article_containers = soup.find_all('div', class_='d-md-flex post-entry-2 small-img')
-        articles_urls = []
+
+        if (len(article_containers) == 0):
+            return []
+
         for container in article_containers:
             a_tag = container.find('a', href=True)
             if a_tag:

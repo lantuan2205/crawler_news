@@ -73,7 +73,6 @@ class BaseCrawler(ABC):
     def crawl_type(self, article_type, urls_dpath, results_dpath):
         self.logger.info(f"Crawl articles type {article_type}")
         error_urls = list()
-        
         valid_article_type = article_type.replace("/", "-")
 
         # getting urls
@@ -105,12 +104,35 @@ class BaseCrawler(ABC):
         return True
 
     def get_urls_of_type(self, article_type):
-        articles_urls = list()
-        args = ([article_type]*self.total_pages, range(1, self.total_pages+1))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            results = list(tqdm(executor.map(self.get_urls_of_type_thread, *args), total=self.total_pages, desc="Pages"))
+        articles_urls = set()
+        page_number = 100
+        progress = tqdm(desc="Pages", unit=" page")
 
-        articles_urls = sum(results, [])
-        articles_urls = list(set(articles_urls))
-    
-        return articles_urls
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            futures = {}
+            while True:
+                # Gửi batch gồm num_workers page một lúc
+                for _ in range(self.num_workers):
+                    future = executor.submit(self.get_urls_of_type_thread, article_type, page_number)
+                    futures[future] = page_number
+                    page_number += 1
+
+                stop = False
+                for future in concurrent.futures.as_completed(futures):
+                    page = futures[future]
+                    try:
+                        result = future.result()
+                        progress.update(1)
+                        if not result:
+                            self.logger.info(f"[!] Page {page} returned empty. Stopping further crawl.")
+                            stop = True
+                        else:
+                            articles_urls.update(result)
+                    except Exception as e:
+                        self.logger.warning(f"[!] Error on page {page}: {e}")
+
+                futures.clear()
+                if stop:
+                    break
+
+        return list(articles_urls)

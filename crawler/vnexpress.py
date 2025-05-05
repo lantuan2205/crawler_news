@@ -180,7 +180,7 @@ class VNExpressCrawler(BaseCrawler):
 
         title = soup.find("h1", class_="title-detail")
         if title == None:
-            return None, None, None, None, None, None, None, None
+            return None, None, None
         title = title.text
 
         # some sport news have location-stamp child tag inside description tag
@@ -253,20 +253,25 @@ class VNExpressCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
-        content = requests.get(page_url, headers=headers).content
-        sleep_time = random.uniform(1, 2)
-        time.sleep(sleep_time)
-        soup = BeautifulSoup(content, "html.parser")
-        titles = soup.find_all(class_="title-news")
+        articles_urls = []
+        try:
+            content = requests.get(page_url, headers=headers).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            titles = soup.find_all(class_="title-news")
 
-        if (len(titles) == 0):
-            self.logger.info(f"Couldn't find any news in {page_url} \nMaybe you sent too many requests, try using less workers")
+            if (len(titles) == 0):
+                self.logger.info(f"Couldn't find any news in {page_url} \nMaybe you sent too many requests, try using less workers")
+                return []
 
-        articles_urls = list()
+            for title in titles:
+                link = title.find_all("a")[0]
+                articles_urls.append(link.get("href"))
 
-        for title in titles:
-            link = title.find_all("a")[0]
-            articles_urls.append(link.get("href"))
+        except Exception as e:
+            self.logger.warning(f"[!] Error while fetching {page_url}: {e}")
+            return []
 
         return articles_urls
 

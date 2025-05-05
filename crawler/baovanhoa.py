@@ -241,7 +241,7 @@ class BaoVanHoaCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://baovanhoa.vn/{article_type}/?page={page_number}"
-        
+        results = []
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
@@ -256,7 +256,8 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         articles = soup.find_all('article', class_='story')
 
-        results = []
+        if (len(articles) == 0):
+            return []
 
         for article in articles:
             title_tag = article.find('h3', class_='story__title')

@@ -31,20 +31,20 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://www.qdnd.vn/"
         self.article_type_dict = {
-            #0: "chinh-tri",
-            0: "quoc-phong-an-ninh",
-            #1: "da-phuong-tien",
-            #2: "bao-ve-nen-tang-tu-tuong-cua-dang",
-            #3: "kinh-te",
-            #4: "van-hoa",
-            #5: "xa-hoi",
-            #7: "phong-su-dieu-tra",
-            #8: "giao-duc-khoa-hoc",
-            #9: "phap-luat",
-            #10: "ban-doc",
-            #11: "y-te",
-            #12: "the-thao",
-            #13: "quoc-te"
+            0: "chinh-tri",
+            1: "quoc-phong-an-ninh",
+            2: "da-phuong-tien",
+            3: "bao-ve-nen-tang-tu-tuong-cua-dang",
+            4: "kinh-te",
+            5: "van-hoa",
+            6: "xa-hoi",
+            7: "phong-su-dieu-tra",
+            8: "giao-duc-khoa-hoc",
+            9: "phap-luat",
+            10: "ban-doc",
+            11: "y-te",
+            12: "the-thao",
+            13: "quoc-te"
         }   
         
     def download_image(self, image_url, article_title, category, published_date):
@@ -196,6 +196,9 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.content, "html.parser")
         article_tags = soup.select("div.list-news-category article a[href]")
+        if (len(article_tags) == 0):
+            return []
+
         articles_urls = list({a["href"] for a in article_tags if a["href"].startswith("http")})
         return articles_urls
     
