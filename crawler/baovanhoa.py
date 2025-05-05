@@ -240,6 +240,8 @@ class BaoVanHoaCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
+        if (page_number > 49):
+            return []
         page_url = f"https://baovanhoa.vn/{article_type}/?page={page_number}"
         results = []
         try:
