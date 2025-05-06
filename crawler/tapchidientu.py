@@ -32,20 +32,20 @@ class TapChiDienTuCrawler(BaseCrawler):
         self.base_url = "https://vietq.vn/"
         self.article_type_dict = {
             0: "tin-trong-nuoc-sub9",
-            # 1: "quoc-te-sub10",
-            # 2: "van-de-sub11",
-            # 3: "tieu-chuan-chat-luong-c86",
-            # 4: "an-toan-thuc-pham-sub12",
-            # 5: "hang-kem-chat-luong-sub13",
-            # 6: "phat-hien-sub34",
-            # 7: "thi-truong-sub14",
-            # 8: "san-pham-dich-vu-sub16",
-            # 9: "chat-luong-vang-sub20",
-            # 10: "dien-dan-sub71",
-            # 11: "khoa-hoc-cong-nghe-sub6",
-            # 12: "dau-tu-sub96",
-            # 13: "khieu-nai-sub75",
-            # 14: "tu-van-tieu-dung-sub15",
+            1: "quoc-te-sub10",
+            2: "van-de-sub11",
+            3: "tieu-chuan-chat-luong-c86",
+            4: "an-toan-thuc-pham-sub12",
+            5: "hang-kem-chat-luong-sub13",
+            6: "phat-hien-sub34",
+            7: "thi-truong-sub14",
+            8: "san-pham-dich-vu-sub16",
+            9: "chat-luong-vang-sub20",
+            10: "dien-dan-sub71",
+            11: "khoa-hoc-cong-nghe-sub6",
+            12: "dau-tu-sub96",
+            13: "khieu-nai-sub75",
+            14: "tu-van-tieu-dung-sub15",
         }   
         
     def download_image(self, image_url, article_title, category, published_date):
@@ -197,13 +197,17 @@ class TapChiDienTuCrawler(BaseCrawler):
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
-            response.raise_for_status()  # Kiểm tra nếu request thất bại
+            response.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error fetching {page_url}: {e}")
             return []
 
         soup = BeautifulSoup(response.content, "html.parser")
         article_links = soup.find_all('a', class_='thumb300x170')
+
+        if (len(article_links) == 0):
+            return []
+
         results =  [a['href'] for a in article_links]
 
         return results

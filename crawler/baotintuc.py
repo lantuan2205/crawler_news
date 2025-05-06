@@ -245,8 +245,11 @@ class BaoTinTucCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
+        if (page_number > 100):
+            return []
         page_url = f"https://baotintuc.vn/{article_type}/trang-{page_number}.htm"
-        
+        urls = []
+
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
@@ -258,9 +261,12 @@ class BaoTinTucCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.content, "html.parser")
         base_url = "https://baotintuc.vn"
-        urls = []
+        items = soup.select("li.item a.thumb")
 
-        for item in soup.select("li.item a.thumb"):
+        if (len(items) == 0):
+            return []
+
+        for item in items:
             href = item.get("href")
             if href:
                 full_url = base_url + href

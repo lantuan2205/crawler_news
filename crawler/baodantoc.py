@@ -238,8 +238,13 @@ class BaoDanTocCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.content, "html.parser")
         news_timeline = soup.find('div', class_='news-in-timeline')
+
+        links = news_timeline.find_all('a')
+        if (len(links) == 0):
+            return []
+
         a_urls = [
-            a.get('href') for a in news_timeline.find_all('a') 
+            a.get('href') for a in links
             if a.get('href') and 'tin-tuc.htm' not in a.get('href')
         ]
         

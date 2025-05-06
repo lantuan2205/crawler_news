@@ -196,6 +196,9 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.content, "html.parser")
         article_tags = soup.select("div.list-news-category article a[href]")
+        if (len(article_tags) == 0):
+            return []
+
         articles_urls = list({a["href"] for a in article_tags if a["href"].startswith("http")})
         return articles_urls
     

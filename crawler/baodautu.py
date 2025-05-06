@@ -180,7 +180,7 @@ class BaoDauTuCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://baodautu.vn/{article_type}/p{page_number}"
-        
+        urls = []
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
@@ -191,10 +191,11 @@ class BaoDauTuCrawler(BaseCrawler):
             return []
 
         soup = BeautifulSoup(response.content, "html.parser")
-        urls = []
-
+        lis = soup.select("ul.list_news_home li")
+        if (len(lis) == 0):
+            return []
         # Tìm tất cả thẻ <a> có trong danh sách bài viết
-        for li in soup.select("ul.list_news_home li"):
+        for li in lis:
             a_tag = li.find("a", href=True)
             if a_tag:
                 urls.append(a_tag["href"])
