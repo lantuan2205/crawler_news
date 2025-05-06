@@ -24,21 +24,26 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class BaoThanhTraCrawler(BaseCrawler):
+class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://thanhtra.com.vn/"
+        self.base_url = "https://thoibaotaichinhvietnam.vn/"
         self.article_type_dict = {
-            0: "chinh-tri-1F7B169C8",
-            1: "thanh-tra-CA492F2B8",
-            2: "tiep-dan-khieu-to-0FCABC87C",
-            3: "phong-chong-tham-nhung-A52D004FA",
-            4: "xa-hoi-C5ACF42DB",
-            5: "phap-luat-B2DDDF86E",
-            6: "nha-dat-57A4B2310",
-            7: "du-lich-E19590D86",                                                                       
+            0: "thoi-su",
+            1: "kinh-te",
+            2: "tai-chinh",
+            3: "thue-hai-quan",
+            4: "chung-khoan",
+            5: "ngan-hang",
+            6: "bao-hiem",
+            7: "kinh-doanh",
+            8: "bat-dong-san",
+            9: "phap-luat",
+            10: "gia-ca",
+            11: "xa-hoi",
+            12: "quoc-te"                                                             
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -49,8 +54,8 @@ class BaoThanhTraCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: thanhtra/category/date
-            newspaper_name = "thanhtra"
+            # Tạo cấu trúc thư mục: thoibaotaichinhvietnam/category/date
+            newspaper_name = "thoibaotaichinhvietnam"
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -113,56 +118,37 @@ class BaoThanhTraCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title = soup.find("h1", class_="text-black text-[32px] leading-tight font-bold mb-4").get_text(strip=True)
+            title_tag = soup.find("h1", class_="post-title")
+            title = title_tag.get_text(strip=True) if title_tag else None
 
             # Lấy tên tác giả
-            author_div = soup.find("div", class_="flex-shrink-0 font-semibold text-base mr-4")
-            # Tìm tác giả từ thẻ <a> (nếu có)
-            author_tag_a = author_div.find("a", title=True) if author_div else None
-            author = author_tag_a.get_text(strip=True) if author_tag_a else None
-
-            # Nếu không tìm thấy tác giả từ <a>, thử lấy từ thẻ <p>
-            if not author:
-                author_tag_p = author_div.find("p") if author_div else None
-                author = author_tag_p.get_text(strip=True) if author_tag_p else None
+            author_tag = soup.find("h2", class_="author-title")
+            if author_tag and author_tag.get_text(strip=True):
+                author = author_tag.get_text(strip=True)
+            else:
+                # Nếu không có, lấy từ <div class="post-author">
+                fallback_tag = soup.find("div", class_="post-author")
+                author = fallback_tag.get_text(strip=True) if fallback_tag else None
 
             # Lấy description
-            desc_tag = soup.find("p", class_="text-lg text-justify font-semibold mb-4")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            desc_div = soup.find("div", class_="post-desc")
+            description = desc_div.get_text(strip=True) if desc_div else None
 
             # Trích xuất ngày viết bài
-            date_tag = soup.find("p", class_="text-[#707070] text-sm")
-            publish_date = date_tag.get_text(strip=True) if date_tag else None
+            time_tag = soup.find("span", class_="article-publish-time")
+            if time_tag:
+                time_part = time_tag.find("span", class_="format_time")
+                date_part = time_tag.find("span", class_="format_date")
+                if time_part and date_part:
+                    publish_date = f"{time_part.get_text(strip=True)} {date_part.get_text(strip=True)}"
 
-            div_mb4 = soup.find("div", class_="mb-4")
-            content_images = []
-            if div_mb4:
-                # Tìm tất cả thẻ img trong div
-                imgs = div_mb4.find_all("img")
-                for img in imgs:
-                    src = img.get("src")
-                    if src and "http" in src:  # chỉ lấy ảnh có link đầy đủ
-                        content_images.append(src)
+            content_div = soup.find("div", class_="post-content")
+            paragraphs = content_div.find_all("p")
+            content = "\n\n".join(p.get_text(strip=True) for p in paragraphs)
 
-            # 2. Lấy content + ảnh từ div#editor-detail
-            editor = soup.find("div", id="editor-detail")
-            content_paragraphs = []
+            images = content_div.find_all("img")
+            content_images = [img['src'] for img in images if img.get('src')]
 
-            if editor:
-                for el in editor.find_all(["p", "img", "div"]):
-                    # Lấy đoạn văn
-                    if el.name == "p":
-                        text = el.get_text(strip=True)
-                        if text:
-                            content_paragraphs.append(text)
-
-                    # Lấy ảnh trong các khối editor-image-wrapper
-                    elif el.name == "div" and "editor-image-wrapper" in el.get("class", []):
-                        img_tag = el.find("img")
-                        content_images.append(img_tag["src"] if img_tag else None)
-            content_images = list(set(content_images))
-            # Lấy nội dung của bài viết (text content)
-            content = " ".join(content_paragraphs)
             return title, description, content, publish_date, author, content_images
 
         except requests.exceptions.RequestException as e:
@@ -207,30 +193,30 @@ class BaoThanhTraCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
-        page_url = f"https://thanhtra.com.vn/{article_type}/trang-{page_number}/loadmore"
+        page_number = (page_number - 1) * 15
+        page_url = f"https://thoibaotaichinhvietnam.vn/{article_type}&s_cond=&BRSR={page_number}"
         
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
-            response.raise_for_status()  # Kiểm tra nếu request thất bại
+            response.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"Error fetching {page_url}: {e}")
             return []
 
         soup = BeautifulSoup(response.content, "html.parser")
+        target_div = soup.find("div", class_="cat-listing bg-dots mt20 pt20 article-bdt-20 thumb-w250 title-22 no-catname")
+
         urls = []
-        pagination_div = soup.find("div", id="pagination")
-        if pagination_div:
-            articles = pagination_div.find_all("article")
-            if (len(articles) == 0):
+        if target_div:
+            a_tags = target_div.find_all("h3", class_="article-title")
+            if(len(a_tags) == 0):
                 return []
-            for article in articles:
-                a_tag = article.find("a", href=True)
-                if a_tag:
-                    href = a_tag["href"]
-                    if href.startswith("/"):
-                        href = "https://www.thanhtra.com.vn" + href
-                    urls.append(href)
+            for a_tag in a_tags:
+                tag = a_tag.find("a")
+                if tag and tag.get("href"):
+                    urls.append(tag["href"])
+
         return urls
 
