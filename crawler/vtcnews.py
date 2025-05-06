@@ -78,17 +78,6 @@ class VTCNewsCrawler(BaseCrawler):
             44: "trai-nghiem-294",
             45: "thi-truong-295",
             46: "xe-dien-296"
-
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-            # 22: "tu-van-tieu-dung-sub15",
-
                                                                                                 
         }   
         
@@ -102,14 +91,13 @@ class VTCNewsCrawler(BaseCrawler):
             remote_base_dir = "/mnt/data/news"
             # Tạo cấu trúc thư mục: vtcnews/category/date
             newspaper_name = "vtcnews"
-            
             date_parts = clean_date(published_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
-            
+
             # Tạo đường dẫn thư mục đầy đủ
             remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
-            
+
             clean_url = image_url.split('?')[0]
             image_filename = Path(clean_url).name
             remote_path = remote_dir / image_filename
@@ -229,7 +217,7 @@ class VTCNewsCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://vtcnews.vn/{article_type}/trang-{page_number}.html"
-        
+        urls = []
         try:
             response = requests.get(page_url, headers=headers)
             sleep_time = random.uniform(1, 3)
@@ -241,7 +229,8 @@ class VTCNewsCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.content, "html.parser")
         articles = soup.find_all("article")
-        urls = []
+        if (len(articles) == 0):
+            return []
 
         for article in articles:
             # Tìm <h3> hoặc <h2>

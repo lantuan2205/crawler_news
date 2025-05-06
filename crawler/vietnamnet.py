@@ -121,7 +121,7 @@ class VietNamNetCrawler(BaseCrawler):
 
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url, headers=headers).content
-        sleep_time = random.uniform(1, 3)
+        sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
 
@@ -218,23 +218,27 @@ class VietNamNetCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number-1}"
-        content = requests.get(page_url, headers=headers).content
-        sleep_time = random.uniform(1, 3)
-        time.sleep(sleep_time)
-        soup = BeautifulSoup(content, "html.parser")
-        titles = soup.find_all(class_=["horizontalPost__main-title", "vnn-title", "title-bold"])
+        articles_urls = []
+        try:
+            content = requests.get(page_url, headers=headers).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            titles = soup.find_all(class_=["horizontalPost__main-title", "vnn-title", "title-bold"])
 
-        if (len(titles) == 0):
-            self.logger.info(f"Couldn't find any news in {page_url} \nMaybe you sent too many requests, try using less workers")
-            
-        articles_urls = list()
+            if (len(titles) == 0):
+                self.logger.info(f"Couldn't find any news in {page_url} \nMaybe you sent too many requests, try using less workers")
+                return []
 
-        for title in titles:
-            full_url = title.find_all("a")[0].get("href")
-            if self.base_url not in full_url:
-                full_url = self.base_url + full_url
-            articles_urls.append(full_url)
-    
+            for title in titles:
+                full_url = title.find_all("a")[0].get("href")
+                if self.base_url not in full_url:
+                    full_url = self.base_url + full_url
+                articles_urls.append(full_url)
+        except Exception as e:
+            self.logger.warning(f"[!] Error while fetching {page_url}: {e}")
+            return []
+
         return articles_urls
 
     def get_all_articles(self, max_pages):

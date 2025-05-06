@@ -32,38 +32,38 @@ class BaoVePhapLuatCrawler(BaseCrawler):
         self.base_url = "https://baovephapluat.vn/"
         self.article_type_dict = {
             0: "thoi-su",
-            # 1: "kiem-sat-24h/van-de-su-kien",
-            # 2: "kiem-sat-24h/ban-tin-kiem-sat",
-            # 3: "kiem-sat-24h/nhan-su-moi",
-            # 4: "kiem-sat-24h/chinh-sach-moi",
-            # 5: "cong-to-kiem-sat-tu-phap/theo-dong",
-            # 6: "cong-to-kiem-sat-tu-phap/khoi-to",
-            # 7: "cong-to-kiem-sat-tu-phap/khoi-to",
-            # 8: "cong-to-kiem-sat-tu-phap/an-ninh-trat-tu",
-            # 9: "phap-dinh/toa-tuyen-an",
-            # 10: "phap-dinh/ky-an",
-            # 11: "phap-dinh/cau-chuyen-phap-luat",
-            # 12: "cai-cach-tu-phap/dien-dan",
-            # 13: "cai-cach-tu-phap/thuc-tien-kinh-nghiem",
-            # 14: "cai-cach-tu-phap/nhan-to-dien-hinh",
-            # 15: "kinh-te/kinh-doanh-phap-luat",
-            # 16: "kinh-te/do-thi-xay-dung",
-            # 17: "giao-thong",
-            # 18: "kinh-te/tai-chinh-ngan-hang",
-            # 19: "kinh-te/dung-hang-viet",
-            # 20: "van-hoa-xa-hoi/giao-duc",
-            # 21: "van-hoa-xa-hoi/y-te",
-            # 22: "van-hoa-xa-hoi/lao-dong-viec-lam",
-            # 23: "van-hoa-xa-hoi/vong-tay-nhan-ai",
-            # 24: "van-hoa-xa-hoi/goc-van-hoa",
-            # 25: "van-hoa-xa-hoi/doi-song-xa-hoi",
-            # 26: "quoc-te/tin-tuc",
-            # 27: "quoc-te/phap-luat-5-chau",
-            # 28: "quoc-te/chuyen-la-bon-phuong",
-            # 29: "phap-luat-ban-doc/tin-duong-day-nong",
-            # 30: "phap-luat-ban-doc/dieu-tra-theo-don-thu",
-            # 31: "phap-luat-ban-doc/hoi-am",
-            # 32: "phap-luat-ban-doc/bao-chi-cong-dan",                                                                                   
+            1: "kiem-sat-24h/van-de-su-kien",
+            2: "kiem-sat-24h/ban-tin-kiem-sat",
+            3: "kiem-sat-24h/nhan-su-moi",
+            4: "kiem-sat-24h/chinh-sach-moi",
+            5: "cong-to-kiem-sat-tu-phap/theo-dong",
+            6: "cong-to-kiem-sat-tu-phap/khoi-to",
+            7: "cong-to-kiem-sat-tu-phap/khoi-to",
+            8: "cong-to-kiem-sat-tu-phap/an-ninh-trat-tu",
+            9: "phap-dinh/toa-tuyen-an",
+            10: "phap-dinh/ky-an",
+            11: "phap-dinh/cau-chuyen-phap-luat",
+            12: "cai-cach-tu-phap/dien-dan",
+            13: "cai-cach-tu-phap/thuc-tien-kinh-nghiem",
+            14: "cai-cach-tu-phap/nhan-to-dien-hinh",
+            15: "kinh-te/kinh-doanh-phap-luat",
+            16: "kinh-te/do-thi-xay-dung",
+            17: "giao-thong",
+            18: "kinh-te/tai-chinh-ngan-hang",
+            19: "kinh-te/dung-hang-viet",
+            20: "van-hoa-xa-hoi/giao-duc",
+            21: "van-hoa-xa-hoi/y-te",
+            22: "van-hoa-xa-hoi/lao-dong-viec-lam",
+            23: "van-hoa-xa-hoi/vong-tay-nhan-ai",
+            24: "van-hoa-xa-hoi/goc-van-hoa",
+            25: "van-hoa-xa-hoi/doi-song-xa-hoi",
+            26: "quoc-te/tin-tuc",
+            27: "quoc-te/phap-luat-5-chau",
+            28: "quoc-te/chuyen-la-bon-phuong",
+            29: "phap-luat-ban-doc/tin-duong-day-nong",
+            30: "phap-luat-ban-doc/dieu-tra-theo-don-thu",
+            31: "phap-luat-ban-doc/hoi-am",
+            32: "phap-luat-ban-doc/bao-chi-cong-dan",                                                                                   
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -225,6 +225,10 @@ class BaoVePhapLuatCrawler(BaseCrawler):
         soup = BeautifulSoup(response.content, "html.parser")
         ctrangc3_div = soup.find('div', class_='ctrangc3')
         link_tags = ctrangc3_div.find_all('a', href=True) if ctrangc3_div else []
+
+        if (len(link_tags) == 0):
+            return []
+
         urls = [tag['href'] for tag in link_tags]
         return urls
 
