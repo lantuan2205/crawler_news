@@ -106,13 +106,14 @@ def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
     # Loại bỏ phần "Thứ ..., ngày", "Chủ Nhật, ngày", hoặc "Thứ ... -" / "Chủ Nhật -"
     text_date = unicodedata.normalize('NFC', text_date)
+    text_date = re.sub(r"^Cập nhật lúc\s*", "", text_date, flags=re.IGNORECASE).strip()
     text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
 
     # Thay dấu "-" bằng dấu ","
     text_date = text_date.replace(" - ", ", ").replace(" -", ",").replace("- ", ",")
 
     # Nếu text có dạng [giờ phút][khoảng trắng][ngày/tháng/năm]
-    match = re.search(r"(\d{1,2}):(\d{2})\s*(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
+    match = re.search(r"(\d{1,2}):(\d{2})\s*,?\s*(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
     if match:
         hour, minute, day, month, year = match.groups()
         text_date = f"{int(day):02}/{int(month):02}/{year}, {int(hour):02}:{minute}"
@@ -148,7 +149,9 @@ def clean_date(text_date):
     # Loại bỏ giây (nếu có) và múi giờ (+07:00) nếu có
     text_date = re.sub(r"(:\d{2})\s?\+?\d{1,2}:\d{2}", "", text_date)
 
-    # Đảm bảo có (GMT+7) nếu chưa có
+    # Đảm bảo có dấu cách trước (GMT+7) nếu thiếu
+    text_date = re.sub(r"(?<!\s)\(GMT\+7\)", r" (GMT+7)", text_date)
+
     if "(GMT+7)" not in text_date:
         text_date += " (GMT+7)"
 
