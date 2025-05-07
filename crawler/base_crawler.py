@@ -105,7 +105,7 @@ class BaseCrawler(ABC):
 
     def get_urls_of_type(self, article_type):
         articles_urls = set()
-        page_number = 100
+        page_number = 1
         progress = tqdm(desc="Pages", unit=" page")
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
