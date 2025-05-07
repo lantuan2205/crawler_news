@@ -265,9 +265,8 @@ class BaoVanHoaCrawler(BaseCrawler):
             title_tag = article.find('h3', class_='story__title')
             title_link = title_tag.find('a') if title_tag else None
             link = title_link['href'] if title_link else None
-            if link.startswith(f'/{article_type}/'):
-                full_url = f"https://baovanhoa.vn{link}"  # Thêm domain nếu cần
-                results.append(full_url)
+            full_url = f"https://baovanhoa.vn{link}"  # Thêm domain nếu cần
+            results.append(full_url)
 
         return results
 
