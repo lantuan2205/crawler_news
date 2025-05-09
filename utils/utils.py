@@ -7,7 +7,7 @@ def create_dir(path):
         os.makedirs(path)
 
 def read_file(path):
-    with open(path, encoding="utf-8") as file:
+    with open(path, encoding="utf-8-sig", errors="ignore") as file:
         for line in file:
             yield line.rstrip("\n")
 
