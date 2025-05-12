@@ -12,6 +12,20 @@ from .baovephapluat import BaoVePhapLuatCrawler
 from .baodantoc import BaoDanTocCrawler
 from .baothanhtra import BaoThanhTraCrawler
 from .baotaichinhvietnam import BaoTaiChinhVietNamCrawler
+from .baohaiquanvietnam import BaoHaiQuanVietNamCrawler
+from .tapchicongthuong import TapChiCongThuongCrawler
+from .tainguyenvamoitruong import TaiNguyenVaMoiTruongCrawler
+from .dangcongsan import DangCongSanCrawler
+from .kienthuc import KienThucCrawler
+from .vietnamdaily import VietNameDailyCrawler
+from .phunumoi import PhuNuMoiCrawler
+from .congnghevadoisong import CongNgheVaDoiSongCrawler
+from .taichinhdoanhnghiep import TaiChinhDoanhNghiepCrawler
+from .thuonghieucongluan import ThuongHieuCongLuanCrawler
+from .vneconomy import VNEconomyCrawler
+from .suckhoecong import SucKhoeCongCrawler
+from .kinhtedouong import KinhTeDoUongCrawler
+from .thuonghieuvaphapluat import ThuongHieuPhapLuatCrawler
 
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
@@ -26,7 +40,21 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "baovephapluat": BaoVePhapLuatCrawler,
             "baodantoc": BaoDanTocCrawler,
             "thanhtra": BaoThanhTraCrawler,
-            "thoibaotaichinhvietnam": BaoTaiChinhVietNamCrawler
+            "thoibaotaichinhvietnam": BaoTaiChinhVietNamCrawler,
+            "baohaiquanvietnam": BaoHaiQuanVietNamCrawler,
+            "tapchicongthuong": TapChiCongThuongCrawler,
+            "tainguyenvamoitruong": TaiNguyenVaMoiTruongCrawler,
+            "dangcongsan": DangCongSanCrawler,
+            "kienthuc": KienThucCrawler,
+            "vietnamdaily": VietNameDailyCrawler,
+            "phunumoi": PhuNuMoiCrawler,
+            "congnghevadoisong": CongNgheVaDoiSongCrawler,
+            "taichinhdoanhnghiep": TaiChinhDoanhNghiepCrawler,
+            "thuonghieucongluan": ThuongHieuCongLuanCrawler,
+            "vneconomy": VNEconomyCrawler,
+            "suckhoecong": SucKhoeCongCrawler,
+            "kinhtedouong": KinhTeDoUongCrawler,
+            "thuonghieuvaphapluat": ThuongHieuPhapLuatCrawler,
             }
 
 def get_crawler(webname, **kwargs):

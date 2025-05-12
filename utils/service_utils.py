@@ -108,6 +108,11 @@ def clean_date(text_date):
     text_date = unicodedata.normalize('NFC', text_date)
     text_date = re.sub(r"^Cập nhật lúc\s*", "", text_date, flags=re.IGNORECASE).strip()
     text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
+    # Loại bỏ từ "lúc" giữa ngày và giờ
+    text_date = re.sub(r"\s*lúc\s*", " ", text_date, flags=re.IGNORECASE)
+
+    # Loại bỏ (GMT) không rõ ràng
+    text_date = re.sub(r"\(GMT\)", "", text_date)
 
     # Thay dấu "-" bằng dấu ","
     text_date = text_date.replace(" - ", ", ").replace(" -", ",").replace("- ", ",")
