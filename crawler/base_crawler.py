@@ -126,8 +126,10 @@ class BaseCrawler(ABC):
                         if not result:
                             self.logger.info(f"[!] Page {page} returned empty. Stopping further crawl.")
                             stop = True
-                        else:
-                            articles_urls.update(result)
+                        elif type(result) == set:
+                            stop = True
+                            result = list(result)
+                        articles_urls.update(result)
                     except Exception as e:
                         self.logger.warning(f"[!] Error on page {page}: {e}")
 
@@ -136,3 +138,14 @@ class BaseCrawler(ABC):
                     break
 
         return list(articles_urls)
+
+    # def get_urls_of_type(self, article_type):
+    #     articles_urls = list()
+    #     args = ([article_type]*self.total_pages, range(1, self.total_pages+1))
+    #     with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+    #         results = list(tqdm(executor.map(self.get_urls_of_type_thread, *args), total=self.total_pages, desc="Pages"))
+
+    #     articles_urls = sum(results, [])
+    #     articles_urls = list(set(articles_urls))
+    
+    #     return articles_urls
