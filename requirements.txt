@@ -10,3 +10,5 @@ fastapi
 uvicorn
 pika
 python-multipart
+selenium
+webdriver-manager

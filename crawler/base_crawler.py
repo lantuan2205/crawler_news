@@ -126,8 +126,10 @@ class BaseCrawler(ABC):
                         if not result:
                             self.logger.info(f"[!] Page {page} returned empty. Stopping further crawl.")
                             stop = True
-                        else:
-                            articles_urls.update(result)
+                        elif type(result) == set:
+                            stop = True
+                            result = list(result)
+                        articles_urls.update(result)
                     except Exception as e:
                         self.logger.warning(f"[!] Error on page {page}: {e}")
 

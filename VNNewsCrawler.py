@@ -12,9 +12,9 @@ def crawl_site(webname, config, ui_checker):
     # Lấy URL của trang báo từ config
     base_url = config["news_sites"].get(webname, "")
 
-    if ui_checker.check_ui_change(base_url):
-        print(f"UI của {webname} đã thay đổi! Bỏ qua crawling.")
-        return
+    #if ui_checker.check_ui_change(base_url):
+    #    print(f"UI của {webname} đã thay đổi! Bỏ qua crawling.")
+    #    return
 
     # Tạo một bản config mới cho từng báo
     custom_config = config.copy()

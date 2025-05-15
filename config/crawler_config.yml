@@ -1,5 +1,10 @@
-# Tên báo muốn crawl [thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa]
-webnames: ["thoibaotaichinhvietnam"]
+# Tên báo muốn crawl [baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
+# vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
+#  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
+# baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
+# ]
+webnames: ["baoxaydung"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -14,7 +19,7 @@ num_workers: 1
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types task == "all"
 article_type: "all"
 # Số page cần khi crawl
-total_pages: 500
+total_pages: 1
 ui_hash_file: "./ui_hashes.json"
 news_sites:
   vnexpress: "https://vnexpress.net"
@@ -27,7 +32,26 @@ news_sites:
   vtcnews: "https://vtcnews.vn/"
   baodautu: "https://baodautu.vn/"
   baotintuc: "https://baotintuc.vn/"
-  baovephapluat: "https://baovephapluat.vn/"
+  baophapluat: "https://baovephapluat.vn/"
   baodantoc: "https://baodantoc.vn/"
   thanhtra: "https://thanhtra.com.vn/"
   thoibaotaichinhvietnam: "https://thoibaotaichinhvietnam.vn/"
+  tapchicongthuong: "https://tapchicongthuong.vn/"
+  tainguyenvamoitruong: "https://www.tainguyenvamoitruong.vn/"
+  dangcongsan: "https://dangcongsan.vn/"
+  kienthuc: "https://kienthuc.net.vn/"
+  vietnamdaily: "https://vietnamdaily.kienthuc.net.vn/"
+  phunumoi: "https://phunumoi.net.vn/"
+  congnghevadoisong: "https://congnghevadoisong.vn/"
+  taichinhdoanhnghiep: "https://taichinhdoanhnghiep.net.vn/"
+  thuonghieucongluan: "https://thuonghieucongluan.com.vn/"
+  vneconomy: "https://vneconomy.vn/"
+  suckhoecong: "https://suckhoecong.vn/"
+  kinhtedouong: "https://kinhtedouong.vn/"
+  thuonghieuvaphapluat: "https://thuonghieuvaphapluat.vn/"
+  tapchigiaoduc: "https://tapchigiaoduc.edu.vn/"
+  quanlythitruong: "https://qltt.vn/"
+  congthuong: "https://congthuong.vn/"
+  congly: "https://congly.vn/"
+  suckhoedoisong: "https://suckhoedoisong.vn/"
+  baoxaydung: "https://baoxaydung.vn/"
