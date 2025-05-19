@@ -95,39 +95,64 @@ class CongAnNhanDanCrawler(BaseCrawler):
             50: "Vuot-len-so-phan",
 
         }
-    def sanitize_filename(name: str) -> str:
-        # Bỏ các ký tự không hợp lệ cho tên thư mục/tệp trong Windows
-        return re.sub(r'[<>:"/\\|?*]', '_', name.strip())
+    def download_image(self, image_url, article_title, category, publish_date):
+        """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
+        try:
+            # === CẤU HÌNH SSH đến máy B ===
+            ssh_host = "192.168.161.230"
+            ssh_user = "htsc"
+            ssh_password = "Htsc@123"
+            remote_base_dir = "/mnt/data/news"
+            # Tạo cấu trúc thư mục: baoxaydung/category/date
+            newspaper_name = "baoxaydung"
+            date_parts = clean_date(publish_date).split(',')[0].strip()
+            day, month, year = date_parts.split('/')
+            date_folder = f"{day}-{month}-{year}"
+            # Tạo đường dẫn thư mục đầy đủ
+            remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
 
-    def download_image(self, image_url: str, save_dir: str = "downloaded_images")  -> str | None:
-            try:
-                os.makedirs(save_dir, exist_ok=True)
+            clean_url = image_url.split('?')[0]
+            image_filename = Path(clean_url).name
+            remote_path = remote_dir / image_filename
 
-                # Loại bỏ tham số truy vấn nếu có
-                clean_url = image_url.split("?")[0]
-                image_name = os.path.basename(urlparse(clean_url).path)
+            # Tải ảnh
+            response = requests.get(image_url, headers=headers)
+            response.raise_for_status()
+            image_data = BytesIO(response.content)
 
-                # Tạo tên tệp duy nhất nếu cần
-                timestamp = int(time.time())
-                filename = f"{timestamp}_{image_name}"
-                filepath = os.path.join(save_dir, filename)
+            # Kết nối SSH/SFTP
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(ssh_host, username=ssh_user, password=ssh_password)
+            sftp = ssh.open_sftp()
 
-                # Gửi yêu cầu tải ảnh
-                response = requests.get(image_url, stream=True, timeout=10)
-                response.raise_for_status()
+            # Xử lý URL ảnh
+            # Tạo thư mục nếu chưa có (đệ quy)
+            path_parts = str(remote_dir).split('/')
+            current = ''
+            for part in path_parts:
+                if not part:
+                    continue
+                current += f'/{part}'
+                try:
+                    sftp.stat(current)
+                except IOError:
+                    sftp.mkdir(current)
 
-                # Lưu file
-                with open(filepath, "wb") as f:
-                    for chunk in response.iter_content(1024):
-                        f.write(chunk)
+            # Lưu ảnh
+            with sftp.file(str(remote_path), 'wb') as f:
+                f.write(image_data.getvalue())
 
-                print(f"✅ Đã tải ảnh về: {filepath}")
-                return filepath
+            # Đóng kết nối
+            sftp.close()
+            ssh.close()
 
-            except Exception as e:
-                print(f"⚠️ Lỗi khi tải ảnh {image_url}: {e}")
-        
+            return str(remote_path)
+            
+        except Exception as e:
+            self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
+        
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -194,7 +219,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
         content_image_paths = []
         for img_url in content_images:
             if img_url:
-                img_path = self.download_image(img_url)
+                img_path = self.download_image(img_url, article_type, publish_date, title)
                 if img_path:
                     content_image_paths.append(img_path)
                     
