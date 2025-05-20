@@ -219,7 +219,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
         content_image_paths = []
         for img_url in content_images:
             if img_url:
-                img_path = self.download_image(img_url, article_type, publish_date, title)
+                img_path = self.download_image(img_url, title, article_type, publish_date)      
                 if img_path:
                     content_image_paths.append(img_path)
                     
@@ -287,7 +287,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
                     next_button.click()
                     print("➡️ Đã click nút 'Trang sau'")
-                    time.sleep(2)
+                    time.sleep(3)
 
             except Exception:
                     print("✅ Không còn nút Trang sau. Dừng lại.")
