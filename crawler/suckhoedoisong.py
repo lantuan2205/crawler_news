@@ -231,4 +231,4 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
             except Exception:
                 print("✅ Không còn 'Xem thêm' hoặc gặp lỗi.")
                 break
-        return list(seen_links)
+        return seen_links

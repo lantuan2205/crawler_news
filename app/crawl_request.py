@@ -10,13 +10,8 @@ import requests
 import json
 from datetime import datetime
 import time
-
+from constants.crawlers import CRAWLERS
 app = FastAPI()
-
-CRAWLERS = {
-    "vnexpress.net": VNExpressCrawler(),
-    "vietnamnet.vn": VietNamNetCrawler()
-}
 
 @app.post("/crawl/")
 def crawl_article(data: dict):

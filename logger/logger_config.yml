@@ -1,6 +1,6 @@
 version: 1
 #https://docs.python.org/3/howto/logging.html#logging-advanced-tutorial
-disable_existing_loggers: False
+disable_existing_loggers: True
 formatters:
   simple:
     format: "%(message)s"
@@ -9,15 +9,15 @@ formatters:
 handlers:
   console:
     class: logging.StreamHandler
-    level: INFO
+    level: CRITICAL
     formatter: simple
     stream: ext://sys.stdout
   file_handler: 
     class: logging.FileHandler 
-    level: DEBUG
+    level: CRITICAL
     formatter: verbose 
     filename: "info.log" 
     encoding: "utf8"
 root:
-  level: DEBUG
+  level: CRITICAL
   handlers: ["console", "file_handler"]

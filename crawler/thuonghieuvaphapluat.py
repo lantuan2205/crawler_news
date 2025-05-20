@@ -33,12 +33,12 @@ class ThuongHieuPhapLuatCrawler(BaseCrawler):
         self.base_url = "https://thuonghieuvaphapluat.vn/"
         self.article_type_dict = {
             0: "dien-dan-thuong-hieu",
-            # 1: "doi-song-xa-hoi",
-            # 2: "thuong-hieu-va-hoi-nhap",
-            # 3: "phap-luat",
-            # 4: "cong-nghe",
-            # 5: "van-hoa",
-            # 6: "nhip-cau-nhan-ai",                                   
+            1: "doi-song-xa-hoi",
+            2: "thuong-hieu-va-hoi-nhap",
+            3: "phap-luat",
+            4: "cong-nghe",
+            5: "van-hoa",
+            6: "nhip-cau-nhan-ai",                                   
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):

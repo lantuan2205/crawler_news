@@ -32,13 +32,13 @@ class BaoThanhTraCrawler(BaseCrawler):
         self.base_url = "https://thanhtra.com.vn/"
         self.article_type_dict = {
             0: "chinh-tri-1F7B169C8",
-            # 1: "thanh-tra-CA492F2B8",
-            # 2: "tiep-dan-khieu-to-0FCABC87C",
-            # 3: "phong-chong-tham-nhung-A52D004FA",
-            # 4: "xa-hoi-C5ACF42DB",
-            # 5: "phap-luat-B2DDDF86E",
-            # 6: "nha-dat-57A4B2310",
-            # 7: "du-lich-E19590D86",                                                                       
+            1: "thanh-tra-CA492F2B8",
+            2: "tiep-dan-khieu-to-0FCABC87C",
+            3: "phong-chong-tham-nhung-A52D004FA",
+            4: "xa-hoi-C5ACF42DB",
+            5: "phap-luat-B2DDDF86E",
+            6: "nha-dat-57A4B2310",
+            7: "du-lich-E19590D86",                                                                       
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):

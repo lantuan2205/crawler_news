@@ -33,13 +33,13 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
         self.base_url = "https://taichinhdoanhnghiep.net.vn/"
         self.article_type_dict = {
             0: "tin-tuc",
-            # 1: "thue-cuoc-song",
-            # 2: "tai-chinh",
-            # 3: "bat-dong-san",
-            # 4: "chung-khoan",
-            # 5: "thi-truong",
-            # 6: "phap-luat-tai-chinh",
-            # 7: "tai-chinh-quoc-te"
+            1: "thue-cuoc-song",
+            2: "tai-chinh",
+            3: "bat-dong-san",
+            4: "chung-khoan",
+            5: "thi-truong",
+            6: "phap-luat-tai-chinh",
+            7: "tai-chinh-quoc-te"
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):

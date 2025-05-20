@@ -33,15 +33,15 @@ class VNEconomyCrawler(BaseCrawler):
         self.base_url = "https://vneconomy.vn/"
         self.article_type_dict = {
             0: "tieu-diem",
-            # 1: "dau-tu",
-            # 2: "tai-chinh",
-            # 3: "kinh-te-so",
-            # 4: "kinh-te-xanh",
-            # 5: "thi-truong",
-            # 6: "nhip-cau-doanh-nghiep",
-            # 7: "dia-oc",
-            # 8: "kinh-te-the-gioi",
-            # 9: "dan-sinh"
+            1: "dau-tu",
+            2: "tai-chinh",
+            3: "kinh-te-so",
+            4: "kinh-te-xanh",
+            5: "thi-truong",
+            6: "nhip-cau-doanh-nghiep",
+            7: "dia-oc",
+            8: "kinh-te-the-gioi",
+            9: "dan-sinh"
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):

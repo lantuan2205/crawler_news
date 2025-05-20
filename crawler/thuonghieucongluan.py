@@ -33,13 +33,13 @@ class ThuongHieuCongLuanCrawler(BaseCrawler):
         self.base_url = "https://thuonghieucongluan.com.vn/"
         self.article_type_dict = {
             0: "tin-tuc-c10",
-            # 1: "kinh-te-c3",
-            # 2: "thuong-hieu-c2",
-            # 3: "chuyen-dong-389-c23",
-            # 4: "phap-luat-c24",
-            # 5: "chuong-trinh-ocop-c54",
-            # 6: "tu-van-c22",
-            # 7: "xa-hoi-c28"
+            1: "kinh-te-c3",
+            2: "thuong-hieu-c2",
+            3: "chuyen-dong-389-c23",
+            4: "phap-luat-c24",
+            5: "chuong-trinh-ocop-c54",
+            6: "tu-van-c22",
+            7: "xa-hoi-c28"
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
