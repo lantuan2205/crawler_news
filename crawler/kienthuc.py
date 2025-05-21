@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -33,60 +33,60 @@ class KienThucCrawler(BaseCrawler):
         self.base_url = "https://kienthuc.net.vn/"
         self.article_type_dict = {
             0: "tuyen-sinh",
-            # 1: "doc-30s",
-            # 2: "soi-xet",
-            # 3: "song-4-mau",
-            # 4: "hoi-dap",
-            # 5: "nguoi-tot-viec-tot",
-            # 6: "cai-chinh-xin-loi",
-            # 7: "tham-cung",
-            # 8: "di-san",
-            # 9: "ta-tay",
-            # 10: "giai-ma",
-            # 11: "phong-thuy",
-            # 12: "tri-thuc-viet-toan-cau",
-            # 13: "thien",
-            # 14: "khoa-hoc",
-            # 15: "cong-nghe",
-            # 16: "tien-vang",
-            # 17: "nha-dat",
-            # 18: "doanh-nhan",
-            # 19: "tieu-dung",
-            # 20: "hang-hot",
+            1: "doc-30s",
+            2: "soi-xet",
+            3: "song-4-mau",
+            4: "hoi-dap",
+            5: "nguoi-tot-viec-tot",
+            6: "cai-chinh-xin-loi",
+            7: "tham-cung",
+            8: "di-san",
+            9: "ta-tay",
+            10: "giai-ma",
+            11: "phong-thuy",
+            12: "tri-thuc-viet-toan-cau",
+            13: "thien",
+            14: "khoa-hoc",
+            15: "cong-nghe",
+            16: "tien-vang",
+            17: "nha-dat",
+            18: "doanh-nhan",
+            19: "tieu-dung",
+            20: "hang-hot",
 
-            # 21: "tin-tuc-quan-su",
-            # 22: "vu-khi",
-            # 23: "quan-doi",
-            # 24: "quan-su-viet-nam",
+            21: "tin-tuc-quan-su",
+            22: "vu-khi",
+            23: "quan-doi",
+            24: "quan-su-viet-nam",
 
-            # 25: "the-gioi-24h",
-            # 26: "nong-sau",
-            # 27: "ho-so",
-            # 28: "doi-song-the-gioi",
+            25: "the-gioi-24h",
+            26: "nong-sau",
+            27: "ho-so",
+            28: "doi-song-the-gioi",
 
-            # 29: "xe",
-            # 30: "phu-kien-xe",
-            # 31: "dan-choi-xe",
+            29: "xe",
+            30: "phu-kien-xe",
+            31: "dan-choi-xe",
 
-            # 32: "doi-song",
-            # 33: "lam-dep-giam-can",
-            # 34: "me-be",
-            # 35: "an-ngon",
-            # 36: "dinh-duong-thuoc",
-            # 37: "yeu-tam",
+            32: "doi-song",
+            33: "lam-dep-giam-can",
+            34: "me-be",
+            35: "an-ngon",
+            36: "dinh-duong-thuoc",
+            37: "yeu-tam",
 
-            # 38: "chat-sao",
-            # 39: "showbiz",
-            # 40: "showbiz-ngoai",
-            # 41: "phong-cach-sao",
-            # 42: "phim-nhac",
-            # 43: "nhip-song",
+            38: "chat-sao",
+            39: "showbiz",
+            40: "showbiz-ngoai",
+            41: "phong-cach-sao",
+            42: "phim-nhac",
+            43: "nhip-song",
             
-            # 44: "sot-mang",
-            # 45: "yeu-online",
-            # 46: "the-thao",
-            # 47: "choi-phuot",
-            # 48: "ban-doc-dieu-tra",
+            44: "sot-mang",
+            45: "yeu-online",
+            46: "the-thao",
+            47: "choi-phuot",
+            48: "ban-doc-dieu-tra",
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -111,7 +111,7 @@ class KienThucCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -155,9 +155,7 @@ class KienThucCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
-            response = requests.get(url, headers=headers)
-
-            response = requests.get(url)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -230,7 +228,7 @@ class KienThucCrawler(BaseCrawler):
         page_url = f"https://kienthuc.net.vn/{article_type}/?page={page_number}"
         
         try:
-            response = requests.get(page_url, headers=headers)
+            response = requests.get(page_url, headers=headers, timeout=10)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
             response.raise_for_status()
@@ -254,3 +252,13 @@ class KienThucCrawler(BaseCrawler):
                     urls.append(base_url + href)
 
         return urls
+
+    def get_all_articles(self):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles

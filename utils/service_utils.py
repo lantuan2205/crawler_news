@@ -8,11 +8,15 @@ import time
 from pathlib import Path
 from utils.mongodb_utils import save_article, save_image_metadata, save_category
 import unicodedata
+import concurrent.futures
+from tqdm import tqdm
+from io import BytesIO
+import mimetypes
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
 UPLOAD_API_PORT = "8080"
-UPLOAD_API_ENDPOINT = "/api/upload"
+UPLOAD_API_ENDPOINT = "/api/multiple"
 UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
 
 def save_to_db(data, output_file=None):
@@ -87,20 +91,46 @@ def send_json_to_api():
     if not os.path.exists(OUTPUT_FILE):
         print(" [] Không tìm thấy file JSON để upload")
         return
-    with open(OUTPUT_FILE, "rb") as f:
-        files = {"file": f}
-        data = {"data": "NEWS_INFO"}  # Thêm metadata
+    # 1. Đọc JSON
+    with open(OUTPUT_FILE, "r", encoding="utf-8") as f:
+        json_data = json.load(f)
 
+    image_urls = json_data.get("contentImageUrls", [])
+
+    files = []
+
+    # 2. Đính kèm JSON file
+    files.append(("files", ("data.json", open(OUTPUT_FILE, "rb"), "application/json")))
+
+    # 3. Tải từng ảnh từ URL và thêm vào files
+    for i, url in enumerate(image_urls):
         try:
-            response = requests.post(UPLOAD_API_URL, files=files, data=data)
-            print(f" [] Upload API Response: {response}")
+            img_response = requests.get(url, timeout=5, stream=True)
+            if img_response.status_code == 200:
+                img_bytes = BytesIO(img_response.content)
+                mime_type, _ = mimetypes.guess_type(url)
+                if not mime_type:
+                    mime_type = "application/octet-stream"
+                clean_url = url.split('?')[0]
+                filename = Path(clean_url).name
+                files.append(("files", (filename, img_bytes, mime_type)))
+            else:
+                print(f" ⚠️ Không tải được ảnh: {url}")
+        except Exception as e:
+            print(f" ❌ Lỗi tải ảnh {url}: {e}")
 
-        except requests.RequestException as e:
-            print(f" [] Lỗi khi gửi file: {e}")
-    # Nếu gửi thành công, xoá file JSON
-    if response.status_code == 200:
-        os.remove(OUTPUT_FILE)
-        print(f"🗑 File {OUTPUT_FILE} đã bị xóa sau khi gửi!")
+    # 4. Gửi đến API
+    data = {"data": "NEWS_INFO"}
+
+    try:
+        response = requests.post(UPLOAD_API_URL, files=files, data=data)
+        print(f" [] Upload API Response: {response}")
+        # Nếu gửi thành công, xoá file JSON
+        if response.status_code == 200:
+            os.remove(OUTPUT_FILE)
+            print(f"🗑 File {OUTPUT_FILE} đã bị xóa sau khi gửi!")
+    except requests.RequestException as e:
+        print(f" [] Lỗi khi gửi file: {e}")
 
 def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
@@ -161,3 +191,40 @@ def clean_date(text_date):
         text_date += " (GMT+7)"
 
     return text_date
+
+def get_urls_of_type(self, article_type):
+    articles_urls = set()
+    page_number = 18
+    num_workers = 5
+    progress = tqdm(desc="Pages", unit=" page")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
+        futures = {}
+        while True:
+            # Gửi batch gồm num_workers page một lúc
+            for _ in range(num_workers):
+                future = executor.submit(self.get_urls_of_type_thread, article_type, page_number)
+                futures[future] = page_number
+                page_number += 1
+
+            stop = False
+            for future in concurrent.futures.as_completed(futures):
+                page = futures[future]
+                try:
+                    result = future.result()
+                    progress.update(1)
+                    if not result:
+                        print(f"[!] Page {page} returned empty. Stopping further crawl.")
+                        stop = True
+                    elif type(result) == set:
+                        stop = True
+                        result = list(result)
+                    articles_urls.update(result)
+                except Exception as e:
+                    print(f"[!] Error on page {page}: {e}")
+
+            futures.clear()
+            if stop:
+                break
+
+    return list(articles_urls)

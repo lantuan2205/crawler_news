@@ -32,6 +32,7 @@ from .congthuong import CongThuongCrawler
 from .congly import CongLyCrawler
 from .suckhoedoisong import SucKhoeDoiSongCrawler
 from .baoxaydung import BaoXayDungCrawler
+from .congannhandan import CongAnNhanDanCrawler
 
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
@@ -67,8 +68,15 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "congly": CongLyCrawler,
             "suckhoedoisong": SucKhoeDoiSongCrawler,
             "baoxaydung": BaoXayDungCrawler,
+            "congannhandan": CongAnNhanDanCrawler,
             }
 
 def get_crawler(webname, **kwargs):
+    print(f"🛠️ get_crawler đang xử lý webname = {repr(webname)}")
+    print(f"📦 Danh sách key hợp lệ: {list(WEBNAMES.keys())}")
+
+    if webname not in WEBNAMES:
+        raise KeyError(f"❌ Không tìm thấy key '{webname}' trong WEBNAMES.")
+
     crawler = WEBNAMES[webname](**kwargs)
     return crawler

@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type, get_urls_of_type
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -128,7 +128,7 @@ class VNExpressCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -173,7 +173,7 @@ class VNExpressCrawler(BaseCrawler):
             return None
 
     def extract_content(self, url: str) -> tuple:
-        content = requests.get(url, headers=headers).content
+        content = requests.get(url, headers=headers, timeout=10).content
         sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
@@ -184,7 +184,8 @@ class VNExpressCrawler(BaseCrawler):
         title = title.text
 
         # some sport news have location-stamp child tag inside description tag
-        description = (get_text_from_tag(p) for p in soup.find("p", class_="description").contents)
+        desc_tag = soup.find("p", class_="description")
+        description = desc_tag.get_text(strip=True) if desc_tag else ""
         paragraph_tags = soup.find_all("p", class_="Normal")
         if paragraph_tags:
             author = paragraph_tags[-1].text.strip()  # Lấy tác giả từ thẻ cuối
@@ -193,31 +194,21 @@ class VNExpressCrawler(BaseCrawler):
             author = None
 
         paragraphs = (get_text_from_tag(p) for p in paragraph_tags)
+        content = "\n".join(paragraphs)
 
         # Lấy ngày đăng bài
         time_element = soup.find("span", class_="date")
         published_date = time_element.text.strip() if time_element else None
 
-        # Lấy ảnh đại diện
-        image_element = soup.find("meta", property="og:image")
-        image_url = image_element["content"] if image_element else None
-
-        comments = []
-        comment_section = soup.find("div", class_="box_comment")  # Kiểm tra class thật của VnExpress
-
-        if comment_section:
-            comment_tags = comment_section.find_all("div", class_="comment_content")  # Kiểm tra thẻ chứa nội dung bình luận
-            comments = [c.text.strip() for c in comment_tags]
-
         # Lấy tất cả các ảnh trong nội dung bài viết
-        image_tags = soup.find_all("img", class_="lazy") # VNExpress thường dùng class "lazy" cho ảnh trong nội dung
+        image_tags = soup.find_all("img", class_="lazy")
         content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]
 
-        return title, description, paragraphs, published_date, image_url, comments, author, content_image_urls
+        return title, description, content, published_date, author, content_image_urls
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, paragraphs, published_date, image_url, comments, author, content_image_urls = self.extract_content(url)
+            title, description, content, published_date, author, content_image_urls = self.extract_content(url)
             if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
                 return None
 
@@ -237,10 +228,8 @@ class VNExpressCrawler(BaseCrawler):
                 "publishedDate": clean_date(published_date),
                 "author": author,
                 "title": title,
-                "imageUrl": image_url,
-                "description": " ".join(list(description)),
-                "content": ",".join(list(paragraphs)),
-                "comments": list(comments) if comments else [""],
+                "description": description,
+                "content": content,
                 "contentImageUrls": content_image_urls,
                 "localContentImagePaths": content_image_paths
             }
@@ -255,7 +244,7 @@ class VNExpressCrawler(BaseCrawler):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
         articles_urls = []
         try:
-            content = requests.get(page_url, headers=headers).content
+            content = requests.get(page_url, headers=headers, timeout=10).content
             sleep_time = random.uniform(1, 2)
             time.sleep(sleep_time)
             soup = BeautifulSoup(content, "html.parser")
@@ -275,13 +264,12 @@ class VNExpressCrawler(BaseCrawler):
 
         return articles_urls
 
-    def get_all_articles(self, max_pages):
+    def get_all_articles(self):
         """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
         all_articles = []
 
         for category in self.article_type_dict.values():
-            for page in range(1, max_pages + 1):
-                urls = self.get_urls_of_type_thread(category, page)
-                all_articles.extend(urls)
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
 
         return all_articles

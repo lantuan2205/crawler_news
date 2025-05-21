@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -59,7 +59,7 @@ class DangCongSanCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -103,9 +103,7 @@ class DangCongSanCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
-            response = requests.get(url, headers=headers)
-
-            response = requests.get(url)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -188,7 +186,7 @@ class DangCongSanCrawler(BaseCrawler):
         page_url = f"https://dangcongsan.vn/noidung/tintuc/Lists/{article_type}/View.aspx?Page={page_number}"
         
         try:
-            response = requests.get(page_url, headers=headers)
+            response = requests.get(page_url, headers=headers, timeout=10)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
             response.raise_for_status()
@@ -209,3 +207,13 @@ class DangCongSanCrawler(BaseCrawler):
         urls = [base_url + a['href'] for a in links]
 
         return urls
+
+    def get_all_articles(self):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles
