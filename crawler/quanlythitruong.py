@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -33,13 +33,13 @@ class QuanLyThiTruongCrawler(BaseCrawler):
         self.base_url = "https://qltt.vn/"
         self.article_type_dict = {
             0: "bao-ve-nen-tang-tu-tuong-dang",
-            # 1: "tin-tuc",
-            # 2: "cong-thuong",
-            # 3: "quan-ly-thi-truong-24h",
-            # 4: "nguoi-tot-viec-tot",
-            # 5: "bao-ve-nguoi-tieu-dung",
-            # 6: "kinh-te",
-            # 7: "chinh-sach-phap-luat",                
+            1: "tin-tuc",
+            2: "cong-thuong",
+            3: "quan-ly-thi-truong-24h",
+            4: "nguoi-tot-viec-tot",
+            5: "bao-ve-nguoi-tieu-dung",
+            6: "kinh-te",
+            7: "chinh-sach-phap-luat",                
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -64,7 +64,7 @@ class QuanLyThiTruongCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -108,9 +108,7 @@ class QuanLyThiTruongCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
-            response = requests.get(url, headers=headers)
-
-            response = requests.get(url)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -192,7 +190,7 @@ class QuanLyThiTruongCrawler(BaseCrawler):
         page_url = f"https://qltt.vn/{article_type}&s_cond=&BRSR={page_number}"
         
         try:
-            response = requests.get(page_url, headers=headers)
+            response = requests.get(page_url, headers=headers, timeout=10)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
             response.raise_for_status()
@@ -211,3 +209,12 @@ class QuanLyThiTruongCrawler(BaseCrawler):
 
         return urls
 
+    def get_all_articles(self):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles
