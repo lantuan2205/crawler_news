@@ -1,10 +1,10 @@
-# Tên báo muốn crawl [congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["congannhandan"]
+webnames: ["thoibaonganhang"]
 
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
@@ -56,4 +56,8 @@ news_sites:
   suckhoedoisong: "https://suckhoedoisong.vn/"
   baoxaydung: "https://baoxaydung.vn/"
   congannhandan: "https://cand.com.vn/"
+  vov: "https://vov.vn/"
+  kiemsat: "https://kiemsat.vn/"
+  tapchitaichinh: "https://tapchitaichinh.vn/"
+  thoibaonganhang: "https://thoibaonganhang.vn/"
 
