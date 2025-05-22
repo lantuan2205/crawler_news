@@ -295,4 +295,3 @@ class CongAnNhanDanCrawler(BaseCrawler):
         driver.quit()
 
         return seen_links
-
