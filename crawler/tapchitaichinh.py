@@ -47,7 +47,7 @@ class TapChiTaiChinhCrawler(BaseCrawler):
             2: "kinh-te-vi-mo",
             3: "bao-hiem-ngan-hang",
             4: "dau-tu",
-            5: "thi-truong-tai-chính",
+            5: "thi-truong-tai-chinh",
             6: "kinh-te-so",
             7: "tai-chinh-phap-luat",
             8: "tai-chinh-quoc-te",
