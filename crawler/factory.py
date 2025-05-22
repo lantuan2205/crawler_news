@@ -78,6 +78,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "tapchitaichinh": TapChiTaiChinhCrawler,
             "thoibaonganhang": ThoiBaoNganHangCrawler,
             "tapchinganhang": TapChiNganHangCrawler,
+
             }
 
 def get_crawler(webname, **kwargs):

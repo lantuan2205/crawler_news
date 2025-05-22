@@ -1,4 +1,5 @@
 # Tên báo muốn crawl [tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
@@ -61,4 +62,5 @@ news_sites:
   tapchitaichinh: "https://tapchitaichinh.vn/"
   thoibaonganhang: "https://thoibaonganhang.vn/"
   tapchinganhang: "https://tapchinganhang.gov.vn/"
+
 

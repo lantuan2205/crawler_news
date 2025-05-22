@@ -138,3 +138,14 @@ class BaseCrawler(ABC):
                     break
 
         return list(articles_urls)
+
+    # def get_urls_of_type(self, article_type):
+    #     articles_urls = list()
+    #     args = ([article_type]*self.total_pages, range(1, self.total_pages+1))
+    #     with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+    #         results = list(tqdm(executor.map(self.get_urls_of_type_thread, *args), total=self.total_pages, desc="Pages"))
+
+    #     articles_urls = sum(results, [])
+    #     articles_urls = list(set(articles_urls))
+    
+    #     return articles_urls
