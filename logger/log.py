@@ -8,6 +8,7 @@ from utils.utils import create_dir
 
 def setup_logging(log_dir, config_fpath="logger_config.yml"):
     create_dir(log_dir)
+    logging.disable(logging.CRITICAL)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     log_config = Path(config_fpath)

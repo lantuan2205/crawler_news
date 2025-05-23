@@ -1,6 +1,5 @@
 import requests
 import re
-
 from bs4 import BeautifulSoup, NavigableString
 
 
@@ -8,6 +7,7 @@ def get_text_from_tag(tag):
     if isinstance(tag, NavigableString):
         return tag
     return tag.text
+
 
 def extract_author_from_strong_tags(soup):
     strong_tags = soup.select("p > strong")
@@ -20,6 +20,7 @@ def extract_author_from_strong_tags(soup):
 
     # Ưu tiên tag cuối cùng trong bài viết (thường là tác giả thật)
     return possible_authors[-1] if possible_authors else None
+
 
 
 def clean_prefix(text):
@@ -49,4 +50,3 @@ def is_author_strong_tag(text):
         return True
 
     return False
-
