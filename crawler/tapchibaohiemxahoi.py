@@ -42,25 +42,25 @@ class TapChiBaoHiemXaHoiCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://tapchibaohiemxahoi.gov.vn/"
         self.article_type_dict = {
-            0: "chuyen-muc/chinh-tri",
-            1: "chuyen-muc/kinh-te-xa-hoi",
-            2: "chuyen-muc/van-hoa-the-thao",
-            3: "chuyen-muc/su-kien",
-            4: "chuyen-muc/suc-khoe-cong-dong",
-            5: "chuyen-muc/bhxh-bhyt-bhtn",
-            6: "chuyen-muc/cai-cach-hanh-chinh",
-            7: "chuyen-muc/viec-lam",
-            8: "chuyen-muc/Infographic",
-            9: "chuyen-muc/bhxh-dia-phuong",
-            10: "chuyen-muc/ky-niem-27-nam",
-            11: "chuyen-muc/ntvt",
-            12: "chuyen-muc/cs-bhtn",
-            13: "chuyen-muc/cs-bhxh",
-            14: "chuyen-muc/cs-bhyt",
-            15: "chuyen-muc/ban-doc-quan-tam",
-            16: "chuyen-muc/assa",
-            17: "chuyen-muc/tin-quoc-te",
-            18: "chuyen-muc/issa",
+            0: "chinh-tri",
+            1: "kinh-te-xa-hoi",
+            2: "van-hoa-the-thao",
+            3: "su-kien",
+            4: "suc-khoe-cong-dong",
+            5: "bhxh-bhyt-bhtn",
+            6: "cai-cach-hanh-chinh",
+            7: "viec-lam",
+            8: "Infographic",
+            9: "bhxh-dia-phuong",
+            10: "ky-niem-27-nam",
+            11: "ntvt",
+            12: "cs-bhtn",
+            13: "cs-bhxh",
+            14: "cs-bhyt",
+            15: "ban-doc-quan-tam",
+            16: "assa",
+            17: "tin-quoc-te",
+            18: "issa",
         }
     def download_image(self, image_url, article_title, category, publish_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
@@ -214,7 +214,7 @@ class TapChiBaoHiemXaHoiCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        page_url = f"https://tapchibaohiemxahoi.gov.vn/{article_type}"
+        page_url = f"https://tapchibaohiemxahoi.gov.vn/chuyen-muc/{article_type}"
         driver.get(page_url)
         time.sleep(2)
         seen_links = set()
