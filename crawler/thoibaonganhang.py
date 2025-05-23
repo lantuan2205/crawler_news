@@ -36,24 +36,51 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class TapChiTaiChinhCrawler(BaseCrawler):
+class ThoiBaoNganHangCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://tapchitaichinh.vn/"
+        self.base_url = "https://thoibaonganhang.vn/"
         self.article_type_dict = {
-            0: "su-kien-noi-bat",
-            1: "Chuyen-dong-tai-chinh",
-            2: "kinh-te-vi-mo",
-            3: "bao-hiem-ngan-hang",
-            4: "dau-tu",
-            5: "thi-truong-tai-chinh",
-            6: "kinh-te-so",
-            7: "tai-chinh-phap-luat",
-            8: "tai-chinh-quoc-te",
-            9: "doi-song-xa-hoi",
-            10: "dau-tu-kinh-doanh",
-            11: "xe-cong-nghe",
+            0: "ngan-hang/thi-truong-tien-te",
+            1: "ngan-hang/ngan-hang-so",
+            2: "ngan-hang/hoat-dong-cua-cac-tctd",
+            3: "ngan-hang/dong-chay-tin-dung",
+            4: "thoi-su",
+            5: "kheo-dung-tien/danh-cho-tre-em",
+            6: "kheo-dung-tien/danh-cho-nguoi-truong-thanh",
+            7: "kheo-dung-tien/danh-cho-nguoi-cao-tuoi",
+            8: "dau-tu-tai-chinh/bat-dong-san",
+            9: "dau-tu-tai-chinh/chung-khoan",
+            10: "dau-tu-tai-chinh/tai-chinh-quoc-te",
+            11: "dau-tu-tai-chinh/du-lich",
+            12: "phan-tich-tai-chinh-tien-te/bao-cao-tai-chinh-cac-tctd",
+            13: "ngan-hang-doanh-nghiep-doanh-nhan/chuyen-doanh-nghiep",
+            14: "ngan-hang-doanh-nghiep-doanh-nhan/ca-phe-voi-ceo",
+            15: "ngan-hang-doanh-nghiep-doanh-nhan/doanh-nghiep-voi-hoi-nhap",
+            16: "ngan-hang-doanh-nghiep-doanh-nhan/quan-tri-doanh-nghiep",
+            17: "ngan-hang-doanh-nghiep-doanh-nhan/nhan-su-va-tuyen-dung",
+            18: "mo-khoa-ket",
+            19: "ngan-hang-thi-truong/gia-ca-tieu-dung",
+            20: "ngan-hang-thi-truong/thiet-bi-san-pham",
+            21: "ngan-hang-thi-truong/o-to-xe-may",
+            22: "tien-xua-nay/lich-su-tien-te-viet-nam",
+            23: "tien-xua-nay/lich-su-tien-te-the-gioi",
+            24: "tien-xua-nay/ky-su-ngan-hang",
+            25: "tien-xua-nay/hinh-anh-ngan-hang-xua",
+            26: "nhip-song-so/giao-duc",
+            27: "nhip-song-so/suc-khoe",
+            28: "nhip-song-so/the-thao",
+            29: "cau-chuyen-canh-giac/canh-bao-ve-lua-dao-thanh-toan",
+            30: "cau-chuyen-canh-giac/canh-bao-ve-toi-pham-cac-dich-vu-ngan-hang",
+            31: "sac-mau-cuoc-song/sac-mau-cuoc-song",
+            32: "sac-mau-cuoc-song/thoi-trang",
+            33: "sac-mau-cuoc-song/lam-dep",
+            34: "sac-mau-cuoc-song/giai-tri",
+
+
+
+
         }
     def download_image(self, image_url, article_title, category, publish_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
@@ -63,8 +90,8 @@ class TapChiTaiChinhCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: tapchitaichinh/category/date
-            newspaper_name = "tapchitaichinh"
+            # Tạo cấu trúc thư mục: thoibaonganhang/category/date
+            newspaper_name = "thoibaonganhang"
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -126,20 +153,24 @@ class TapChiTaiChinhCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title_tag = soup.find('h1',class_='detail__title')
+            title_tag = soup.find('h1',class_='article-detail-title')
             title = title_tag.get_text(strip=True) if title_tag else None
 
             # Lấy description
-            desc_tag = soup.find("h2", class_="detail__summary")
+            desc_tag = soup.find("div", class_="article-detail-desc")
             description = desc_tag.get_text(strip=True) if desc_tag else None
 
             # Trích xuất ngày viết bài
-            publish_date = None
-            date_tag = soup.select_one("div.detail__time time")
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            time_tag = soup.select_one("span.format_time")
+            date_tag = soup.select_one("span.format_date")
+
+            if time_tag and date_tag:
+                publish_date = f"{time_tag.get_text(strip=True)} {date_tag.get_text(strip=True)}"
+            else:
+                publish_date = None
 
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find("article", class_="detail-wrap")
+            content_div = soup.find("div", class_="__MASTERCMS_CONTENT")
             images = content_div.find_all('img')
             content_images = [img['src'] for img in images if img.get('src')]
             if not content_div:
@@ -151,8 +182,8 @@ class TapChiTaiChinhCrawler(BaseCrawler):
             content_images = [img.get("src") for img in images if img.get("src")]
 
             # Trích xuất tác giả
-            author_box = soup.find('div', class_='detail__time')
-            author_tag = author_box.find('span')
+            author_box = soup.find('div', class_='tbnh-author-meta')
+            author_tag = author_box.find('a')
             author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
 
             return title, description, content, publish_date, author, content_images
@@ -204,7 +235,7 @@ class TapChiTaiChinhCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        page_url = f"https://tapchitaichinh.vn/{article_type}.html"
+        page_url = f"https://thoibaonganhang.vn/{article_type}"
         driver.get(page_url)
         time.sleep(2)
         seen_links = set()
@@ -214,16 +245,16 @@ class TapChiTaiChinhCrawler(BaseCrawler):
 
             while True:
 
-                articles = driver.find_elements(By.CSS_SELECTOR, "div.zone__content article.story.story--left.story--timeline")
+                articles = driver.find_elements(By.CSS_SELECTOR, "div.bx-cat-content div.article")
 
                 for article in articles:
                     try:
-                        title_link = article.find_element(By.CSS_SELECTOR, "figure.story__thumb > a")
+                        title_link = article.find_element(By.CSS_SELECTOR, "a")
                         href = title_link.get_attribute("href")
                         # print("🧪 Found link:", href)  # ✅ In ra để debug
                         if href:
                             if href.startswith("/"):
-                                href = urljoin("https://tapchitaichinh.vn", href)
+                                href = urljoin("https://thoibaonganhang.vn", href)
                             if href.startswith("http") and href not in seen_links:
                                 seen_links.add(href)
                     except Exception:
@@ -234,7 +265,7 @@ class TapChiTaiChinhCrawler(BaseCrawler):
                 last_size = len(seen_links)
 
                 try:
-                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.load-more")))
+                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span.btn-xemthem")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)

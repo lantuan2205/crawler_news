@@ -38,6 +38,7 @@ from .kiemsat import KiemSatCrawler
 from .tapchitaichinh import TapChiTaiChinhCrawler
 from .thoibaonganhang import ThoiBaoNganHangCrawler
 from .tapchinganhang import TapChiNganHangCrawler
+
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
             "vietnamnet": VietNamNetCrawler,
@@ -78,7 +79,6 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "tapchitaichinh": TapChiTaiChinhCrawler,
             "thoibaonganhang": ThoiBaoNganHangCrawler,
             "tapchinganhang": TapChiNganHangCrawler,
-
             }
 
 def get_crawler(webname, **kwargs):
