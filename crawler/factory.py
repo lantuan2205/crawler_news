@@ -39,6 +39,7 @@ from .tapchitaichinh import TapChiTaiChinhCrawler
 from .thoibaonganhang import ThoiBaoNganHangCrawler
 from .tapchinganhang import TapChiNganHangCrawler
 from .tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
+from .tapchithanhtra import TapChiThanhTraCrawler
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
             "vietnamnet": VietNamNetCrawler,
@@ -79,6 +80,8 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "tapchitaichinh": TapChiTaiChinhCrawler,
             "thoibaonganhang": ThoiBaoNganHangCrawler,
             "tapchinganhang": TapChiNganHangCrawler,
+            "tapchibaohiemxahoi": TapChiBaoHiemXaHoiCrawler,
+            "tapchithanhtra": TapChiThanhTraCrawler,
             "tapchibaohiemxahoi": TapChiBaoHiemXaHoiCrawler
             }
 

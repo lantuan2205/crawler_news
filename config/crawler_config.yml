@@ -1,3 +1,5 @@
+# Tên báo muốn crawl [tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+
 # Tên báo muốn crawl [tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # Tên báo muốn crawl [tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # Tên báo muốn crawl [thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
@@ -7,8 +9,7 @@
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["tapchibaohiemxahoi"]
-
+webnames: ["tapchithanhtra"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -65,4 +66,5 @@ news_sites:
   thoibaonganhang: "https://thoibaonganhang.vn/"
   tapchinganhang: "https://tapchinganhang.gov.vn/"
   tapchibaohiemxahoi: "https://tapchibaohiemxahoi.gov.vn/"
+  tapchithanhtra: "https://thanhtravietnam.vn/"
 
