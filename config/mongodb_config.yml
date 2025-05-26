@@ -1,0 +1,7 @@
+mongodb:
+  uri: "mongodb://192.168.161.230:27018/"
+  database: "news_scraper"
+  collections:
+    articles: "articles"
+    images: "images"
+    categories: "categories" 

@@ -5,7 +5,7 @@ from tqdm import tqdm
 import time
 
 from utils.utils import init_output_dirs, create_dir, read_file
-from utils.service_utils import save_to_json, send_json_to_api
+from utils.service_utils import save_to_json, send_json_to_api, save_to_db
 class BaseCrawler(ABC):
 
     @abstractmethod
@@ -40,7 +40,7 @@ class BaseCrawler(ABC):
 
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            for result in tqdm(executor.map(self.crawl_url_thread, urls), total=num_urls, desc="URLs"):
+            for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
                 if result:
                     results.append(result)
 
@@ -49,13 +49,15 @@ class BaseCrawler(ABC):
             grouped_results.setdefault(article_type, []).append(article)
         return grouped_results
 
-    def crawl_url_thread(self, url):
-        data = self.write_content(url)
+    def crawl_url_thread(self, url, article_type):
+        data = self.write_content(url, article_type)
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
+        data['article_type'] = article_type
         save_to_json(data)
-        send_json_to_api()
+        save_to_db(data)
+        # send_json_to_api()
         time.sleep(1)
         return {"url": url, "data": data}
 
@@ -71,11 +73,12 @@ class BaseCrawler(ABC):
     def crawl_type(self, article_type, urls_dpath, results_dpath):
         self.logger.info(f"Crawl articles type {article_type}")
         error_urls = list()
-        
+        valid_article_type = article_type.replace("/", "-")
+
         # getting urls
         self.logger.info(f"Getting urls of {article_type}...")
         articles_urls = self.get_urls_of_type(article_type)
-        articles_urls_fpath = "/".join([urls_dpath, f"{article_type}.txt"])
+        articles_urls_fpath = "/".join([urls_dpath, f"{valid_article_type}.txt"])
         with open(articles_urls_fpath, "w") as urls_file:
             urls_file.write("\n".join(articles_urls)) 
 
@@ -95,18 +98,54 @@ class BaseCrawler(ABC):
             json_data.append(data)
             self.logger.info("-" * 79)
         
-        output_fpath = "".join([results_dpath, "/articles", ".json"])
-        with open(output_fpath, "w", encoding="utf-8") as file:
-            json.dump(json_data, file, ensure_ascii=False, indent=4)
+        # output_fpath = "".join([results_dpath, "/articles", ".json"])
+        # with open(output_fpath, "w", encoding="utf-8") as file:
+        #     json.dump(json_data, file, ensure_ascii=False, indent=4)
         return True
 
     def get_urls_of_type(self, article_type):
-        articles_urls = list()
-        args = ([article_type]*self.total_pages, range(1, self.total_pages+1))
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            results = list(tqdm(executor.map(self.get_urls_of_type_thread, *args), total=self.total_pages, desc="Pages"))
+        articles_urls = set()
+        page_number = 1
+        progress = tqdm(desc="Pages", unit=" page")
 
-        articles_urls = sum(results, [])
-        articles_urls = list(set(articles_urls))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+            futures = {}
+            while True:
+                # Gửi batch gồm num_workers page một lúc
+                for _ in range(self.num_workers):
+                    future = executor.submit(self.get_urls_of_type_thread, article_type, page_number)
+                    futures[future] = page_number
+                    page_number += 1
+
+                stop = False
+                for future in concurrent.futures.as_completed(futures):
+                    page = futures[future]
+                    try:
+                        result = future.result()
+                        progress.update(1)
+                        if not result:
+                            self.logger.info(f"[!] Page {page} returned empty. Stopping further crawl.")
+                            stop = True
+                        elif type(result) == set:
+                            stop = True
+                            result = list(result)
+                        articles_urls.update(result)
+                    except Exception as e:
+                        self.logger.warning(f"[!] Error on page {page}: {e}")
+
+                futures.clear()
+                if stop:
+                    break
+
+        return list(articles_urls)
+
+    # def get_urls_of_type(self, article_type):
+    #     articles_urls = list()
+    #     args = ([article_type]*self.total_pages, range(1, self.total_pages+1))
+    #     with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+    #         results = list(tqdm(executor.map(self.get_urls_of_type_thread, *args), total=self.total_pages, desc="Pages"))
+
+    #     articles_urls = sum(results, [])
+    #     articles_urls = list(set(articles_urls))
     
-        return articles_urls
+    #     return articles_urls
