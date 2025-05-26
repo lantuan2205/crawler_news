@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -33,13 +33,13 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
         self.base_url = "https://taichinhdoanhnghiep.net.vn/"
         self.article_type_dict = {
             0: "tin-tuc",
-            # 1: "thue-cuoc-song",
-            # 2: "tai-chinh",
-            # 3: "bat-dong-san",
-            # 4: "chung-khoan",
-            # 5: "thi-truong",
-            # 6: "phap-luat-tai-chinh",
-            # 7: "tai-chinh-quoc-te"
+            1: "thue-cuoc-song",
+            2: "tai-chinh",
+            3: "bat-dong-san",
+            4: "chung-khoan",
+            5: "thi-truong",
+            6: "phap-luat-tai-chinh",
+            7: "tai-chinh-quoc-te"
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -63,7 +63,7 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -107,9 +107,7 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
-            response = requests.get(url, headers=headers)
-
-            response = requests.get(url)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -184,7 +182,7 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
             page_url = f"https://taichinhdoanhnghiep.net.vn/{article_type}/p{page_number}"
 
         try:
-            response = requests.get(page_url, headers=headers)
+            response = requests.get(page_url, headers=headers, timeout=10)
             sleep_time = random.uniform(1, 3)
             time.sleep(sleep_time)
             response.raise_for_status()
@@ -204,3 +202,12 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
         urls = [a['href'] for a in article_elements]
         return urls
 
+    def get_all_articles(self):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles
