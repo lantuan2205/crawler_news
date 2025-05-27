@@ -7,6 +7,7 @@ import os
 import requests
 import json
 from datetime import datetime
+from pathlib import Path
 import time
 from constants.crawlers import CRAWLERS
 app = FastAPI()
@@ -45,7 +46,8 @@ def crawl_article(data: dict):
         re.search(r'\d{6,}\.htm[l]?$', url),
         re.search(r'/[^/]+-\d+\.htm[l]?$', url),
         re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', url),
-        re.search(r'/[^/]+/\d{4}/\d{2}/', url)
+        re.search(r'/[^/]+/\d{4}/\d{2}/', url),
+        re.search(r'-i\d+/?$', url)
     ])
 
     # Xử lý URL bài viết cụ thể (chứa ID hoặc slug)
@@ -81,6 +83,13 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
     if not title:
         return None
 
+    # Xử lý Url ảnh
+    photoInfos = {}
+    for url in content_image_urls:
+        clean_url = url.split('?')[0]
+        filename = Path(clean_url).name
+        photoInfos[filename] = url
+
     article_data = {
         "dataSource": "/".join(url.split("/")[:3]),
         "title": title,
@@ -90,10 +99,11 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
         "description": description,
         "content": content,
         "contentImageUrls": content_image_urls,
-        "comments": [""],
+        "photoInfos": photoInfos,
+        "comments": [""]
     }
     save_to_json(article_data)
-    # send_json_to_api()
+    send_json_to_api()
     time.sleep(1)
     if link:
         return article_data
