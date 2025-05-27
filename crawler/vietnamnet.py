@@ -11,7 +11,7 @@ from io import BytesIO
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -75,7 +75,7 @@ class VietNamNetCrawler(BaseCrawler):
             remote_path = remote_dir / image_filename
 
             # Tải ảnh
-            response = requests.get(image_url, headers=headers)
+            response = requests.get(image_url, headers=headers, timeout=10)
             response.raise_for_status()
             image_data = BytesIO(response.content)
 
@@ -120,7 +120,7 @@ class VietNamNetCrawler(BaseCrawler):
             return None
 
     def extract_content(self, url: str) -> tuple:
-        content = requests.get(url, headers=headers).content
+        content = requests.get(url, headers=headers, timeout=10).content
         sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
@@ -131,16 +131,6 @@ class VietNamNetCrawler(BaseCrawler):
 
         date_tag = soup.find("div", class_="bread-crumb-detail__time")
         published_date = date_tag.text.strip() if date_tag else "Không có thông tin"
-
-        # Lấy ảnh đại diện (ưu tiên ảnh img-content, sau đó meta og:image)
-        image_url = "Không có ảnh"
-        img_tag = soup.find("img", class_="img-content")
-        if img_tag and img_tag.get("src"):
-            image_url = img_tag["src"]
-        else:
-            img_meta = soup.find("meta", property="og:image")
-            if img_meta and img_meta.get("content"):
-                image_url = img_meta["content"]
 
         # Lấy tất cả các ảnh trong nội dung bài viết (cập nhật theo cấu trúc HTML Vietnamnet)
         content_images = []
@@ -156,16 +146,13 @@ class VietNamNetCrawler(BaseCrawler):
                         srcset = source["data-srcset"].split(',')[0].strip().split()[0].strip()
                         content_images.append(urljoin("https://vietnamnet.vn", srcset))
 
-        comment_tags = soup.find_all("div", class_="comment-content")
-        comments = [comment.text.strip() for comment in comment_tags] if comment_tags else []
-
         if not all([title_tag, desc_tag, main_content_tag]):
             return None, None, None, None, None, None, None, None
 
         title = title_tag.text
-        description = (get_text_from_tag(p) for p in desc_tag.contents)
+        description = desc_tag.get_text(strip=True) if desc_tag else ""
         paragraphs = (get_text_from_tag(p) for p in main_content_tag.find_all("p"))
-
+        content = "\n".join(paragraphs)
         author = ""
         author_box = soup.find("div", class_="article-detail-author")
         if author_box:
@@ -177,11 +164,11 @@ class VietNamNetCrawler(BaseCrawler):
                 if link_author:
                     author = link_author.text.strip()
 
-        return title, description, paragraphs, published_date, image_url, comments, author, content_images
+        return title, description, content, published_date, author, content_images
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, paragraphs, published_date, image_url, comments, author, content_images = self.extract_content(url)
+            title, description, content, published_date, author, content_images = self.extract_content(url)
             if not title:
                 return None
             
@@ -202,10 +189,8 @@ class VietNamNetCrawler(BaseCrawler):
                 "title": title,
                 "author": author,
                 "publishedDate": clean_date(published_date),
-                "imageUrl": image_url,
-                "description": " ".join(list(description)),
-                "content": ",".join(list(paragraphs)),
-                "comments": comments,
+                "description": description,
+                "content": content,
                 "contentImageUrls": content_images,
                 "localContentImagePaths": content_image_paths
             }
@@ -220,7 +205,7 @@ class VietNamNetCrawler(BaseCrawler):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number-1}"
         articles_urls = []
         try:
-            content = requests.get(page_url, headers=headers).content
+            content = requests.get(page_url, headers=headers, timeout=10).content
             sleep_time = random.uniform(1, 2)
             time.sleep(sleep_time)
             soup = BeautifulSoup(content, "html.parser")
@@ -250,4 +235,3 @@ class VietNamNetCrawler(BaseCrawler):
                 all_articles.extend(urls)
         
         return all_articles
-
