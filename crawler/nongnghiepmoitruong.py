@@ -292,9 +292,7 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             wait = WebDriverWait(driver, 10)
 
             while True:
-
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.main-content-page li.news-home-item")
-
                 for article in articles:
                     try:
                         title_link = article.find_element(By.CSS_SELECTOR, "a.expthumb.thumb")

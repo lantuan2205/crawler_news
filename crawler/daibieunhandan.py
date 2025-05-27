@@ -36,75 +36,70 @@ headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class VovCrawler(BaseCrawler):
+class DaiBieuNhanDanCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://vov.vn/"
+        self.base_url = "https://daibieunhandan.vn/"
         self.article_type_dict = {
-            0: "chinh-tri/dang",
-            1: "nhan-su",
-            2: "chinh-tri/quoc-hoi",
-            3: "chinh-tri/nhan-dien-su-that",
-            4: "xa-hoi/tin-24h",
-            5: "du-bao-thoi-tiet",
-            6: "xa-hoi/giao-duc",
-            7: "xa-hoi/dau-an-vov",
-            8: "viec-lam",
-            9: "bien-dao",
-            10: "the-gioi/quan-sat",
-            11: "the-gioi/cuoc-song-do-day",
-            12: "the-gioi/ho-so",
-            13: "kinh-te/dia-oc",
-            14: "khoi-nghiep",
-            15: "thi-truong/gia-vang",
-            16: "thi-truong/ty-gia",
-            17: "thi-truong/chung-khoan",
-            18: "thi-truong/gia-ca-phe",
-            19: "vu-an",
-            20: "tin-nong",
-            21: "phap-luat/tu-van-luat",
-            22: "quan-su-quoc-phong/vu-khi",
-            23: "quan-su-quoc-phong/viet-nam",
-            24: "quan-su-quoc-phong/phan-tich",
-            25: "the-thao/bong-da",
-            26: "the-thao/bong-da-quoc-te",
-            27: "the-thao/lich-thi-dau-bong-da",
-            28: "the-thao/the-gioi-the-thao",
-            29: "the-theo/esports",
-            30: "the-thao/hau-truong",
-            31: "oto-xe-may/oto",
-            32: "oto-xe-may/xe-may",
-            33: "oto-xe-may/tuvan",
-            34: "thong-tin-doanh-nghiep",
-            35: "doanh-nghiep-24h",
-            36: "doanh-nhan",
-            37: "vi-cong-dong",
-            38: "cong-nghe/sanh-dieu",
-            39: "cong-nghe/tin-cong-nghe",
-            40: "cong-nghe/trai-nghiem",
-            41: "chuyen-doi-so",
-            42: "dinh-duong-mon-ngon",
-            43: "suc-khoe/cay-thuoc",
-            44: "suc-khoe/san-phu-khoa",
-            45: "suc-khoe/nhi-khoa",
-            46: "suc-khoe/nam-khoa",
-            47: "lam-dep-giam-can",
-            48: "suc-khoe/phong-mach-online",
-            49: "an-sach-song-khoe",
-            50: "nha-dep",
-            51: "blog",
-            52: "tin-yeu-gia-dinh",
-            53: "van-hoa/dien-anh",
-            54: "van-hoa/van-hoc",
-            55: "van-hoa/am-nhac",
-            56: "di-san",
-            57: "van-hoa/nghe-si",
-            58: "thoi-trang-lam-dep",
-            59: "giai-tri/hau-truong-showbiz",
-            60: "du-lich/tu-van",
-            61: "du-lich/san-tour",
-            62: "du-lich/checkin",
+            0: "chinh-tri/thoi-su-quoc-hoi",
+            1: "chinh-tri/bao-ve-nen-tang-tu-tuong-dang",
+            2: "chinh-tri/viet-nam-voi-ky-nguyen-moi",
+            3: "chinh-tri/theo-dong-su-kien",
+
+            4: "quoc-hoi-va-cu-tri/dien-dan-quoc-hoi",
+            5: "quoc-hoi-va-cu-tri/lap-phap",
+            6: "quoc-hoi-va-cu-tri/chinh-sach-va-cuoc-song",
+            7: "quoc-hoi-va-cu-tri/y-kien-dai-bieu",
+            8: "quoc-hoi-va-cu-tri/hoat-dong-cua-doan-dbqh",
+
+            9: "hoi-dong-nhan-dan/hoi-nghi-tt-hdnd",
+            10: "hoi-dong-nhan-dan/chuyen-dong",
+            11: "hoi-dong-nhan-dan/dien-dan",
+            12: "hoi-dong-nhan-dan/dai-bieu-cu-tri",
+
+            13: "phong-chong-tham-nhung-lang-phi/van-ban-chi-dao",
+            14: "phong-chong-tham-nhung-lang-phi/kiem-tra-giam-sat",
+            15: "phong-chong-tham-nhung-lang-phi/don-thu-ban-doc",
+
+            16: "kinh-te/thi-truong",
+            17: "kinh-te/doanh-nghiep",
+            18: "kinh-te/tai-chinh",
+            19: "kinh-te/bat-dong-san",
+
+            20: "xa-hoi/doi-song",
+            21: "xa-hoi/giao-thong",
+            22: "xa-hoi/moi-truong",
+
+            23: "quoc-phong-an-ninh/an-ninh-trat-tu",
+            24: "quoc-phong-an-ninh/quoc-phong-toan-dan",
+            25: "quoc-phong-an-ninh/tin-tuc-phap-luat",
+
+            26: "giao-duc/nhip-cau-giao-duc",
+            27: "giao-duc/tuyen-sinh",
+            28: "giao-duc/trao-doi",
+
+            29: "suc-khoe/tin-tuc",
+            30: "suc-khoe/tu-van",
+            31: "suc-khoe/song-khoe",
+
+            32: "van-hoa-the-thao/van-hoa",
+            33: "van-hoa-the-thao/the-thao-du-lich",
+            34: "van-hoa-the-thao/van-nghe",
+
+            35: "khoa-hoc-cong-nghe/khoa-hoc",
+            36: "khoa-hoc-cong-nghe/cong-nghe",
+            
+            37: "dia-phuong/hoat-dong-chinh-quyen",
+            38: "dia-phuong/tren-duong-phat-trien",
+            39: "dia-phuong/an-ninh-co-so",
+
+            40: "quoc-te/viet-nam-va-the-gioi",
+            41: "quoc-te/the-gioi-24h",
+            42: "quoc-te/nghi-vien-the-gioi",
+            
+            
+        
 
 
         }
@@ -116,8 +111,8 @@ class VovCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: vov/category/date
-            newspaper_name = "vov"
+            # Tạo cấu trúc thư mục: daibieunhandan/category/date
+            newspaper_name = "daibieunhandan"
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -179,39 +174,42 @@ class VovCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title_tag = soup.find('h1', class_='article-title')
+            title_tag = soup.find('h1', class_='block-sc-title')
             title = title_tag.get_text(strip=True) if title_tag else None
 
             # Lấy description
-            desc_tag = soup.select_one("div.article-summary div.col h2 div")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            # desc_tag = soup.select_one("div.mota h2")
+            desc_tag = soup.find("p",class_= "block-sc-sapo")
+            if desc_tag:
+                raw_description = desc_tag.get_text(strip=True)
+                # Tách sau dấu "-" đầu tiên
+                split_parts = raw_description.split("-", 1)
+                description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
+            else:
+                description = None
 
             # Trích xuất ngày viết bài
             publish_date = None
-            date_tag = soup.find("div", class_='col-md-4 mb-2')
+            date_tag = soup.find("span", class_='sc-longform-header-date')
             publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
 
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find("div", class_="article-content")
-            content_images = []
-
-            if content_div:
-                figures = content_div.find_all("figure", class_="gallery-embed")
-                for figure in figures:
-                    imgs = figure.find_all("img")
-                    for img in imgs:
-                        src = img.get("src")
-                        if src:
-                            content_images.append(src)
+            content_div = soup.find("div", class_="b-maincontent")
+            images = content_div.find_all('img')
+            content_images = [img['src'] for img in images if img.get('src')]
+            if not content_div:
+                return [], []
+            
             # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
             content = content_div.get_text(separator="\n", strip=True)
-            images = content_div.find_all("img")
-            content_images = [img.get("src") for img in images if img.get("src")]
+            # Lấy nội dung chỉ từ các thẻ <p> trong <article>
+            paragraphs = content_div.find_all("p")
+            content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+
 
             # Trích xuất tác giả
-            author_box = soup.find('div', class_='article-author')
-            author_tag = author_box.find('a')
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            author_box = soup.find('span', class_='sc-longform-header-author')
+            author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else None
 
             return title, description, content, publish_date, author, content_images
 
@@ -262,7 +260,7 @@ class VovCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        page_url = f"https://vov.vn/{article_type}"
+        page_url = f"https://daibieunhandan.vn/{article_type}"
         driver.get(page_url)
         time.sleep(2)
         seen_links = set()
@@ -271,17 +269,15 @@ class VovCrawler(BaseCrawler):
             wait = WebDriverWait(driver, 10)
 
             while True:
-
-                articles = driver.find_elements(By.CSS_SELECTOR, "div.views-content div.taxonomy-content")
-
+                articles = driver.find_elements(By.CSS_SELECTOR, "ul.onecms_loading li")
                 for article in articles:
                     try:
-                        title_link = article.find_element(By.CSS_SELECTOR, "div.article-media > a.vovvn-title.position-relative")
+                        title_link = article.find_element(By.CSS_SELECTOR, "a")
                         href = title_link.get_attribute("href")
-                        # print("🧪 Found link:", href)  # ✅ In ra để debug
+                        print("🧪 Found link:", href)  # ✅ In ra để debug
                         if href:
                             if href.startswith("/"):
-                                href = urljoin("https://vov.vn", href)
+                                href = urljoin("https://daibieunhandan.vn", href)
                             if href.startswith("http") and href not in seen_links:
                                 seen_links.add(href)
                     except Exception:
@@ -291,17 +287,17 @@ class VovCrawler(BaseCrawler):
                     break
                 last_size = len(seen_links)
 
-                # try:
-                #         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn--read-more")))
-                #         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                #         time.sleep(1)
-                #         driver.execute_script("arguments[0].click();", next_button)
-                #         print("➡️ Đã click nút 'Trang sau'")
-                #         time.sleep(4)
+                try:
+                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.view-more-article a")))
+                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                        time.sleep(1)
+                        driver.execute_script("arguments[0].click();", next_button)
+                        print("➡️ Đã click nút 'Trang sau'")
+                        time.sleep(3)
 
-                # except Exception:
-                #         print("✅ Không còn nút Trang sau. Dừng lại.")
-                #         break
+                except Exception:
+                        print("✅ Không còn nút Trang sau. Dừng lại.")
+                        break
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
