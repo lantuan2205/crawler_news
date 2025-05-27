@@ -9,8 +9,9 @@ RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
 RABBITMQ_PASS = os.getenv("RABBITMQ_PASS", "guest")
 RABBITMQ_VHOST = os.getenv("RABBITMQ_VHOST", "/")
-RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "test_queue")
-RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "")
+RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "news.crawler.queue")
+RABBITMQ_ROUTING_KEY = os.getenv("RABBITMQ_ROUTING_KEY", "news.crawler.route")
+
 
 # Cấu hình API
 API_URL = "http://127.0.0.1:8000/crawl"

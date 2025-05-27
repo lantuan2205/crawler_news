@@ -32,6 +32,16 @@ from crawler.congthuong import CongThuongCrawler
 from crawler.congly import CongLyCrawler
 from crawler.suckhoedoisong import SucKhoeDoiSongCrawler
 from crawler.baoxaydung import BaoXayDungCrawler
+from crawler.congannhandan import CongAnNhanDanCrawler
+from crawler.vov import VovCrawler
+from crawler.kiemsat import KiemSatCrawler
+from crawler.tapchitaichinh import TapChiTaiChinhCrawler
+from crawler.thoibaonganhang import ThoiBaoNganHangCrawler
+from crawler.tapchinganhang import TapChiNganHangCrawler
+from crawler.tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
+from crawler.tapchithanhtra import TapChiThanhTraCrawler
+from crawler.nongnghiepmoitruong import NongNghiepMoiTruongCrawler
+from crawler.daibieunhandan import DaiBieuNhanDanCrawler
 
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
@@ -68,4 +78,14 @@ CRAWLERS = {
             "congly.vn": CongLyCrawler(),
             "suckhoedoisong.vn": SucKhoeDoiSongCrawler(),
             "baoxaydung.vn": BaoXayDungCrawler(),
+            "cand.com.vn": CongAnNhanDanCrawler(),
+            "vov.vn": VovCrawler(),
+            "kiemsat.vn": KiemSatCrawler(),
+            "tapchitaichinh.vn": TapChiTaiChinhCrawler(),
+            "thoibaonganhang.vn": ThoiBaoNganHangCrawler(),
+            "tapchinganhang.gov.vn": TapChiNganHangCrawler(),
+            "tapchibaohiemxahoi.gov.vn": TapChiBaoHiemXaHoiCrawler(),
+            "thanhtravietnam.vn": TapChiThanhTraCrawler(),
+            "nongnghiepmoitruong.vn": NongNghiepMoiTruongCrawler(),
+            "daibieunhandan.vn": DaiBieuNhanDanCrawler(),
             }
