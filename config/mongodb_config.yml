@@ -1,6 +1,5 @@
 mongodb:
-  # uri: "mongodb://192.168.161.230:27018/"
-  uri: "mongodb://127.0.0.1:27017/"
+  uri: "mongodb://192.168.161.230:27018/"
   database: "news_scraper"
   collections:
     articles: "articles"
