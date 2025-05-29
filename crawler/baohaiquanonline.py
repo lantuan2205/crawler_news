@@ -161,9 +161,23 @@ class BaoHaiQuanOnlineCrawler(BaseCrawler):
             content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
 
             # Trích xuất tác giả
+            author = None
+
+            # Ưu tiên từ h2.author-title > a
             author_box = soup.find('h2', class_='author-title')
-            author_tag = author_box.find('a')
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            author_tag = author_box.find('a') if author_box else None
+            if author_tag:
+                author = author_tag.get_text(strip=True).split('/')[0].strip()
+            else:
+                # Nếu không có, tìm em > strong
+                fallback_author = soup.select_one("em > strong")
+                if fallback_author:
+                    author = fallback_author.get_text(strip=True)
+                else:
+                    # Nếu vẫn không có, tìm p có style là "text-align: right"
+                    right_aligned_p = soup.find("p", style=lambda x: x and "text-align: right" in x)
+                    if right_aligned_p:
+                        author = right_aligned_p.get_text(strip=True)
 
             return title, description, content, publish_date, author, content_images
 
@@ -181,9 +195,19 @@ class BaoHaiQuanOnlineCrawler(BaseCrawler):
         @param output_fpath (str): file path to save crawled result
         @return (bool): True if crawl successfully and otherwise
         """
-        title, description, content, publish_date, author, content_images = self.extract_content(url)
-        if not title:
+        # in link lỗi
+        try:
+            title, description, content, publish_date, author, content_images = self.extract_content(url)
+            if not title:
+                print(f"⚠️ Bỏ qua bài không có tiêu đề: {url}")
+                return None
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình phân tích HTML ở bài: {url}")
+            print(f"   Chi tiết lỗi: {e}")
             return None
+            title, description, content, publish_date, author, content_images = self.extract_content(url)
+            if not title:
+                return None
             
         # Tải và lưu ảnh nội dung
         content_image_paths = []
