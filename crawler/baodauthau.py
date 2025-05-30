@@ -268,7 +268,7 @@ class BaoDauThauCrawler(BaseCrawler):
                                 href = urljoin("https://baodauthau.vn", href)
                             if href.startswith("http") and href not in seen_links:
                                 seen_links.add(href)
-                                print("🔗 New link:", href)
+                                # print("🔗 New link:", href)
                                 new_found += 1
                     except Exception:
                         continue
