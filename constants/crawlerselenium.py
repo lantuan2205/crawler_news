@@ -1,0 +1,19 @@
+CRAWLERS_SELENIUM = [
+    "congthuong",
+    "congly",
+    "suckhoedoisong",
+    "baoxaydung",
+    "congannhandan",
+    "vov",
+    "kiemsat",
+    "tapchitaichinh",
+    "thoibaonganhang",
+    "tapchinganhang",
+    "tapchibaohiemxahoi",
+    "tapchithanhtra",
+    "giaoducthoidai",
+    "nongnghiepmoitruonng",
+    "daibieunhandan",
+    "baohaiquanonline",
+    "dientutoquoc"
+]

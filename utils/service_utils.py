@@ -15,8 +15,9 @@ import mimetypes
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
+# UPLOAD_API_HOST = "localhost"
 UPLOAD_API_PORT = "8080"
-UPLOAD_API_ENDPOINT = "/api/multiple"
+UPLOAD_API_ENDPOINT = "/api/upload/multiple"
 UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
 
 def save_to_db(data, output_file=None):
