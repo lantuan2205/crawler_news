@@ -3,7 +3,7 @@ import concurrent.futures
 import json
 from tqdm import tqdm
 import time
-
+from constants.crawlerselenium import CRAWLERS_SELENIUM
 from utils.utils import init_output_dirs, create_dir, read_file
 from utils.service_utils import save_to_json, send_json_to_api, save_to_db
 class BaseCrawler(ABC):
@@ -37,7 +37,9 @@ class BaseCrawler(ABC):
         urls = list(read_file(urls_fpath))
         num_urls = len(urls)
         self.index_len = len(str(num_urls))
-
+        domain = self.base_url.split("/")[2]
+        if domain in CRAWLERS_SELENIUM:    
+            self.num_workers = 1
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
