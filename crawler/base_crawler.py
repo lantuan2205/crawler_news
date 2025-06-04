@@ -37,9 +37,7 @@ class BaseCrawler(ABC):
         urls = list(read_file(urls_fpath))
         num_urls = len(urls)
         self.index_len = len(str(num_urls))
-        domain = self.base_url.split("/")[2]
-        if domain in CRAWLERS_SELENIUM:    
-            self.num_workers = 1
+
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
@@ -109,12 +107,17 @@ class BaseCrawler(ABC):
         articles_urls = set()
         page_number = 1
         progress = tqdm(desc="Pages", unit=" page")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+        domain = self.base_url.split("/")[2]
+        for suffix in [".com.vn", ".net.vn", ".gov.vn", ".org.vn", ".edu.vn", ".vn"]:
+            if domain.endswith(suffix):
+                domain = domain.replace(suffix, "")
+                break
+        num_workers = 1 if domain in CRAWLERS_SELENIUM else self.num_workers
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             futures = {}
             while True:
                 # Gửi batch gồm num_workers page một lúc
-                for _ in range(self.num_workers):
+                for _ in range(num_workers):
                     future = executor.submit(self.get_urls_of_type_thread, article_type, page_number)
                     futures[future] = page_number
                     page_number += 1
