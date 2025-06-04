@@ -1,10 +1,10 @@
-# Tên báo muốn crawl [vietnamplus ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["vietnamplus"]
+webnames: ["tochucnhanuoc"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -74,3 +74,7 @@ news_sites:
   tapchithongtinvatruyenthong: "https://ictvietnam.vn/"
   dantocmiennui: "https://dantocmiennui.baotintuc.vn/"
   vietnamplus: "https://www.vietnamplus.vn/"
+  baoquocte: "https://baoquocte.vn/"
+  baochinhphu: "https://baochinhphu.vn/"
+  tapchixaydung: "https://tapchixaydung.vn/"
+  tochucnhanuoc: "https://tcnnld.vn/"
