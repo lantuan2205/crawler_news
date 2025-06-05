@@ -290,7 +290,8 @@ class TapChiXayDungCrawler(BaseCrawler):
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
-
+        finally:
+            driver.quit()
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
 
