@@ -30,7 +30,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -236,6 +236,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
         }
 
         return article_data
+
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
@@ -250,48 +251,59 @@ class CongAnNhanDanCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         ul_element = driver.find_element(By.CSS_SELECTOR, "div.box-widget-loaded")
+        try:
+            while True:
+                wait = WebDriverWait(driver, 10)
 
-        while True:
-            wait = WebDriverWait(driver, 10)
+                container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.box-widget-loaded")))
+                articles = container.find_elements(By.TAG_NAME, "article")
 
-            container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.box-widget-loaded")))
-            articles = container.find_elements(By.TAG_NAME, "article")
+                for article in articles:
+                    anchors = article.find_elements(By.TAG_NAME, "a")
+                    for a in anchors:
+                        href = a.get_attribute("href")
+                        if href and href.startswith("http") and href not in seen_links:
+                            seen_links.add(href)
 
-            for article in articles:
-                anchors = article.find_elements(By.TAG_NAME, "a")
-                for a in anchors:
-                    href = a.get_attribute("href")
-                    if href and href.startswith("http") and href not in seen_links:
-                        seen_links.add(href)
+                # articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.box-category-title-text a")
+                # # Lấy các bài viết hiện tại
+                # for article in articles:
+                #         link = article.get_attribute("href")
+                #         seen_links.add(link)
+    
+                # print(f"📄 Đã lấy được {len(seen_links)} bài.")
 
-            # articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.box-category-title-text a")
-            # # Lấy các bài viết hiện tại
-            # for article in articles:
-            #         link = article.get_attribute("href")
-            #         seen_links.add(link)
- 
-            # print(f"📄 Đã lấy được {len(seen_links)} bài.")
-
-            # Nếu không có thêm bài mới → thoát
-            if len(seen_links) == last_size:
-                print("✅ Không còn bài mới. Dừng lại.")
-                break
-            last_size = len(seen_links)
-
-            # Cuộn xuống một chút sau mỗi lần nhấn
-            driver.execute_script("window.scrollBy(0, window.innerHeight);")
-            time.sleep(1)
-
-            try:
-                    next_button = driver.find_element(By.CSS_SELECTOR, "a.btn-next-page")
-                    driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    next_button.click()
-                    print("➡️ Đã click nút 'Trang sau'")
-                    time.sleep(3)
-
-            except Exception:
-                    print("✅ Không còn nút Trang sau. Dừng lại.")
+                # Nếu không có thêm bài mới → thoát
+                if len(seen_links) == last_size:
+                    print("✅ Không còn bài mới. Dừng lại.")
                     break
-        driver.quit()
+                last_size = len(seen_links)
+
+                # Cuộn xuống một chút sau mỗi lần nhấn
+                driver.execute_script("window.scrollBy(0, window.innerHeight);")
+                time.sleep(1)
+
+                try:
+                        next_button = driver.find_element(By.CSS_SELECTOR, "a.btn-next-page")
+                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                        next_button.click()
+                        print("➡️ Đã click nút 'Trang sau'")
+                        time.sleep(3)
+
+                except Exception:
+                        print("✅ Không còn nút Trang sau. Dừng lại.")
+                        break
+        finally:    
+            driver.quit()
 
         return seen_links
+    
+    def get_all_articles(self):
+        
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles
