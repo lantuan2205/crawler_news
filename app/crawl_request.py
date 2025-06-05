@@ -73,7 +73,7 @@ def crawl_article(data: dict):
 
 def get_article_details(crawler, url: str, link) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
-    print(f"=====================Đang lấy thông tin url: {url}")
+    print(f"==========Đang lấy thông tin url===========: {url}")
     try:
         title, description, content, published_date, author, content_image_urls = crawler.extract_content(url)
     except Exception as e:
