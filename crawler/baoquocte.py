@@ -20,6 +20,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Optional  
+from utils.service_utils import clean_date, get_urls_of_type
 
 
 FILE = Path(__file__).resolve()
@@ -30,77 +31,77 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class DaiBieuNhanDanCrawler(BaseCrawler):
+class BaoQuocTeCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://daibieunhandan.vn/"
+        self.base_url = "https://baoquocte.vn/"
         self.article_type_dict = {
-            0: "chinh-tri/thoi-su-quoc-hoi",
-            1: "chinh-tri/bao-ve-nen-tang-tu-tuong-dang",
-            2: "chinh-tri/viet-nam-voi-ky-nguyen-moi",
-            3: "chinh-tri/theo-dong-su-kien",
+            0: "tin-moi",
 
-            4: "quoc-hoi-va-cu-tri/dien-dan-quoc-hoi",
-            5: "quoc-hoi-va-cu-tri/lap-phap",
-            6: "quoc-hoi-va-cu-tri/chinh-sach-va-cuoc-song",
-            7: "quoc-hoi-va-cu-tri/y-kien-dai-bieu",
-            8: "quoc-hoi-va-cu-tri/hoat-dong-cua-doan-dbqh",
+            1: "thoi-su/xay-dung-dang",
+            2: "thoi-su/suy-ngam",
+            3: "thoi-su/viet-nam-va-asean",
+            4: "thoi-su/phan-tich-chuyen-thoi-su",
 
-            9: "hoi-dong-nhan-dan/hoi-nghi-tt-hdnd",
-            10: "hoi-dong-nhan-dan/chuyen-dong",
-            11: "hoi-dong-nhan-dan/dien-dan",
-            12: "hoi-dong-nhan-dan/dai-bieu-cu-tri",
+            5: "bien-dong-247",
 
-            13: "phong-chong-tham-nhung-lang-phi/van-ban-chi-dao",
-            14: "phong-chong-tham-nhung-lang-phi/kiem-tra-giam-sat",
-            15: "phong-chong-tham-nhung-lang-phi/don-thu-ban-doc",
+            6: "the-gioi/toan-canh",
+            7: "the-gioi/tieu-diem",
+            8: "the-gioi/binh-luan",
+            9: "the-gioi/ho-so", 
+            10: "the-gioi/doc-bao-nuoc-ngoai",
 
-            16: "kinh-te/thi-truong",
-            17: "kinh-te/doanh-nghiep",
-            18: "kinh-te/tai-chinh",
-            19: "kinh-te/bat-dong-san",
+            11: "ngoai-giao/tin-bo-ngoai-giao",
+            12: "ngoai-giao/bao-ho-cong-dan",
+            13: "ngoai-giao/thuong-thuc-ngoai-giao",
+            14: "ngoai-giao/chuyen-ngoai-giao",
 
-            20: "xa-hoi/doi-song",
-            21: "xa-hoi/giao-thong",
-            22: "xa-hoi/moi-truong",
+            15: "kinh-te/kinh-te-the-gioi",
+            16: "kinh-te/ngoai-giao-kinh-te",
+            17: "kinh-te/hoi-nhap-phat-trien",
+            18: "kinh-te/bat-dong-san",
+            19: "kinh-te/tai-chinh-chung-khoan",
+            20: "kinh-te/thuong-hieu-san-pham",
 
-            23: "quoc-phong-an-ninh/an-ninh-trat-tu",
-            24: "quoc-phong-an-ninh/quoc-phong-toan-dan",
-            25: "quoc-phong-an-ninh/tin-tuc-phap-luat",
+            21: "nguoi-viet",
 
-            26: "giao-duc/nhip-cau-giao-duc",
-            27: "giao-duc/tuyen-sinh",
-            28: "giao-duc/trao-doi",
+            22: "van-hoa/di-san-van-hoa",
+            23: "van-hoa/du-lich",
+            24: "van-hoa/so-tay-van-hoa",
+            25: "van-hoa/doanh-nhan-va-cuoc-song",
 
-            29: "suc-khoe/tin-tuc",
-            30: "suc-khoe/tu-van",
-            31: "suc-khoe/song-khoe",
+            26: "xa-hoi/giao-duc",
+            27: "xa-hoi/doi-song",
+            28: "xa-hoi/y-te",
 
-            32: "van-hoa-the-thao/van-hoa",
-            33: "van-hoa-the-thao/the-thao-du-lich",
-            34: "van-hoa-the-thao/van-nghe",
+            29: "giai-tri/hau-truong",
+            30: "giai-tri/chuyen-bon-phuong",
+            31: "giai-tri/xem-nghe",
 
-            35: "khoa-hoc-cong-nghe/khoa-hoc",
-            36: "khoa-hoc-cong-nghe/cong-nghe",
-            
-            37: "dia-phuong/hoat-dong-chinh-quyen",
-            38: "dia-phuong/tren-duong-phat-trien",
-            39: "dia-phuong/an-ninh-co-so",
+            32: "the-thao/ngoai-hang-anh",
+            33: "the-thao/v-league",
+            34: "the-thao/cup-c1",
+            35: "the-thao/asean-cup",
+            36: "the-thao/chuyen-nhuong",
 
-            40: "quoc-te/viet-nam-va-the-gioi",
-            41: "quoc-te/the-gioi-24h",
-            42: "quoc-te/nghi-vien-the-gioi",
-            
-            
-        
+            37: "khoa-hoc-cong-nghe/chuyen-doi-so",
+            38: "khoa-hoc-cong-nghe/kham-pha",
+            39: "khoa-hoc-cong-nghe/meo-hay",
+            40: "khoa-hoc-cong-nghe/thu-thuat",
 
+            41: "o-to/xe-moi",
+
+            42: "goc-nhin-nhan-quyen/tin-tuc-7-ngay",
+            43: "goc-nhin-nhan-quyen/tieu-diem",
+            44: "goc-nhin-nhan-quyen/y-kien-chuyen-gia",
+            45: "goc-nhin-nhan-quyen/y-kien-chuyen-gia",
 
         }
     def download_image(self, image_url, article_title, category, publish_date):
@@ -111,8 +112,8 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: daibieunhandan/category/date
-            newspaper_name = "daibieunhandan"
+            # Tạo cấu trúc thư mục: baoquocte/category/date
+            newspaper_name = "baoquocte"
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -156,11 +157,11 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
             ssh.close()
 
             return str(remote_path)
-            
+
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
+
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -169,47 +170,43 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
         """
         try:
             response = requests.get(url, headers=headers)
-          
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title_tag = soup.find('h1', class_='block-sc-title')
+            title_tag = soup.find('h1', class_='article-detail-title')
             title = title_tag.get_text(strip=True) if title_tag else None
 
             # Lấy description
-            # desc_tag = soup.select_one("div.mota h2")
-            desc_tag = soup.find("p",class_= "block-sc-sapo")
-            if desc_tag:
-                raw_description = desc_tag.get_text(strip=True)
-                # Tách sau dấu "-" đầu tiên
-                split_parts = raw_description.split("-", 1)
-                description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
-            else:
-                description = None
+            desc_tag = soup.find('div',class_='article-detail-desc')
+            description = desc_tag.get_text(strip=True) if desc_tag else None
+
 
             # Trích xuất ngày viết bài
             publish_date = None
-            date_tag = soup.find("span", class_='sc-longform-header-date')
+            date_tag = soup.find("div", class_='article-date')
             publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
 
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find("div", class_="b-maincontent")
+            content_div = soup.find("div", class_="__MASTERCMS_CONTENT")
             images = content_div.find_all('img')
-            content_images = [img['src'] for img in images if img.get('src')]
+            content_images = [
+                img['src'] for img in images
+                if img.get('src') and not (img['src'].lower().endswith('.jpg') or img['src'].lower().endswith('.png'))
+            ]
             if not content_div:
                 return [], []
-            
+
             # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
             content = content_div.get_text(separator="\n", strip=True)
             # Lấy nội dung chỉ từ các thẻ <p> trong <article>
             paragraphs = content_div.find_all("p")
             content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
 
-
             # Trích xuất tác giả
-            author_box = soup.find('span', class_='sc-longform-header-author')
-            author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else None
+            author_tag = soup.find(["div","span"], class_=["article-member","cms-author"])
+            # author_tag = soup.find("span", class_="cms-author")
+            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
 
             return title, description, content, publish_date, author, content_images
 
@@ -219,7 +216,7 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
-    
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -227,10 +224,20 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
         @param output_fpath (str): file path to save crawled result
         @return (bool): True if crawl successfully and otherwise
         """
-        title, description, content, publish_date, author, content_images = self.extract_content(url)
-        if not title:
+        # in link lỗi
+        try:
+            title, description, content, publish_date, author, content_images = self.extract_content(url)
+            if not title:
+                print(f"⚠️ Bỏ qua bài không có tiêu đề: {url}")
+                return None
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình phân tích HTML ở bài: {url}")
+            print(f"   Chi tiết lỗi: {e}")
             return None
-            
+            title, description, content, publish_date, author, content_images = self.extract_content(url)
+            if not title:
+                return None
+
         # Tải và lưu ảnh nội dung
         content_image_paths = []
         for img_url in content_images:
@@ -238,7 +245,7 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
                 img_path = self.download_image(img_url, title, article_type, publish_date)      
                 if img_path:
                     content_image_paths.append(img_path)
-                    
+
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
@@ -253,55 +260,46 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
 
         return article_data
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        page_url = f"https://daibieunhandan.vn/{article_type}"
-        driver.get(page_url)
-        time.sleep(2)
-        seen_links = set()
-        last_size = 0
+
+        page_number = (page_number - 1) * 15
+        page_url = f"https://baoquocte.vn/{article_type}&s_cond=&BRSR={page_number}"
         try:
-            wait = WebDriverWait(driver, 10)
+            response = requests.get(page_url, headers=headers, timeout=10)
+            time.sleep(random.uniform(1, 2))
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"❌ Lỗi khi tải {page_url}: {e}")
+            return []
 
-            while True:
-                articles = driver.find_elements(By.CSS_SELECTOR, "ul.onecms_loading li")
-                for article in articles:
-                    try:
-                        title_link = article.find_element(By.CSS_SELECTOR, "a")
-                        href = title_link.get_attribute("href")
-                        print("🧪 Found link:", href)  # ✅ In ra để debug
-                        if href:
-                            if href.startswith("/"):
-                                href = urljoin("https://daibieunhandan.vn", href)
-                            if href.startswith("http") and href not in seen_links:
-                                seen_links.add(href)
-                    except Exception:
-                        pass
-                if len(seen_links) == last_size:
-                    print("✅ Không còn bài mới. Dừng lại.")
-                    break
-                last_size = len(seen_links)
+        soup = BeautifulSoup(response.content, "html.parser")
+        target_div = soup.find("div", class_="bx-listing")
 
-                try:
-                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "div.view-more-article a")))
-                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
-                        driver.execute_script("arguments[0].click();", next_button)
-                        print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
+        urls = []
+        if target_div:
+            a_tags = target_div.find_all("h3", class_="article-title")
+            if(len(a_tags) == 0):
+                return []
+            for a_tag in a_tags:
+                tag = a_tag.find("a")
+                if tag and tag.get("href"):
+                    urls.append(tag["href"])
 
-                except Exception:
-                        print("✅ Không còn nút Trang sau. Dừng lại.")
-                        break
+        return urls
+    def get_all_articles(self):
+        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        all_articles = []
 
-        except Exception as e:
-            print("⚠️ Lỗi collect links:", e)
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
 
-        print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
-        return seen_links
+        return all_articles
 
+    def get_all_articles(self):
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles

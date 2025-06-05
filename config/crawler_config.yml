@@ -1,13 +1,10 @@
-# Tên báo muốn crawl [dientutoquoc ,baohaiquanonline , daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,
-# tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, 
-# baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, 
-# suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [baokiemtoan ,tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["dientutoquoc"]
+webnames: ["tapchithongtinvatruyenthong", "baoquocte"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -16,7 +13,7 @@ task: "type"
 logger_fpath: "logger/logger_config.yml"
 urls_fpath: "urls.txt"
 output_dpath: "result"
-num_workers: 1
+num_workers: 5
 
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types task == "all"
 article_type: "all"
@@ -70,3 +67,15 @@ news_sites:
   daibieunhandan: "https://daibieunhandan.vn/"
   haiquanonline: "https://haiquanonline.com.vn/"
   dientutoquoc: "https://toquoc.vn/"
+  baodauthau: "https://baodauthau.vn/"
+  thethaovanhoa: "https://thethaovanhoa.vn/"
+  kinhtevadubao: "https://kinhtevadubao.vn/"
+  tapchigiaothongvantai: "https://giaothong.tapchixaydung.vn/"
+  tapchithongtinvatruyenthong: "https://ictvietnam.vn/"
+  dantocmiennui: "https://dantocmiennui.baotintuc.vn/"
+  vietnamplus: "https://www.vietnamplus.vn/"
+  baoquocte: "https://baoquocte.vn/"
+  baochinhphu: "https://baochinhphu.vn/"
+  tapchixaydung: "https://tapchixaydung.vn/"
+  tochucnhanuoc: "https://tcnnld.vn/"
+  baokiemtoan: "http://baokiemtoan.vn/"

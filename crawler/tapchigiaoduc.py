@@ -48,6 +48,7 @@ class TapChiGiaoDucCrawler(BaseCrawler):
             remote_base_dir = "/mnt/data/news"
             # Tạo cấu trúc thư mục: tapchigiaoduc/category/date
             newspaper_name = "tapchigiaoduc"
+            print("-------clean_date(publish_date)-----", clean_date(publish_date))
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"

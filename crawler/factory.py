@@ -40,10 +40,23 @@ from .thoibaonganhang import ThoiBaoNganHangCrawler
 from .tapchinganhang import TapChiNganHangCrawler
 from .tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
 from .tapchithanhtra import TapChiThanhTraCrawler
+from .giaoducthoidai import GiaoDucThoiDaiCrawler
 from .nongnghiepmoitruong import NongNghiepMoiTruongCrawler
 from .daibieunhandan import DaiBieuNhanDanCrawler
 from .baohaiquanonline import BaoHaiQuanOnlineCrawler
 from .baodientutoquoc import DienTuToQuocCrawler
+from .baodauthau import BaoDauThauCrawler
+from .thethaovanhoa import TheThaoVanHoaCrawler
+from .baokinhtevadubao import KinhTeVaDuBaoCrawler
+from .tapchigiaothongvantai import TapChiGiaoThongVanTaiCrawler
+from .tapchithongtinvatruyenthong import TapChiThongTinVaTruyenThongCrawler
+from .baoanhdantocvamiennui import BaoDanTocMienNuiCrawler
+from .baovietnamplus import BaoVietnamPlusCrawler
+from .baoquocte import BaoQuocTeCrawler
+from .baochinhphu import BaoChinhPhuCrawler
+from .tapchixaydung import TapChiXayDungCrawler
+from .tochucnhanuoc import ToChucNhaNuocCrawler
+from .kiemtoan import BaoKiemToanCrawler
 
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
@@ -87,10 +100,24 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "tapchinganhang": TapChiNganHangCrawler,
             "tapchibaohiemxahoi": TapChiBaoHiemXaHoiCrawler,
             "tapchithanhtra": TapChiThanhTraCrawler,
+            "tapchibaohiemxahoi": TapChiBaoHiemXaHoiCrawler,
+            "giaoducthoidai": GiaoDucThoiDaiCrawler,
             "nongnghiepmoitruong": NongNghiepMoiTruongCrawler,
             "daibieunhandan": DaiBieuNhanDanCrawler,
             "baohaiquanonline": BaoHaiQuanOnlineCrawler,
             "dientutoquoc": DienTuToQuocCrawler,
+            "baodauthau": BaoDauThauCrawler,
+            "thethaovanhoa": TheThaoVanHoaCrawler,
+            "kinhtevadubao": KinhTeVaDuBaoCrawler,
+            "tapchigiaothongvantai": TapChiGiaoThongVanTaiCrawler,
+            "tapchithongtinvatruyenthong": TapChiThongTinVaTruyenThongCrawler,
+            "dantocmiennui": BaoDanTocMienNuiCrawler,
+            "vietnamplus": BaoVietnamPlusCrawler,
+            "baoquocte": BaoQuocTeCrawler,
+            "baochinhphu": BaoChinhPhuCrawler,
+            "tapchixaydung": TapChiXayDungCrawler,
+            "tochucnhanuoc": ToChucNhaNuocCrawler,
+            "baokiemtoan": BaoKiemToanCrawler,
             }
 
 def get_crawler(webname, **kwargs):

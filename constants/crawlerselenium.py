@@ -15,5 +15,17 @@ CRAWLERS_SELENIUM = [
     "nongnghiepmoitruonng",
     "daibieunhandan",
     "baohaiquanonline",
-    "dientutoquoc"
+    "dientutoquoc",
+    "baodauthau",
+    "thethaovanhoa",
+    "kinhtevadubao", 
+    "giaothong.tapchixaydung",
+    "ictvietnam",
+    "dantocmiennui.baotintuc",
+    "vietnamplus",
+    "baoquocte",
+    "baochinhphu",
+    "tapchixaydung",
+    "tochucnhanuoc",
+    "baokiemtoan"
 ]

@@ -11,3 +11,15 @@ venv/
 # Bỏ qua folder output
 result/
 result-*/
+
+# Dotfiles liên quan đến shell và lịch sử
+.bash_history
+.bash_logout
+.bashrc
+.lesshst
+.profile
+.sudo_as_admin_successful
+.viminfo
+
+# Swap file của Vim (tự động sinh ra khi mở file trong Vim)
+*.swp

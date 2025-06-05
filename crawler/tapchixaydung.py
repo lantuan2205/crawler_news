@@ -30,102 +30,58 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date
+from utils.service_utils import clean_date, get_urls_of_type
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-class NongNghiepMoiTruongCrawler(BaseCrawler):
+class TapChiXayDungCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
-        self.base_url = "https://nongnghiepmoitruong.vn/"
+        self.base_url = "https://tapchixaydung.vn/"
         self.article_type_dict = {
-            0: "chinh-tri",
-            1: "thoi-su-nong-nghiep-moi-truong",
+            0: "chi-dao-dieu-hanh-c524",
+            1: "van-ban-moi-c525",
+            2: "phan-bien-c533",
 
-            2: "chan-nuoi",
-            3: "thu-y",
-            4: "trong-trot",
-            5: "khuyen-nong",
-            6: "tai-co-cau-nong-nghiep",
-            7: "khoa-hoc---cong-nghe",
-            8: "thuy-san",
-            9: "lam-nghiep",
+            3: "cong-nghe-moi-c534",
+            4: "issn-2734-9888-c536",
+            5: "nghien-cuu-khoa-hoc-c535",
+            6: "xay-dung-40-c537",
+            7: "the-le-bai-viet-c557",
 
-            10: "xe-may",
-            11: "cau-chuyen-moi-truong",
-            12: "quan-ly-chat-thai-ran",
-            13: "bien-doi-khi-hau-moitruong",
-            14: "khoa-hoc-cong-nghe",
-            15: "tin-tuc",
+            8: "do-thi-c527",
+            9: "nong-thon-c528",
+            10: "di-san-c530",
 
-            16: "khoang-san",
-            17: "tai-nguyen-nuoc",
-            18: "bien-dao",
+            11: "ha-tang-duong-bo-c560",
+            12: "ha-tang-hang-khong-c561",
+            13: "ha-tang-hang-hai-c562",
+            14: "ha-tang-duong-sat-c563",
 
-            19: "bat-dong-san-nong-thon",
-            20: "bat-dong-san-du-lich",
-            21: "do-thi-va-doi-song",
-            22: "quy-hoach",
-            23: "chinh-sach-datdai",
+            15: "thi-truong-c538",
+            16: "du-an-c539",
+            17: "khoa-hoc-phong-thuy-c540",
 
-            24: "kinh-te-thi-truong",
-            25: "viec-lam",
-            26: "doanh-nghiep-doanh-nhan",
-            27: "dau-tu-tai-chinh",
-            28: "cong-khai-ngan-sach",
-            29: "thong-tin-can-biet",
+            18: "thi-truong-c532",
+            19: "san-pham-moi-c531",
 
-            30: "doi-song",
-            31: "phong-su",
+            20: "tai-chinh-dau-tu-c543",
+            21: "doanh-nghiep-doanh-nhan-c544",
+            22: "kinh-te-so-c545",
 
-            32: "tu-van-phap-luat",
-            33: "dieu-tra-theo-thu-ban-doc",
-            34: "an-ninh-trat-tu",
-            35: "canh-sat-moi-truong",
-            36: "nhung-manh-doi-bat-hanh",
-            37: "van-ban-moi",
+            23: "cong-trinh-xanh-c546",
+            24: "do-thi-xanh-c547",
 
-            
-            38: "van-hoa",
-            39: "nn-the-thao",
-            40: "giai-tri-vanhoathethao",
-            41: "du-lich",
-            42: "goc-anh-do-thi",
-            
-            43: "lang-kinh",
-            44: "phan-bon",
-            45: "thuoc-bao-ve-thuc-vat",
-            46: "thuc-an-chan-nuoi",
-            47: "thuoc-thu-y",
+            25: "phap-luat-xay-dung-c552",
+            26: "an-toan-giao-thong-c565",
+            27: "hoi-dap-c556",
+            28: "thong-bao-c553",
 
-            48: "chinh-sach",
-            49: "mo-hinh-hay-ntm",
-            50: "ocop",
-
-            51: "diem-nong",
-            52: "vu-khi",
-            53: "bien-doi-khi-hau",
-            54: "cuoc-song-muon-mau",
-            55: "kham-pha",
-
-            56: "ung-thu",
-            57: "nghe-thuat-song",
-            58: "song-gio-gia-dinh",
-            59: "tam-su-da-huong",
-            60: "tieu-duong",
-            61: "cay-thuoc---vi-thuoc",
-
-            62: "tri-thuc-nong-dan/chuyen-nho-khoi-nghiep",
-            63: "tri-thuc-nong-dan/tri-thuc-nghe-nong",
-            64: "tri-thuc-nong-dan/tieng-viet--van-viet--nguoi-viet",
-            65: "tri-thuc-nong-dan/doanh-nong",
-            66: "tri-thuc-nong-dan/nhin-ra-the-gioi",
-            67: "tri-thuc-nong-dan/nhip-cau-nha-nong",
-        
-
+            29: "xay-dung-toan-cau-c523",
+            30: "the-gioi-giao-thong-c568",
 
         }
     def download_image(self, image_url, article_title, category, publish_date):
@@ -136,8 +92,8 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             ssh_user = "htsc"
             ssh_password = "Htsc@123"
             remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: nongnghiepmoitruong/category/date
-            newspaper_name = "nongnghiepmoitruong"
+            # Tạo cấu trúc thư mục: tapchixaydung/category/date
+            newspaper_name = "tapchixaydung"
             date_parts = clean_date(publish_date).split(',')[0].strip()
             day, month, year = date_parts.split('/')
             date_folder = f"{day}-{month}-{year}"
@@ -199,27 +155,26 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title_tag = soup.find('h1', class_='main-title')
+            title_tag = soup.find('h1',class_='title-entry')
             title = title_tag.get_text(strip=True) if title_tag else None
 
-            # Lấy description
-            # desc_tag = soup.select_one("div.mota h2")
-            desc_tag = soup.find("h2",class_= "main-intro")
+             # Lấy description
+            desc_tag = soup.find("div", class_="short-single-post")
             if desc_tag:
                 raw_description = desc_tag.get_text(strip=True)
-                # Tách sau dấu "-" đầu tiên
+                # Tách phần mô tả sau dấu "-"
                 split_parts = raw_description.split("-", 1)
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
-                description = None
+                description = None 
 
             # Trích xuất ngày viết bài
             publish_date = None
-            date_tag = soup.find("span", class_='time-detail')
+            date_tag = soup.find("div", class_='text-grey-84')
             publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
 
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find("div", class_="content")
+            content_div = soup.find("div", class_="single-post-content")
             images = content_div.find_all('img')
             content_images = [img['src'] for img in images if img.get('src')]
             if not content_div:
@@ -231,8 +186,9 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             content_images = [img.get("src") for img in images if img.get("src")]
 
             # Trích xuất tác giả
-            author_box = soup.find('p', class_='content-author')
-            author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else None
+            author_box = soup.find('div', class_='fw-bold')
+            author_tag = author_box.find('a')
+            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
 
             return title, description, content, publish_date, author, content_images
 
@@ -283,26 +239,34 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        page_url = f"https://nongnghiepmoitruong.vn/{article_type}"
+        page_url = f"https://tapchixaydung.vn/{article_type}.html"
         driver.get(page_url)
         time.sleep(2)
         seen_links = set()
         last_size = 0
+        seen_article_ids = set()  # set theo object id hoặc nội dung text
+
         try:
             wait = WebDriverWait(driver, 10)
 
             while True:
 
-                articles = driver.find_elements(By.CSS_SELECTOR, "div.main-content-page li.news-home-item")
+                articles = driver.find_elements(By.CSS_SELECTOR, "div#list-articles div.card-news-hz")
+                new_found = 0
 
                 for article in articles:
                     try:
-                        title_link = article.find_element(By.CSS_SELECTOR, "a.expthumb.thumb")
+                        # Lấy text hoặc ID duy nhất để tránh quét lại
+                        article_id = article.text.strip()
+                        if article_id in seen_article_ids:
+                            continue  # đã xử lý
+                        seen_article_ids.add(article_id)
+                        title_link = article.find_element(By.CSS_SELECTOR, "div.card-news-hz-img > a")
                         href = title_link.get_attribute("href")
                         # print("🧪 Found link:", href)  # ✅ In ra để debug
                         if href:
                             if href.startswith("/"):
-                                href = urljoin("https://nongnghiepmoitruong.vn", href)
+                                href = urljoin("https://tapchixaydung.vn", href)
                             if href.startswith("http") and href not in seen_links:
                                 seen_links.add(href)
                     except Exception:
@@ -313,7 +277,7 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
                 last_size = len(seen_links)
 
                 try:
-                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span#loadmore")))
+                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_category")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
@@ -330,3 +294,11 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
 
+    def get_all_articles(self):
+        all_articles = []
+
+        for category in self.article_type_dict.values():
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
+        return all_articles

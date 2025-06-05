@@ -308,3 +308,4 @@ class VovCrawler(BaseCrawler):
 
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
+

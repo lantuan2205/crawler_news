@@ -3,7 +3,7 @@ import concurrent.futures
 import json
 from tqdm import tqdm
 import time
-
+from constants.crawlerselenium import CRAWLERS_SELENIUM
 from utils.utils import init_output_dirs, create_dir, read_file
 from utils.service_utils import save_to_json, send_json_to_api, save_to_db
 class BaseCrawler(ABC):
@@ -107,12 +107,17 @@ class BaseCrawler(ABC):
         articles_urls = set()
         page_number = 1
         progress = tqdm(desc="Pages", unit=" page")
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
+        domain = self.base_url.split("/")[2]
+        for suffix in [".com.vn", ".net.vn", ".gov.vn", ".org.vn", ".edu.vn", ".vn"]:
+            if domain.endswith(suffix):
+                domain = domain.replace(suffix, "")
+                break
+        num_workers = 1 if domain in CRAWLERS_SELENIUM else self.num_workers
+        with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
             futures = {}
             while True:
                 # Gửi batch gồm num_workers page một lúc
-                for _ in range(self.num_workers):
+                for _ in range(num_workers):
                     future = executor.submit(self.get_urls_of_type_thread, article_type, page_number)
                     futures[future] = page_number
                     page_number += 1

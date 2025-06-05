@@ -73,7 +73,7 @@ def crawl_article(data: dict):
 
 def get_article_details(crawler, url: str, link) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
-    print(f"=====================Đang lấy thông tin url: {url}")
+    print(f"==========Đang lấy thông tin url===========: {url}")
     try:
         title, description, content, published_date, author, content_image_urls = crawler.extract_content(url)
     except Exception as e:
@@ -85,10 +85,10 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
 
     # Xử lý Url ảnh
     photoInfos = {}
-    for url in content_image_urls:
-        clean_url = url.split('?')[0]
+    for url_image in content_image_urls:
+        clean_url = url_image.split('?')[0]
         filename = Path(clean_url).name
-        photoInfos[filename] = url
+        photoInfos[filename] = url_image
 
     article_data = {
         "dataSource": "/".join(url.split("/")[:3]),
@@ -107,4 +107,3 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
     time.sleep(1)
     if link:
         return article_data
-
