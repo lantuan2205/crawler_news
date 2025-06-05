@@ -18,4 +18,5 @@ CRAWLERS_SELENIUM = [
     "dientutoquoc",
     "baodauthau",
     "thethaovanhoa",
+    "vjst"
 ]
