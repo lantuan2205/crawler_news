@@ -209,7 +209,7 @@ class TapChiGiaoDucCrawler(BaseCrawler):
         return urls
 
     def get_all_articles(self):
-        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        
         all_articles = []
 
         for category in self.article_type_dict.values():

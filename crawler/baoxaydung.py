@@ -204,29 +204,31 @@ class BaoXayDungCrawler(BaseCrawler):
         time.sleep(2)
         seen_links = set()
         ul_element = driver.find_element(By.CSS_SELECTOR, "div.section__news-cate-box")
-
-        while True:
-            # Lấy các bài viết hiện tại
-            articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.box-category-title-text a")
-            for article in articles:
-                link = article.get_attribute("href")
-                seen_links.add(link)
-            # Thử click nút "Xem thêm"
-            try:
-                load_more_button = driver.find_element(By.CSS_SELECTOR, "div.box-center.list__viewmore.list__center")
-                if load_more_button.is_displayed():
-                    load_more_button.click()
-                    print("🔄 Đã click 'Xem thêm'")
-                    time.sleep(3)
-                else:
+        try:
+            while True:
+                # Lấy các bài viết hiện tại
+                articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.box-category-title-text a")
+                for article in articles:
+                    link = article.get_attribute("href")
+                    seen_links.add(link)
+                # Thử click nút "Xem thêm"
+                try:
+                    load_more_button = driver.find_element(By.CSS_SELECTOR, "div.box-center.list__viewmore.list__center")
+                    if load_more_button.is_displayed():
+                        load_more_button.click()
+                        print("🔄 Đã click 'Xem thêm'")
+                        time.sleep(3)
+                    else:
+                        break
+                except Exception:
+                    print("✅ Không còn 'Xem thêm' hoặc gặp lỗi.")
                     break
-            except Exception:
-                print("✅ Không còn 'Xem thêm' hoặc gặp lỗi.")
-                break
+        finally:
+            driver.quit()
         return seen_links
 
     def get_all_articles(self):
-        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        
         all_articles = []
 
         for category in self.article_type_dict.values():

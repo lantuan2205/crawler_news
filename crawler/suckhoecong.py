@@ -33,17 +33,17 @@ class SucKhoeCongCrawler(BaseCrawler):
         self.base_url = "https://suckhoecong.vn/"
         self.article_type_dict = {
             0: "kien-thuc-song-khoe-d1",
-            # 1: "thuc-pham-chuc-nang-d2",
-            # 2: "tai-chinh",
-            # 3: "hoi-dap-d8",
-            # 4: "goc-nhin-quan-ly-d5",
-            # 5: "tro-chuyen-d6",
-            # 6: "ban-doc-viet-d7",
-            # 7: "van-hoa-xa-hoi-d3",
-            # 8: "phong-benh-chu-dong-d4",
-            # 9: "cong-dong-len-tieng-d11",
-            # 10: "tin-tuc-thoi-su-d12",
-            # 11: "suc-khoe-moi-truong-d51"
+            1: "thuc-pham-chuc-nang-d2",
+            2: "tai-chinh",
+            3: "hoi-dap-d8",
+            4: "goc-nhin-quan-ly-d5",
+            5: "tro-chuyen-d6",
+            6: "ban-doc-viet-d7",
+            7: "van-hoa-xa-hoi-d3",
+            8: "phong-benh-chu-dong-d4",
+            9: "cong-dong-len-tieng-d11",
+            10: "tin-tuc-thoi-su-d12",
+            11: "suc-khoe-moi-truong-d51"
         }   
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -204,7 +204,7 @@ class SucKhoeCongCrawler(BaseCrawler):
         return results
 
     def get_all_articles(self):
-        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        
         all_articles = []
 
         for category in self.article_type_dict.values():

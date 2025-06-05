@@ -19,7 +19,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -265,7 +265,7 @@ class VNExpressCrawler(BaseCrawler):
         return articles_urls
 
     def get_all_articles(self):
-        """Lấy tất cả bài báo từ các danh mục trên VNExpress."""
+        
         all_articles = []
 
         for category in self.article_type_dict.values():
