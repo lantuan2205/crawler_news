@@ -7,6 +7,7 @@ from datetime import datetime
 import time
 from pathlib import Path
 from utils.mongodb_utils import save_article, save_image_metadata, save_category
+from constants.crawlerselenium import CRAWLERS_SELENIUM
 import unicodedata
 import concurrent.futures
 from tqdm import tqdm
@@ -196,10 +197,14 @@ def clean_date(text_date):
 
 def get_urls_of_type(self, article_type):
     articles_urls = set()
-    page_number = 18
-    num_workers = 5
+    page_number = 1
     progress = tqdm(desc="Pages", unit=" page")
-
+    domain = self.base_url.split("/")[2]
+    for suffix in [".com.vn", ".net.vn", ".gov.vn", ".org.vn", ".edu.vn", ".vn"]:
+        if domain.endswith(suffix):
+            domain = domain.replace(suffix, "")
+            break
+    num_workers = 1 if domain in CRAWLERS_SELENIUM else self.num_workers
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = {}
         while True:
