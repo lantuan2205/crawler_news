@@ -44,6 +44,7 @@ from crawler.nongnghiepmoitruong import NongNghiepMoiTruongCrawler
 from crawler.daibieunhandan import DaiBieuNhanDanCrawler
 from crawler.tapchikhoahocvacongnghe import TapChiKhoaHocVaCongNgheCrawler
 from crawler.vtv import VtvCrawler
+from crawler.baodaidoanket import DaiDoanKetCrawler
 
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
@@ -92,5 +93,6 @@ CRAWLERS = {
             "daibieunhandan.vn": DaiBieuNhanDanCrawler(),
             "vjst.vn": TapChiKhoaHocVaCongNgheCrawler(),
             "vtv.vn": VtvCrawler(),
+            "baodaidoanket.vn": DaiDoanKetCrawler(),
             }
 

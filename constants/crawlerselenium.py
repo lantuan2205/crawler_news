@@ -20,4 +20,5 @@ CRAWLERS_SELENIUM = [
     "thethaovanhoa",
     "vjst"
     "vtv"
+    "daidoanket"
 ]
