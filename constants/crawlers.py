@@ -42,20 +42,7 @@ from crawler.tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
 from crawler.tapchithanhtra import TapChiThanhTraCrawler
 from crawler.nongnghiepmoitruong import NongNghiepMoiTruongCrawler
 from crawler.daibieunhandan import DaiBieuNhanDanCrawler
-from crawler.baohaiquanonline import BaoHaiQuanOnlineCrawler
-from crawler.baodientutoquoc import DienTuToQuocCrawler
-from crawler.baodauthau import BaoDauThauCrawler
-from crawler.thethaovanhoa import TheThaoVanHoaCrawler
-from crawler.baokinhtevadubao import KinhTeVaDuBaoCrawler
-from crawler.tapchigiaothongvantai import TapChiGiaoThongVanTaiCrawler
-from crawler.tapchithongtinvatruyenthong import TapChiThongTinVaTruyenThongCrawler
-from crawler.baoanhdantocvamiennui import BaoDanTocMienNuiCrawler
-from crawler.baovietnamplus import BaoVietnamPlusCrawler
-from crawler.baoquocte import BaoQuocTeCrawler
-from crawler.baochinhphu import BaoChinhPhuCrawler
-from crawler.tapchixaydung import TapChiXayDungCrawler
-from crawler.tochucnhanuoc import ToChucNhaNuocCrawler
-from crawler.kiemtoan import BaoKiemToanCrawler
+from crawler.tapchikhoahocvacongnghe import TapChiKhoaHocVaCongNgheCrawler
 
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
@@ -102,19 +89,6 @@ CRAWLERS = {
             "thanhtravietnam.vn": TapChiThanhTraCrawler(),
             "nongnghiepmoitruong.vn": NongNghiepMoiTruongCrawler(),
             "daibieunhandan.vn": DaiBieuNhanDanCrawler(),
-            "haiquanonline.com.vn": BaoHaiQuanOnlineCrawler(),
-            "toquoc.vn": DienTuToQuocCrawler(),
-            "baodauthau.vn": BaoDauThauCrawler(),
-            "thethaovanhoa.vn": TheThaoVanHoaCrawler(),
-            "kinhtevadubao.vn": KinhTeVaDuBaoCrawler(),
-            "giaothong.tapchixaydung.vn": TapChiGiaoThongVanTaiCrawler(),
-            "ictvietnam.vn": TapChiThongTinVaTruyenThongCrawler(),
-            "dantocmiennui.baotintuc.vn": BaoDanTocMienNuiCrawler(),
-            "www.vietnamplus.vn": BaoVietnamPlusCrawler(),
-            "baoquocte.vn": BaoQuocTeCrawler(),
-            "baochinhphu.vn": BaoChinhPhuCrawler(),
-            "tapchixaydung.vn": TapChiXayDungCrawler(),
-            "tcnnld.vn": ToChucNhaNuocCrawler(),
-            "baokiemtoan.vn": BaoKiemToanCrawler()
+            "vjst.vn": TapChiKhoaHocVaCongNgheCrawler(),
             }
 
