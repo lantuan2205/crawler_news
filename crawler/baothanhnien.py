@@ -348,10 +348,10 @@ class BaoThanhNienCrawler(BaseCrawler):
             while True:
                 previous_count = len(seen_links)
 
-                # # Scroll 4 lần
-                # for i in range(4):
-                #     driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                #     time.sleep(1.5)
+                # Scroll 4 lần
+                for i in range(4):
+                    driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
+                    time.sleep(1.5)
                 
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.box-category-middle div.box-category-item")
 
@@ -379,17 +379,17 @@ class BaoThanhNienCrawler(BaseCrawler):
                     break
                 last_size = len(seen_links)
     
-                # try:
-                #     next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.list__viewmore")))
-                #     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                #     time.sleep(2)
-                #     driver.execute_script("arguments[0].click();", next_button)
-                #     print("➡️ Đã click nút 'Trang sau'")
-                #     time.sleep(3)
+                try:
+                    next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.list__viewmore")))
+                    driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                    time.sleep(2)
+                    driver.execute_script("arguments[0].click();", next_button)
+                    print("➡️ Đã click nút 'Trang sau'")
+                    time.sleep(3)
 
-                # except Exception:
-                #         print("✅ Không còn nút Trang sau. Dừng lại.")
-                #         break
+                except Exception:
+                        print("✅ Không còn nút Trang sau. Dừng lại.")
+                        break
 
                 
         except Exception as e:
