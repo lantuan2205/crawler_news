@@ -37,18 +37,59 @@ class CongLyCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://congly.vn/"
         self.article_type_dict = {
-            0: "toa-an/tieu-diem",
-            1: "toa-an",
-            2: "quan-ly-thi-truong",
-            3: "phap-dinh",
-            4: "phap-luat",
-            5: "xa-hoi",
-            6: "van-hoa-the-thao",
-            7: "kinh-te",
-            8: "the-gioi",
-            9: "ban-doc",
-            10: "tam-diem-du-luan",
-            11: "phong-su-ghi-chep",
+            0: "chinh-tri",
+
+            1: "toa-an/tieu-diem",
+            2: "toa-an/cai-cach-tu-phap",
+            3: "toa-an/phong-trao-thi-dua",
+            4: "toa-an/toa-an-dia-phuong",
+            5: "toa-an/nghiep-vu",
+
+            6: "phap-dinh/ky-su-phap-dinh",
+            7: "phap-dinh/toa-tuyen-an",
+
+            8: "phap-luat/ho-so-vu-an",
+            9: "phap-luat/an-ninh-trat-tu",
+            10: "phap-luat/tu-van-phap-luat",
+
+            11: "xa-hoi/doi-song",
+            12: "xa-hoi/moi-truong",
+            13: "xa-hoi/suc-khoe",
+            14: "xa-hoi/giao-thong",
+
+            15: "van-hoa-the-thao/van-hoa-du-lich",
+            16: "van-hoa-the-thao/am-nhac-phim",
+            17: "van-hoa-the-thao/the-thao",
+
+            18: "kinh-te/doanh-nghiep-doanh-nhan",
+            19: "kinh-te/bat-dong-san",
+            20: "kinh-te/tai-chinh-ngan-hang",
+            21: "kinh-te/bao-ve-nguoi-tieu-dung",
+
+            22: "the-gioi/chuyen-dong",
+            23: "the-gioi/vu-an-noi-tieng",
+            24: "the-gioi/chuyen-la-bon-phuong",
+
+            25: "kinh-te/dia-oc",
+
+            26: "ban-doc/nhip-cau-cong-ly",
+            27: "ban-doc/van-de-quan-tam",
+            28: "ban-doc/nhan-ai",
+            29: "ban-doc/hoi-am",
+
+            30: "giao-duc",
+
+            31: "tam-diem-du-luan",
+
+            32: "phong-su-ghi-chep",
+
+            33: "nhan-tin",
+
+            34: "cong-ly-xua-va-nay",
+            
+            35: "thong-tin-doanh-nghiep",
+
+            36: "cai-chinh",
         }
         
     def download_image(self, image_url, article_title, category, publish_date):
