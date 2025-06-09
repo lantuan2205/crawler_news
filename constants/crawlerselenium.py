@@ -23,4 +23,5 @@ CRAWLERS_SELENIUM = [
     "daidoanket"
     # "laodong"
     "nhandan"
+    "thanhnien"
 ]
