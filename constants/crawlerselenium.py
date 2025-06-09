@@ -21,4 +21,6 @@ CRAWLERS_SELENIUM = [
     "vjst"
     "vtv"
     "daidoanket"
+    # "laodong"
+    "nhandan"
 ]
