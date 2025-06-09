@@ -37,21 +37,65 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://suckhoedoisong.vn/"
         self.article_type_dict = {
-            0: "y-te",
-            1: "thoi-su",
-            2: "tra-cuu-benh",
-            3: "suc-khoe-tv",
-            4: "y-hoc-360",
-            5: "duoc",
-            6: "y-hoc-co-truyen",
-            7: "gioi-tinh",
-            8: "dinh-duong",
-            9: "khoe-dep",
-            10: "phong-mach-online",
-            11: "thi-truong",
-            12: "nhip-cau-nhan-ai",
-            13: "van-hoa-giai-tri",
-            14: "doi-song",
+            0: "y-te/tin-nong-y-te",
+            1: "y-te/thanh-tuu-y-khoa",
+            2: "y-te/blog-thay-thuoc",
+            3: "y-te/camera-benh-vien",
+            4: "y-te/su-hi-sinh-tham-lang",
+
+            5: "thoi-su/xa-hoi",
+            6: "thoi-su/phap-luat",
+            7: "thoi-su/quoc-te",
+
+            8: "suc-khoe-tv/ban-tin-suc-khoe",
+            9: "suc-khoe-tv/truyen-hinh-truc-tuyen",
+            10: "suc-khoe-tv/cac-benh",
+            11: "suc-khoe-tv/thoi-tiet",
+            12: "suc-khoe-tv/giao-luu",
+
+            13: "y-hoc-360/benh-nguoi-cao-tuoi",
+            14: "y-hoc-360/benh-thuong-gap",
+            15: "y-hoc-360/benh-phu-nu",
+            16: "y-hoc-360/benh-nam-gioi",
+            17: "y-hoc-360/benh-tre-em",
+            18: "y-hoc-360/suc-khoe-tam-hon",
+            19: "y-hoc-360/ung-thu",
+
+            20: "duoc/an-toan-dung-thuoc",
+            21: "duoc/thong-tin-duoc-hoc",
+            22: "duoc/thuoc-moi",
+            23: "duoc/vaccine",
+
+            24: "y-hoc-co-truyen/thay-gioi-thuoc-hay",
+            25: "y-hoc-co-truyen/benh-vien-phong-kham",
+            26: "y-hoc-co-truyen/vi-thuoc-quanh-ta",
+            27: "y-hoc-co-truyen/chua-benh-khong-dung-thuoc",
+
+            28: "gioi-tinh/hoi-dap-phong-the",
+            29: "gioi-tinh/suc-khoe-sinh-san",
+            30: "gioi-tinh/benh-lay-truyen",
+
+            31: "dinh-duong/dinh-duong-me-va-be",
+            32: "dinh-duong/dinh-duong-nguoi-cao-tuoi",
+            33: "dinh-duong/che-do-an-nguoi-benh",
+            34: "dinh-duong/canh-giac-thuc-pham",
+            35: "dinh-duong/thuc-pham-chuc-nang",
+
+            36: "khoe-dep/my-pham",
+            37: "khoe-dep/tham-my",
+            38: "khoe-dep/bai-tap-khoe-dep",
+
+            39: "phong-mach-online",
+
+            40: "thi-truong/nhan-hang-sai-pham",
+            41: "thi-truong/doanh-nghiep",
+
+            42: "nhip-cau-nhan-ai",
+
+            43: "van-hoa-giai-tri",
+            
+            44: "doi-song",
+            
         }
         
     def download_image(self, image_url, article_title, category, publish_date):
@@ -242,6 +286,8 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
                     break
         finally:
             driver.quit()
+        print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
+
         return seen_links
 
     def get_all_articles(self):
