@@ -62,6 +62,7 @@ from .vtv import VtvCrawler
 from .baodaidoanket import DaiDoanKetCrawler
 # from .baolaodong import BaoLaoDongCrawler
 from .baonhandan import BaoNhanDanCrawler
+from .baothanhnien import BaoThanhNienCrawler
 
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
@@ -128,6 +129,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "baodaidoanket": DaiDoanKetCrawler,
             # "baolaodong": BaoLaoDongCrawler,
             "nhandan": BaoNhanDanCrawler,
+            "baothanhnien": BaoThanhNienCrawler,
             }
 
 def get_crawler(webname, **kwargs):

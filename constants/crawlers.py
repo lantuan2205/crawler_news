@@ -47,6 +47,7 @@ from crawler.vtv import VtvCrawler
 from crawler.baodaidoanket import DaiDoanKetCrawler
 from crawler.baolaodong import BaoLaoDongCrawler
 from crawler.baonhandan import BaoNhanDanCrawler
+from crawler.baothanhnien import BaoThanhNienCrawler
 
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
@@ -97,6 +98,7 @@ CRAWLERS = {
             "vtv.vn": VtvCrawler(),
             "daidoanket.vn": DaiDoanKetCrawler(),
             # "laodong.vn": BaoLaoDongCrawler(),
-            "nhandan,vn": BaoNhanDanCrawler(),
+            "nhandan.vn": BaoNhanDanCrawler(),
+            "thanhnien.vn": BaoThanhNienCrawler(),
             }
 
