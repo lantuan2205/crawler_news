@@ -37,7 +37,7 @@ class CongLyCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://congly.vn/"
         self.article_type_dict = {
-            0: "chinh-tri",
+            0: "toa-an/tieu-diem",
             1: "toa-an",
             2: "quan-ly-thi-truong",
             3: "phap-dinh",
@@ -230,6 +230,7 @@ class CongLyCrawler(BaseCrawler):
                     break
         finally:
             driver.quit()
+        print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
 
     def get_all_articles(self):
