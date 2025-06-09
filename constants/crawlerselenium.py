@@ -18,10 +18,11 @@ CRAWLERS_SELENIUM = [
     "dientutoquoc",
     "baodauthau",
     "thethaovanhoa",
-    "vjst"
-    "vtv"
-    "daidoanket"
-    # "laodong"
-    "nhandan"
-    "thanhnien"
+    "vjst",
+    "vtv",
+    "daidoanket",
+    # "laodong",
+    "nhandan",
+    "thanhnien",
+    "phunuvietnam",
 ]
