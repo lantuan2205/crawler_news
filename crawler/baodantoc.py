@@ -250,12 +250,11 @@ class BaoDanTocCrawler(BaseCrawler):
         full_urls = [f"https://baodantoc.vn{url}" if url.startswith('/') else url for url in a_urls]
         return full_urls
 
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 
-        for category in self.article_type_dict.values():
-            urls = get_urls_of_type(self, category)
-            all_articles.extend(urls)
+        urls = get_urls_of_type(self, category)
+        all_articles.extend(urls)
 
         return all_articles

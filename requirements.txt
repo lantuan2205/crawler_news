@@ -12,3 +12,5 @@ pika
 python-multipart
 selenium
 webdriver-manager
+PyYAML>=5.4
+paramiko

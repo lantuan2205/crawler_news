@@ -287,11 +287,11 @@ class BaoKiemToanCrawler(BaseCrawler):
         print(f"📄 Tổng số link thu thập được: {len(seen_links)}")
         return seen_links
     
-    def get_all_articles(self):
+    def get_all_articles(self, category):
+        
         all_articles = []
 
-        for category in self.article_type_dict.values():
-            urls = get_urls_of_type(self, category)
-            all_articles.extend(urls)
+        urls = get_urls_of_type(self, category)
+        all_articles.extend(urls)
 
         return all_articles

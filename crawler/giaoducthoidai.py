@@ -311,3 +311,12 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
             driver.quit()
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
+
+    def get_all_articles(self, category):
+        
+        all_articles = []
+
+        urls = get_urls_of_type(self, category)
+        all_articles.extend(urls)
+
+        return all_articles
