@@ -226,12 +226,11 @@ class VietNamNetCrawler(BaseCrawler):
 
         return articles_urls
 
-    def get_all_articles(self, max_pages):
+    def get_all_articles(self):
         all_articles = []
-        
+
         for category in self.article_type_dict.values():
-            for page in range(1, max_pages + 1):
-                urls = self.get_urls_of_type_thread(category, page)
-                all_articles.extend(urls)
-        
+            urls = get_urls_of_type(self, category)
+            all_articles.extend(urls)
+
         return all_articles

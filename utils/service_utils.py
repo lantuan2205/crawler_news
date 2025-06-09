@@ -204,7 +204,7 @@ def get_urls_of_type(self, article_type):
         if domain.endswith(suffix):
             domain = domain.replace(suffix, "")
             break
-    num_workers = 1 if domain in CRAWLERS_SELENIUM else self.num_workers
+    num_workers = 1
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = {}
         while True:

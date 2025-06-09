@@ -45,7 +45,7 @@ from crawler.daibieunhandan import DaiBieuNhanDanCrawler
 from crawler.tapchikhoahocvacongnghe import TapChiKhoaHocVaCongNgheCrawler
 from crawler.vtv import VtvCrawler
 from crawler.baodaidoanket import DaiDoanKetCrawler
-from crawler.baolaodong import BaoLaoDongCrawler
+# from crawler.baolaodong import BaoLaoDongCrawler
 from crawler.baonhandan import BaoNhanDanCrawler
 from crawler.baothanhnien import BaoThanhNienCrawler
 

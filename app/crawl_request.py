@@ -59,10 +59,12 @@ def crawl_article(data: dict):
         return response
     elif url.rstrip("/").endswith(domain):
         try:
-            urls = crawler.get_all_articles()
-            for article_url in urls:
-                if article_url:
-                    get_article_details(crawler, article_url, False)
+            for category in crawler.article_type_dict.values():
+
+                urls = crawler.get_all_articles(category)
+                for article_url in urls:
+                    if article_url:
+                        get_article_details(crawler, article_url, False)
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Lỗi khi lấy danh sách bài viết: {e}")
 
