@@ -300,17 +300,17 @@ class BaoNhanDanCrawler(BaseCrawler):
                     print("✅ Không còn bài mới sau khi cuộn/trang mới.")
                     break
 
-                # try:
-                #         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.see-more")))
-                #         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                #         time.sleep(1)
-                #         driver.execute_script("arguments[0].click();", next_button)
-                #         print("➡️ Đã click nút 'Trang sau'")
-                #         time.sleep(3)
+                try:
+                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.see-more")))
+                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                        time.sleep(1)
+                        driver.execute_script("arguments[0].click();", next_button)
+                        print("➡️ Đã click nút 'Trang sau'")
+                        time.sleep(3)
 
-                # except Exception:
-                #         print("✅ Không còn nút Trang sau. Dừng lại.")
-                #         break
+                except Exception:
+                        print("✅ Không còn nút Trang sau. Dừng lại.")
+                        break
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
