@@ -132,9 +132,9 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
             description = desc_tag.get_text(strip=True) if desc_tag else None
 
             # Trích xuất ngày viết bài
-            publish_date = None
-            date_tag = soup.find("span", class_="publish-date", attrs={"data-role": "publishdate"})
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            date_tag = soup.find("span", attrs={"data-role": "publishdate"})
+            publish_date = date_tag.get("title").strip() if date_tag and date_tag.has_attr("title") else None
+
 
             content_images = []
             content_div = soup.find('div', class_='detail-content afcbc-body', attrs={'data-role': 'content'})
@@ -151,9 +151,20 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
                     content_images.append(src)
 
             author = None
-            author_div = soup.find('div', class_='detail-author', attrs={'data-role': 'author'})
-            author = author_div.get_text(strip=True) if author_div else None
 
+            # Ưu tiên lấy từ <div class='detail-author' data-role='author'>
+            author_div = soup.find('div', class_='detail-author', attrs={'data-role': 'author'})
+            if author_div:
+                author = author_div.get_text(strip=True)
+            else:
+                # Nếu không có, thử tìm <p style='text-align:right'> và lấy <b>
+                author_p = soup.find('p', style=lambda value: value and 'text-align:right' in value)
+                if author_p:
+                    bold = author_p.find('b')
+                    if bold:
+                        author = bold.get_text(strip=True)
+
+            
             return title, description, content, publish_date, author, content_images
 
         except requests.exceptions.RequestException as e:
