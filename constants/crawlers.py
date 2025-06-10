@@ -103,6 +103,6 @@ CRAWLERS = {
             "nhandan.vn": BaoNhanDanCrawler(),
             "thanhnien.vn": BaoThanhNienCrawler(),
             "phunuvietnam.vn": PhuNuVietNamCrawler(),
-            "kienthuc.net": TriThucVaCuocSongCrawler(),
+            "kienthuc.net.vn": TriThucVaCuocSongCrawler(),
             }
 
