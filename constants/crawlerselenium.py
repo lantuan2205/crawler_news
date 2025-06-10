@@ -25,4 +25,5 @@ CRAWLERS_SELENIUM = [
     "nhandan",
     "thanhnien",
     "phunuvietnam",
+    "kienthuc",
 ]
