@@ -221,7 +221,7 @@ class TapChiLaoDongCongDoanCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
+        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
         chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
@@ -259,7 +259,6 @@ class TapChiLaoDongCongDoanCrawler(BaseCrawler):
                 last_size = len(seen_links)
 
                 try:
-                    # Đợi tất cả các thẻ <a> trong phân trang xuất hiện
                     paging_buttons = wait.until(
                         EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.__PC_ARTICLE_PAGING a"))
                     )
