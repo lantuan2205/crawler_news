@@ -1,10 +1,10 @@
-# Tên báo muốn crawl [trithucvacuocsong ,phunuvietnam ,baothanhnien ,nhandan ,baolaodong ,baodaidoanket ,vtv ,tapchikhoahocvacongnghe ,baokiemtoan ,tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [tapchibongda ,baotienphong ,trithucvacuocsong ,phunuvietnam ,baothanhnien ,nhandan ,baolaodong ,baodaidoanket ,vtv ,tapchikhoahocvacongnghe ,baokiemtoan ,tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["trithucvacuocsong"]
+webnames: ["tapchibongda"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -86,5 +86,7 @@ news_sites:
   baothanhnien: "https://thanhnien.vn/"
   phunuvietnam: "https://phunuvietnam.vn/"
   trithucvacuocsong: "https://kienthuc.net.vn/"
+  # baotienphong: "https://tienphong.vn/"
+  tapchibongda: "https://bongdaplus.vn/"
   # baolaodong: "https://baolaodong.vn/"
   
