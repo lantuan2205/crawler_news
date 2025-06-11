@@ -282,7 +282,7 @@ class TapChiBongDaCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        # chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
+        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
         chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
@@ -331,28 +331,6 @@ class TapChiBongDaCrawler(BaseCrawler):
                     except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break
-
-                
-
-
-
-                # try:
-                #  # Tìm div chứa nội dung chính
-                #     cont_wrap = driver.find_element(By.CSS_SELECTOR, "div.cont-wrap")
-
-                #     # Tìm nút "Xem thêm" bên trong cont-wrap
-                #     next_button = cont_wrap.find_element(By.CSS_SELECTOR, "div.view-more > a")
-
-                #     # Cuộn đến nút và click
-                #     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                #     time.sleep(1)
-                #     driver.execute_script("arguments[0].click();", next_button)
-                #     print("➡️ Đã click nút 'Trang sau'")
-                #     time.sleep(2)
-
-                # except Exception:
-                #     print("✅ Không còn nút Trang sau trong cont-wrap. Dừng lại.")
-                #     break
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
