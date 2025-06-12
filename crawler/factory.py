@@ -69,6 +69,7 @@ from .baotienphong import BaoTienPhongCrawler
 from .tapchibongda import TapChiBongDaCrawler
 from .tapchilaodongcongdoan import TapChiLaoDongCongDoanCrawler
 from .tapchidientunguoiduatin import TapChiDienTuNguoiDuaTinCrawler
+from .tapchidiendandoanhnghiep import TapChiDienDanDoanhNghiepCrawler
 
 WEBNAMES = {"vnexpress": VNExpressCrawler,
             "dantri": DanTriCrawler,
@@ -142,6 +143,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "tapchibongda": TapChiBongDaCrawler,
             "tapchilaodongcongdoan": TapChiLaoDongCongDoanCrawler,
             "tapchidientunguoiduatin": TapChiDienTuNguoiDuaTinCrawler,
+            "tapchidiendandoanhnghiep": TapChiDienDanDoanhNghiepCrawler,
             }
 
 def get_crawler(webname, **kwargs):
