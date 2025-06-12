@@ -30,4 +30,5 @@ CRAWLERS_SELENIUM = [
     "bongdaplus",
     "laodongcongdoan",
     "nguoiduatin",
+    "1thegioi",
 ]
