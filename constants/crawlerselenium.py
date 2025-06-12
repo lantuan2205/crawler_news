@@ -32,4 +32,5 @@ CRAWLERS_SELENIUM = [
     "nguoiduatin",
     "diendandoanhnghiep",
     "1thegioi",
+    "markettimes",
 ]
