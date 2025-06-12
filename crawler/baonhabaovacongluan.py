@@ -287,16 +287,16 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
                     break
 
                 # Nếu có link mới, click nút "Xem thêm"
-                # try:
-                #     next_button = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'Xem thêm')]")))
-                #     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                #     time.sleep(2)
-                #     driver.execute_script("arguments[0].click();", next_button)
-                #     print("➡️ Đã click 'Xem thêm'")
-                #     time.sleep(3)
-                # except Exception as e:
-                #     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
-                #     break
+                try:
+                    next_button = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'Xem thêm')]")))
+                    driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                    time.sleep(2)
+                    driver.execute_script("arguments[0].click();", next_button)
+                    print("➡️ Đã click 'Xem thêm'")
+                    time.sleep(3)
+                except Exception as e:
+                    print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
+                    break
 
         finally:
             driver.quit()
