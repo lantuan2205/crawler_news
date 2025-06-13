@@ -34,5 +34,6 @@ CRAWLERS_SELENIUM = [
     "1thegioi",
     "markettimes",
     "congluan",
-    "arttimes"
+    "arttimes",
+    "thoidai",
 ]
