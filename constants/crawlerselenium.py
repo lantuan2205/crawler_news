@@ -37,4 +37,5 @@ CRAWLERS_SELENIUM = [
     "arttimes",
     "thoidai",
     "kinhtechungkhoan",
+    "chatluongvacuocsong",
 ]
