@@ -43,24 +43,17 @@ class TapChiChatLuongCuocSongCrawler(BaseCrawler):
         self.logger = log.get_logger(name=__name__)
         self.base_url = "https://chatluongvacuocsong.vn/"
         self.article_type_dict = {
-            0: "trong-nuoc",
-            1: "quoc-te",
-            2: "bao-chi-truyen-thong",
+            0: "su-kien-van-de",
+            1: "kinh-te",
+            2: "tieu-chuan--quy-chuan",
 
-            3: "nha-dat",
-            4: "hang-hoa-dich-vu",
-            5: "ket-qua-dau-gia",
+            3: "nang-suat-chat-luong",
+            4: "phap-luat",
+            5: "doanh-nghiep",
 
-            6: "lich-dau-gia/tai-san-tai-chinh",
-            7: "lich-dau-gia/nha-dat", 
-            8: "lich-dau-gia/hang-hoa-dich-vu",
-
-            9: "kinh-doanh",
-            10: "doanh-nghiep",
-            11: "tai-chinh",
-
-            12: "dau-tu",
-            13: "bat-dong-san",
+            6: "hang-hoa-va-dich-vu",
+            7: "khoa-hoc-cong-nghe", 
+            8: "van-hoa-doi-song",
         }
     def download_image(self, image_url, article_title, category, publish_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
