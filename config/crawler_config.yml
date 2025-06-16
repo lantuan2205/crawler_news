@@ -1,10 +1,10 @@
-# Tên báo muốn crawl [tapchidientutrithuc ,tapchimekongasean ,tapchidientugiaoducvietnam ,tapchichatluongcuocsong ,tapchidientukinhtechungkhoanvietnam ,tapchithoidai ,thoibaovanhocnghethuat ,baonhabaovacongluan ,tapchidientunhipsongthitruong ,tapchimotthegioi ,tapchidiendandoanhnghiep ,tapchidientunguoiduatin ,tapchilaodongcongdoan ,tapchibongda ,baotienphong ,trithucvacuocsong ,phunuvietnam ,baothanhnien ,nhandan ,baolaodong ,baodaidoanket ,vtv ,tapchikhoahocvacongnghe ,baokiemtoan ,tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
+# Tên báo muốn crawl [tapchithuonghieuvasanpham ,tapchidientutrithuc ,tapchimekongasean ,tapchidientugiaoducvietnam ,tapchichatluongcuocsong ,tapchidientukinhtechungkhoanvietnam ,tapchithoidai ,thoibaovanhocnghethuat ,baonhabaovacongluan ,tapchidientunhipsongthitruong ,tapchimotthegioi ,tapchidiendandoanhnghiep ,tapchidientunguoiduatin ,tapchilaodongcongdoan ,tapchibongda ,baotienphong ,trithucvacuocsong ,phunuvietnam ,baothanhnien ,nhandan ,baolaodong ,baodaidoanket ,vtv ,tapchikhoahocvacongnghe ,baokiemtoan ,tochucnhanuoc ,tapchixaydung ,baochinhphu ,baoquocte ,dantocmiennui ,tapchithongtinvatruyenthong ,tapchigiaothongvantai ,kinhtevadubao ,thethaovanhoa ,baodauthau ,dientutoquoc ,baohaiquanonline ,daibieunhandan ,nongnghiepmoitruong ,giaoducthoidai ,tapchithanhtra ,tapchibaohiemxahoi, tapchinganhang, thoibaonganhang ,tapchitaichinh,kiemsat,vov,congannhandan, baoxaydung, suckhoedoisong, congly, congthuong, quanlythitruong, tapchigiaoduc, thuonghieuvaphapluat, kinhtedouong, suckhoecong, vneconomy, thuonghieucongluan, 
 # taichinhdoanhnghiep, congnghevadoisong, phunumoi, 
 # vietnamdaily, kienthuc, dangcongsan, tainguyenvamoitruong, tapchicongthuong, baohaiquanvietnam, 
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["tapchidientutrithuc"]
+webnames: ["tapchithuonghieuvasanpham"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -102,3 +102,4 @@ news_sites:
   tapchidientugiaoducvietnam: "https://giaoduc.net.vn/"
   tapchimekongasean: "https://mekongasean.vn/"
   tapchidientutrithuc: "https://znews.vn/"
+  tapchithuonghieuvasanpham: "https://thuonghieusanpham.vn/"
