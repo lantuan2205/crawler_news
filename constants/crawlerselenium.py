@@ -40,4 +40,5 @@ CRAWLERS_SELENIUM = [
     "chatluongvacuocsong",
     "giaoduc",
     "mekongasean",
+    "znews",
 ]
