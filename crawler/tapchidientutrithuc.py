@@ -254,17 +254,13 @@ class TapChiDienTuTriThucCrawler(BaseCrawler):
         time.sleep(2)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
-
-        last_size = 0  
         try:
-            wait = WebDriverWait(driver, 10)
-
             while True:
                 # Scroll và đợi DOM render
-                # driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                # time.sleep(3)
+                driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
+                time.sleep(3)
 
-                # Tìm tất cả bài viết hiện có div.px-3.px-sm-0.article-news.mr-lg-0.mr-xl-0.px-xl-0
+                # Tìm tất cả bài viết hiện có div
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.article-list.listing-layout.responsive.infinite-load article.article-item")
                 new_found = 0
 
