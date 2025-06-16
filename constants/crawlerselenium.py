@@ -39,4 +39,5 @@ CRAWLERS_SELENIUM = [
     "kinhtechungkhoan",
     "chatluongvacuocsong",
     "giaoduc",
+    "mekongasean",
 ]

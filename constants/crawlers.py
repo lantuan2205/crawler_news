@@ -62,6 +62,7 @@ from crawler.tapchithoidai import TapChiThoiDaiCrawler
 from crawler.tapchidientukinhtechungkhoanvietnam import TapChiDienTuKinhTeChungKhoanVietNamCrawler
 from crawler.tapchichatluongcuocsong import TapChiChatLuongCuocSongCrawler
 from crawler.tapchidientugiaoducvietnam import TapChiDienTuGiaoDucVietNamCrawler
+from crawler.tapchimekongasean import TapChiMekongAseanCrawler
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
             "dantri.com.vn": DanTriCrawler(),
@@ -128,5 +129,6 @@ CRAWLERS = {
             "kinhtechungkhoan.vn": TapChiDienTuKinhTeChungKhoanVietNamCrawler(),
             "chatluongvacuocsong.vn": TapChiChatLuongCuocSongCrawler(),
             "giaoduc.net.vn": TapChiDienTuGiaoDucVietNamCrawler(),
+            "mekongasean.vn": TapChiMekongAseanCrawler(),
             }
 
