@@ -44,4 +44,5 @@ CRAWLERS_SELENIUM = [
     "thuonghieusanpham",
     "doanhnghiepvn",
     "doanhnghiephoinhap",
+    "suckhoecongdongonline",
 ]
