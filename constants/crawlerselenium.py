@@ -48,4 +48,5 @@ CRAWLERS_SELENIUM = [
     "nhadautu",
     "vietnamfinance",
     "doanhnghieptiepthi",
+    "danviet",
 ]
