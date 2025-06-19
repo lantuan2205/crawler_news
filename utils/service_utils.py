@@ -15,6 +15,8 @@ from io import BytesIO
 import mimetypes
 from kafka import KafkaProducer
 import json
+from datetime import datetime
+import pytz
 
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = "192.168.132.250:9092"
@@ -46,6 +48,22 @@ def send_clean_article_to_kafka(article_data: dict):
         print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC}'")
     except Exception as e:
         print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+
+
+def parse_datetime_to_timestamp(date_str: str) -> int:
+    # Bước 1: Loại bỏ phần (GMT+7)
+    date_str_clean = date_str.split(" (")[0]
+
+    # Bước 2: Parse string thành datetime
+    dt = datetime.strptime(date_str_clean, "%d/%m/%Y, %H:%M")
+
+    # Bước 3: Gán timezone Asia/Ho_Chi_Minh
+    tz = pytz.timezone("Asia/Ho_Chi_Minh")
+    dt = tz.localize(dt)
+
+    # Bước 4: Chuyển sang timestamp milliseconds
+    timestamp_ms = int(dt.timestamp() * 1000)
+    return timestamp_ms
 
 
 def save_to_db(data, output_file=None):
@@ -219,8 +237,8 @@ def clean_date(text_date):
 
     if "(GMT+7)" not in text_date:
         text_date += " (GMT+7)"
-
-    return text_date
+    return parse_datetime_to_timestamp(text_date)
+    
 
 def get_urls_of_type(self, article_type):
     articles_urls = set()
