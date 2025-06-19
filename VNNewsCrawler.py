@@ -5,7 +5,6 @@ import subprocess
 from logger import log
 from utils import utils
 from crawler.factory import get_crawler
-from utils.ui_checker import UIChecker
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 
 def crawl_site(webname, config, ui_checker):
@@ -23,7 +22,6 @@ def crawl_site(webname, config, ui_checker):
         print(f"❌ Lỗi khi chạy crawler.start_crawling() cho {webname}: {e}")
 
 def wrapper(webname, config, ui_hash_file):
-    local_ui_checker = UIChecker(ui_hash_file)
     return crawl_site(webname, config, local_ui_checker)
 
 def run_requests(requests_webs, config, ui_hash_file):

@@ -2,6 +2,8 @@ from kafka import KafkaConsumer
 import requests
 import json
 import os
+import re
+from utils.service_utils import process_crawl
 
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.132.250:9092")
@@ -24,19 +26,15 @@ consumer = KafkaConsumer(
 print(f"[*] Đang lắng nghe topic '{KAFKA_TOPIC}' trên Kafka ({KAFKA_BOOTSTRAP_SERVERS})...")
 
 for msg in consumer:
-    message = msg.value
-    print(f"[x] Nhận message: {message}")
-
     try:
-        # Gửi message tới API xử lý
-        response = requests.post(API_URL, json={"message": message})
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"[!] [Lỗi gửi API] {e}")
-        continue
+        message = msg.value  # Đã là dict nhờ value_deserializer
+        print(f"[📥] Nhận message từ Kafka: {message}")
 
-    if response.status_code == 200:
-        data = response.json()
-        print(f"[✓] [Phản hồi API] {response.status_code}: {data}")
-    else:
-        print(f"[✗] [Lỗi API] {response.status_code}: {response.text}")
+        # Gọi trực tiếp hàm xử lý thay vì gọi API
+        result = process_crawl({"message": message})
+
+        # In kết quả nếu có
+        print(f"[✅] Kết quả xử lý: {result}")
+
+    except Exception as e:
+        print(f"[💥] Lỗi xử lý message: {e}")
