@@ -3,7 +3,7 @@ import requests
 import json
 import os
 import re
-from utils.service_utils import process_crawl
+from service_consumer import process_crawl
 
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.132.250:9092")
