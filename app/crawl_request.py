@@ -1,7 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Union
-from utils.service_utils import save_to_json, send_json_to_api, clean_date
+from utils.service_utils import save_to_json, send_json_to_api, clean_date, send_clean_article_to_kafka
 import re
 import os
 import requests
@@ -105,7 +105,8 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
         "comments": [""]
     }
     save_to_json(article_data)
-    send_json_to_api()
+    #send_json_to_api()
+    send_clean_article_to_kafka(article_data)
     time.sleep(1)
     if link:
         return article_data

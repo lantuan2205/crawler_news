@@ -31,6 +31,7 @@ class VNExpressCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
+        self.base_url = "https://vnexpress.net/"
         self.article_type_dict = {
             0: "thoi-su/chinh-tri",
             1: "thoi-su/huong-toi-ky-nguyen-moi/tinh-gon-bo-may",

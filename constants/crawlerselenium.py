@@ -3,7 +3,7 @@ CRAWLERS_SELENIUM = [
     "congly",
     "suckhoedoisong",
     "baoxaydung",
-    "congannhandan",
+    "cand",
     "vov",
     "kiemsat",
     "tapchitaichinh",
