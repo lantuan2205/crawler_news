@@ -62,7 +62,7 @@ def parse_datetime_to_timestamp(date_str: str) -> int:
     dt = tz.localize(dt)
 
     # Bước 4: Chuyển sang timestamp milliseconds
-    timestamp_ms = int(dt.timestamp() * 1000)
+    timestamp_ms = int(dt.timestamp())
     return timestamp_ms
 
 
