@@ -2,7 +2,10 @@ from kafka import KafkaConsumer
 import requests
 import json
 import os
-
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.utils import init_output_dirs, create_dir, read_file
+from app.crawl_request import process_crawl
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.132.250:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "news.crawler.request")
@@ -29,14 +32,8 @@ for msg in consumer:
 
     try:
         # Gửi message tới API xử lý
-        response = requests.post(API_URL, json={"message": message})
-        response.raise_for_status()
+        response = process_crawl({"message": message})
     except requests.RequestException as e:
         print(f"[!] [Lỗi gửi API] {e}")
         continue
-
-    if response.status_code == 200:
-        data = response.json()
-        print(f"[✓] [Phản hồi API] {response.status_code}: {data}")
-    else:
-        print(f"[✗] [Lỗi API] {response.status_code}: {response.text}")
+    print(f"[✗] [Lỗi API] {response}")

@@ -14,27 +14,33 @@ app = FastAPI()
 
 @app.post("/crawl/")
 def crawl_article(data: dict):
+    try:
+        return process_crawl(data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+def process_crawl(data: dict):
     print(f"Processing message: {data}")
     print(f"START crawling.....")
     try:
         parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
     except (json.JSONDecodeError, TypeError):
-        raise HTTPException(status_code=400, detail="Invalid JSON format")
+        raise ValueError("Invalid JSON format")
 
     source = parsed_data.get("source")
     action = parsed_data.get("action")
     url = parsed_data.get("body", {}).get("url")
 
     if source != "NEWS" or action != "GENERAL":
-        raise HTTPException(status_code=400, detail="Sai source hoặc action")
+        raise ValueError("Sai source hoặc action")
 
     if not url:
-        raise HTTPException(status_code=400, detail="URL không được để trống")
+        raise ValueError("URL không được để trống")
     
     domain = url.split("/")[2]
     crawler = CRAWLERS.get(domain)
     if not crawler:
-        raise HTTPException(status_code=400, detail="Không hỗ trợ domain này")
+        raise ValueError("Không hỗ trợ domain này")
 
     response = {
         "status": "success",
@@ -50,26 +56,23 @@ def crawl_article(data: dict):
         re.search(r'-i\d+/?$', url)
     ])
 
-    # Xử lý URL bài viết cụ thể (chứa ID hoặc slug)
     if is_article:
         article = get_article_details(crawler, url, True)
         if not article:
-            raise HTTPException(status_code=404, detail="Không tìm thấy bài viết hoặc URL không hợp lệ")
+            raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
         response["articles"].append(article)
         return response
     elif url.rstrip("/").endswith(domain):
         try:
             for category in crawler.article_type_dict.values():
-
                 urls = crawler.get_all_articles(category)
                 for article_url in urls:
                     if article_url:
                         get_article_details(crawler, article_url, False)
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Lỗi khi lấy danh sách bài viết: {e}")
-
+            raise ValueError(f"Lỗi khi lấy danh sách bài viết: {e}")
     else:
-        raise HTTPException(status_code=400, detail="URL không hợp lệ hoặc chưa được hỗ trợ")
+        raise ValueError("URL không hợp lệ hoặc chưa được hỗ trợ")
     print(f"Finished crawling..............")
     return {"status": "ok", "url": url, "message": f"Đã crawl {len(urls)} bài viết. Dữ liệu đang được lưu."}
 
