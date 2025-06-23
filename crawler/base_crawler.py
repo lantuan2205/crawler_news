@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 import concurrent.futures
 import json
 from tqdm import tqdm
+from pathlib import Path
 import time
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 from utils.utils import init_output_dirs, create_dir, read_file
-from utils.service_utils import save_to_json, send_json_to_api, save_to_db
+from utils.service_utils import save_to_json, send_json_to_api, save_to_db, clean_date, send_clean_article_to_kafka
 class BaseCrawler(ABC):
 
     @abstractmethod
@@ -54,9 +55,27 @@ class BaseCrawler(ABC):
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
-        data['article_type'] = article_type
+        photoInfos = {}
+        for url_image in data["content_image_urls"]:
+            clean_url = url_image.split('?')[0]
+            filename = Path(clean_url).name
+            photoInfos[filename] = url_image
+
+        article_data = {
+            "dataSource": "/".join(url.split("/")[:3]),
+            "title": data["title"],
+            "url": url,
+            "author": data["author"],
+            "publishedDate": clean_date(data["published_date"]),
+            "description": data["description"],
+            "content": data["content"],
+            "contentImageUrls": data["content_image_urls"],
+            "photoInfos": photoInfos,
+            "comments": [""]
+        }
         save_to_json(data)
         save_to_db(data)
+        send_clean_article_to_kafka(article_data)
         # send_json_to_api()
         time.sleep(1)
         return {"url": url, "data": data}
