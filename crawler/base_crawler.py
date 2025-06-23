@@ -56,27 +56,17 @@ class BaseCrawler(ABC):
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
         photoInfos = {}
+
+        data['comments'] = []
         for url_image in data["contentImageUrls"]:
             clean_url = url_image.split('?')[0]
             filename = Path(clean_url).name
             photoInfos[filename] = url_image
-
-        article_data = {
-            "dataSource": "/".join(url.split("/")[:3]),
-            "title": data["title"],
-            "url": url,
-            "author": data["author"],
-            "publishedDate": clean_date(data["publishedDate"]),
-            "description": data["description"],
-            "content": data["content"],
-            "contentImageUrls": data["contentImageUrls"],
-            "photoInfos": photoInfos,
-            "comments": [""]
-        }
-        print("------article_data--------", article_data)
+        data['photoInfos'] = photoInfos
+        print("------data--------", data)
         save_to_json(data)
         # save_to_db(data)
-        send_clean_article_to_kafka(article_data)
+        send_clean_article_to_kafka(data)
         # send_json_to_api()
         time.sleep(1)
         return {"url": url, "data": data}
