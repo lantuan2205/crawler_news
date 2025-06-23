@@ -65,7 +65,7 @@ from .baonhandan import BaoNhanDanCrawler
 from .baothanhnien import BaoThanhNienCrawler
 from .phunuvietnam import PhuNuVietNamCrawler
 from .baotrithucvacuocsong import TriThucVaCuocSongCrawler
-from .baotienphong import BaoTienPhongCrawler
+# from .baotienphong import BaoTienPhongCrawler
 from .tapchibongda import TapChiBongDaCrawler
 from .tapchilaodongcongdoan import TapChiLaoDongCongDoanCrawler
 from .tapchidientunguoiduatin import TapChiDienTuNguoiDuaTinCrawler
@@ -156,7 +156,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
             "baothanhnien": BaoThanhNienCrawler,
             "phunuvietnam": PhuNuVietNamCrawler,
             "trithucvacuocsong": TriThucVaCuocSongCrawler,
-            "baotienphong": BaoTienPhongCrawler,
+            # "baotienphong": BaoTienPhongCrawler,
             "tapchibongda": TapChiBongDaCrawler,
             "tapchilaodongcongdoan": TapChiLaoDongCongDoanCrawler,
             "tapchidientunguoiduatin": TapChiDienTuNguoiDuaTinCrawler,
