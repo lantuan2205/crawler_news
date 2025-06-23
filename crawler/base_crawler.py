@@ -66,7 +66,7 @@ class BaseCrawler(ABC):
             "title": data["title"],
             "url": url,
             "author": data["author"],
-            "publishedDate": clean_date(data["published_date"]),
+            "publishedDate": clean_date(data["publishedDate"]),
             "description": data["description"],
             "content": data["content"],
             "contentImageUrls": data["contentImageUrls"],
