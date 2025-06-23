@@ -202,12 +202,11 @@ class TaiChinhDoanhNghiepCrawler(BaseCrawler):
         urls = [a['href'] for a in article_elements]
         return urls
 
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 
-        for category in self.article_type_dict.values():
-            urls = get_urls_of_type(self, category)
-            all_articles.extend(urls)
+        urls = get_urls_of_type(self, category)
+        all_articles.extend(urls)
 
         return all_articles

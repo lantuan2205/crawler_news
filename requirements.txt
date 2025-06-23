@@ -8,7 +8,11 @@ urllib3==2.1.0
 tqdm==4.64.1
 fastapi
 uvicorn
-pika
+#pika
+pytz
 python-multipart
 selenium
 webdriver-manager
+PyYAML>=5.4
+paramiko
+kafka-python

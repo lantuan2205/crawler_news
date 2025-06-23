@@ -31,6 +31,7 @@ class VNExpressCrawler(BaseCrawler):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
         self.logger = log.get_logger(name=__name__)
+        self.base_url = "https://vnexpress.net/"
         self.article_type_dict = {
             0: "thoi-su/chinh-tri",
             1: "thoi-su/huong-toi-ky-nguyen-moi/tinh-gon-bo-may",
@@ -264,12 +265,11 @@ class VNExpressCrawler(BaseCrawler):
 
         return articles_urls
 
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 
-        for category in self.article_type_dict.values():
-            urls = get_urls_of_type(self, category)
-            all_articles.extend(urls)
+        urls = get_urls_of_type(self, category)
+        all_articles.extend(urls)
 
         return all_articles
