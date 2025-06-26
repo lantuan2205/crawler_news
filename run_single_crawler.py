@@ -1,6 +1,6 @@
 import argparse
 from utils import utils
-from crawler.factory import get_crawler
+from news_crawler.factory import get_crawler
 from utils.ui_checker import UIChecker
 
 def crawl_site(webname, config, ui_checker):

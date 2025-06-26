@@ -4,7 +4,7 @@ from threading import Thread
 import subprocess
 from logger import log
 from utils import utils
-from crawler.factory import get_crawler
+from news_crawler.factory import get_crawler
 from utils.ui_checker import UIChecker
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 
