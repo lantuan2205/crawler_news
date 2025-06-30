@@ -1,6 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Union
+import argparse
 from utils.service_utils import save_to_json, send_json_to_api, clean_date, send_clean_article_to_kafka
 import re
 import os
@@ -10,14 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import time
 from constants.crawlers import CRAWLERS
-app = FastAPI()
-
-@app.post("/crawl/")
-def crawl_article(data: dict):
-    try:
-        return process_crawl(data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+from typing import Optional, Dict
 
 def process_crawl(data: dict):
     print(f"Processing message: {data}")
@@ -113,3 +104,18 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
     time.sleep(1)
     if link:
         return article_data
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Crawl a news article by config file")
+    parser.add_argument('--config', required=True, help='Path to config JSON file')
+    args = parser.parse_args()
+    # Đọc file config
+    with open(args.config, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    try:
+        result = process_crawl({"message": data})
+        print("Kết quả crawl:")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(f"Lỗi: {e}")
+
