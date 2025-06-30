@@ -255,7 +255,7 @@ class DanTriCrawler(BaseCrawler):
                         content_images.append(img["data-src"])
 
             author_tag = soup.find("div", class_="author-name")
-            author = author_tag.get_text(strip=True) if author_tag else "Không rõ tác giả"
+            author = author_tag.get_text(strip=True) if author_tag else None
 
             return title, description, content, publish_date, author, content_images
 
