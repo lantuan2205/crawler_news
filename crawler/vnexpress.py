@@ -273,3 +273,21 @@ class VNExpressCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            # Tìm tất cả thẻ <article> có data-url
+            for article in soup.find_all("article"):
+                data_url = article.get("data-url")
+                if data_url and data_url.startswith("https://vnexpress.net/"):
+                    urls.add(data_url)
+
+            return list(urls)
+        except Exception as e:
+            return []
