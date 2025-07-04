@@ -34,8 +34,8 @@ class VNExpressCrawler(BaseCrawler):
         self.base_url = "https://vnexpress.net/"
         self.article_type_dict = {
             0: "thoi-su/chinh-tri",
-            1: "thoi-su/huong-toi-ky-nguyen-moi/tinh-gon-bo-may",
-            2: "thoi-su/chinh-tri/nhan-su",
+            # 1: "thoi-su/huong-toi-ky-nguyen-moi/tinh-gon-bo-may",
+            # 2: "thoi-su/chinh-tri/nhan-su",
             # 3: "thoi-su/dan-sinh",
             # 4: "thoi-su/lao-dong-viec-lam",
             # 5: "thoi-su/giao-thong",

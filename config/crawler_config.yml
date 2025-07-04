@@ -14,7 +14,7 @@
 #  thoibaotaichinhvietnam, thanhtra, baodantoc, baovephapluat, baotintuc, 
 # baodautu, vtcnews, tapchidientu, vnexpress, vietnamnet, dantri, tapchitoaan, quandoinhandan, baovanhoa
 # ]
-webnames: ["vnexpress", "dantri"]
+webnames: ["vnexpress"]
 # Có thể crawl theo url hoặc chuyên mục của báo
 # tasks = ["url", "type"]
 task: "type"
@@ -23,7 +23,7 @@ task: "type"
 logger_fpath: "logger/logger_config.yml"
 urls_fpath: "urls.txt"
 output_dpath: "result"
-num_workers: 3
+num_workers: 1
 
 # Nếu task == "type" thì  article_type là chuyên mục báo or All types task == "all"
 article_type: "all"
