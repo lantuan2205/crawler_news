@@ -19,8 +19,8 @@ from datetime import datetime
 import pytz
 
 # Cấu hình Kafka
-KAFKA_BOOTSTRAP_SERVERS = "192.168.161.102:9092"
-KAFKA_TOPIC = "news.crawler.raw"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.102:9092")
+KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
