@@ -203,6 +203,8 @@ class VietNamNetCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number-1}"
+        if(page_number == 20):
+            return []
         articles_urls = []
         try:
             content = requests.get(page_url, headers=headers, timeout=10).content
