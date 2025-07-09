@@ -236,12 +236,12 @@ class TapChiThongTinVaTruyenThongCrawler(BaseCrawler):
             return None
             
         # Tải và lưu ảnh nội dung
-        content_image_paths = []
+        '''content_image_paths = []
         for img_url in content_images:
             if img_url:
                 img_path = self.download_image(img_url, title, article_type, publish_date)      
                 if img_path:
-                    content_image_paths.append(img_path)
+                    content_image_paths.append(img_path)'''
                     
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
@@ -252,7 +252,7 @@ class TapChiThongTinVaTruyenThongCrawler(BaseCrawler):
             "description": description,
             "content": content,
             "contentImageUrls": content_images,
-            "localContentImagePaths": content_image_paths
+            # "localContentImagePaths": content_image_paths
         }
 
         return article_data

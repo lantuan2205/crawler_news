@@ -232,7 +232,7 @@ class VNExpressCrawler(BaseCrawler):
                 "description": description,
                 "content": content,
                 "contentImageUrls": content_image_urls,
-                # "localContentImagePaths": content_image_paths
+                # # "localContentImagePaths": content_image_paths
             }
 
             return article_data

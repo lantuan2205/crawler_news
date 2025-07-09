@@ -293,7 +293,7 @@ class DanTriCrawler(BaseCrawler):
             "description": description,
             "content": content,
             "contentImageUrls": content_images,
-            # "localContentImagePaths": content_image_paths
+            # # "localContentImagePaths": content_image_paths
         }
 
         return article_data
