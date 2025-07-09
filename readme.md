@@ -20,7 +20,7 @@ pip install -r requirements.txt
 
 ## Run
 ```
-python VNNewsCrawler.py --config config/crawler_config.yml
+python3 VNNewsCrawler.py --config config/crawler_config.yml
 ```
 
 

@@ -1,61 +1,76 @@
-from crawler.vnexpress import VNExpressCrawler
-from crawler.vietnamnet import VietNamNetCrawler
-from crawler.dantri import DanTriCrawler
-from crawler.tapchitoaan import TapChiToaAnCrawler
-from crawler.quandoinhandan import QuanDoiNhanDanCrawler
-from crawler.baovanhoa import BaoVanHoaCrawler
-from crawler.tapchidientu import TapChiDienTuCrawler
-from crawler.vtcnews import VTCNewsCrawler
-from crawler.baodautu import BaoDauTuCrawler
-from crawler.baotintuc import BaoTinTucCrawler
-from crawler.baovephapluat import BaoVePhapLuatCrawler
-from crawler.baodantoc import BaoDanTocCrawler
-from crawler.baothanhtra import BaoThanhTraCrawler
-from crawler.baotaichinhvietnam import BaoTaiChinhVietNamCrawler
-from crawler.baohaiquanvietnam import BaoHaiQuanVietNamCrawler
-from crawler.tapchicongthuong import TapChiCongThuongCrawler
-from crawler.tainguyenvamoitruong import TaiNguyenVaMoiTruongCrawler
-from crawler.dangcongsan import DangCongSanCrawler
-from crawler.kienthuc import KienThucCrawler
-from crawler.vietnamdaily import VietNameDailyCrawler
-from crawler.phunumoi import PhuNuMoiCrawler
-from crawler.congnghevadoisong import CongNgheVaDoiSongCrawler
-from crawler.taichinhdoanhnghiep import TaiChinhDoanhNghiepCrawler
-from crawler.thuonghieucongluan import ThuongHieuCongLuanCrawler
-from crawler.vneconomy import VNEconomyCrawler
-from crawler.suckhoecong import SucKhoeCongCrawler
-from crawler.kinhtedouong import KinhTeDoUongCrawler
-from crawler.thuonghieuvaphapluat import ThuongHieuPhapLuatCrawler
-from crawler.tapchigiaoduc import TapChiGiaoDucCrawler
-from crawler.quanlythitruong import QuanLyThiTruongCrawler
-from crawler.congthuong import CongThuongCrawler
-from crawler.congly import CongLyCrawler
-from crawler.suckhoedoisong import SucKhoeDoiSongCrawler
-from crawler.baoxaydung import BaoXayDungCrawler
-from crawler.congannhandan import CongAnNhanDanCrawler
-from crawler.vov import VovCrawler
-from crawler.kiemsat import KiemSatCrawler
-from crawler.tapchitaichinh import TapChiTaiChinhCrawler
-from crawler.thoibaonganhang import ThoiBaoNganHangCrawler
-from crawler.tapchinganhang import TapChiNganHangCrawler
-from crawler.tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
-from crawler.tapchithanhtra import TapChiThanhTraCrawler
-from crawler.nongnghiepmoitruong import NongNghiepMoiTruongCrawler
-from crawler.daibieunhandan import DaiBieuNhanDanCrawler
-from crawler.baohaiquanonline import BaoHaiQuanOnlineCrawler
-from crawler.baodientutoquoc import DienTuToQuocCrawler
-from crawler.baodauthau import BaoDauThauCrawler
-from crawler.thethaovanhoa import TheThaoVanHoaCrawler
-from crawler.baokinhtevadubao import KinhTeVaDuBaoCrawler
-from crawler.tapchigiaothongvantai import TapChiGiaoThongVanTaiCrawler
-from crawler.tapchithongtinvatruyenthong import TapChiThongTinVaTruyenThongCrawler
-from crawler.baoanhdantocvamiennui import BaoDanTocMienNuiCrawler
-from crawler.baovietnamplus import BaoVietnamPlusCrawler
-from crawler.baoquocte import BaoQuocTeCrawler
-from crawler.baochinhphu import BaoChinhPhuCrawler
-from crawler.tapchixaydung import TapChiXayDungCrawler
-from crawler.tochucnhanuoc import ToChucNhaNuocCrawler
-from crawler.kiemtoan import BaoKiemToanCrawler
+from news_crawler.vnexpress import VNExpressCrawler
+from news_crawler.vietnamnet import VietNamNetCrawler
+from news_crawler.dantri import DanTriCrawler
+from news_crawler.tapchitoaan import TapChiToaAnCrawler
+from news_crawler.quandoinhandan import QuanDoiNhanDanCrawler
+from news_crawler.baovanhoa import BaoVanHoaCrawler
+from news_crawler.tapchidientu import TapChiDienTuCrawler
+from news_crawler.vtcnews import VTCNewsCrawler
+from news_crawler.baodautu import BaoDauTuCrawler
+from news_crawler.baotintuc import BaoTinTucCrawler
+from news_crawler.baovephapluat import BaoVePhapLuatCrawler
+from news_crawler.baodantoc import BaoDanTocCrawler
+from news_crawler.baothanhtra import BaoThanhTraCrawler
+from news_crawler.baotaichinhvietnam import BaoTaiChinhVietNamCrawler
+from news_crawler.baohaiquanvietnam import BaoHaiQuanVietNamCrawler
+from news_crawler.tapchicongthuong import TapChiCongThuongCrawler
+from news_crawler.tainguyenvamoitruong import TaiNguyenVaMoiTruongCrawler
+from news_crawler.dangcongsan import DangCongSanCrawler
+from news_crawler.kienthuc import KienThucCrawler
+from news_crawler.vietnamdaily import VietNameDailyCrawler
+from news_crawler.phunumoi import PhuNuMoiCrawler
+from news_crawler.congnghevadoisong import CongNgheVaDoiSongCrawler
+from news_crawler.taichinhdoanhnghiep import TaiChinhDoanhNghiepCrawler
+from news_crawler.thuonghieucongluan import ThuongHieuCongLuanCrawler
+from news_crawler.vneconomy import VNEconomyCrawler
+from news_crawler.suckhoecong import SucKhoeCongCrawler
+from news_crawler.kinhtedouong import KinhTeDoUongCrawler
+from news_crawler.thuonghieuvaphapluat import ThuongHieuPhapLuatCrawler
+from news_crawler.tapchigiaoduc import TapChiGiaoDucCrawler
+from news_crawler.quanlythitruong import QuanLyThiTruongCrawler
+from news_crawler.congthuong import CongThuongCrawler
+from news_crawler.congly import CongLyCrawler
+from news_crawler.suckhoedoisong import SucKhoeDoiSongCrawler
+from news_crawler.baoxaydung import BaoXayDungCrawler
+from news_crawler.congannhandan import CongAnNhanDanCrawler
+from news_crawler.vov import VovCrawler
+from news_crawler.kiemsat import KiemSatCrawler
+from news_crawler.tapchitaichinh import TapChiTaiChinhCrawler
+from news_crawler.thoibaonganhang import ThoiBaoNganHangCrawler
+from news_crawler.tapchinganhang import TapChiNganHangCrawler
+from news_crawler.tapchibaohiemxahoi import TapChiBaoHiemXaHoiCrawler
+from news_crawler.tapchithanhtra import TapChiThanhTraCrawler
+from news_crawler.nongnghiepmoitruong import NongNghiepMoiTruongCrawler
+from news_crawler.daibieunhandan import DaiBieuNhanDanCrawler
+from news_crawler.tapchikhoahocvacongnghe import TapChiKhoaHocVaCongNgheCrawler
+from news_crawler.vtv import VtvCrawler
+from news_crawler.baodaidoanket import DaiDoanKetCrawler
+from news_crawler.baonhandan import BaoNhanDanCrawler
+from news_crawler.baothanhnien import BaoThanhNienCrawler
+from news_crawler.phunuvietnam import PhuNuVietNamCrawler
+from news_crawler.baotrithucvacuocsong import TriThucVaCuocSongCrawler
+from news_crawler.tapchibongda import TapChiBongDaCrawler
+from news_crawler.tapchilaodongcongdoan import TapChiLaoDongCongDoanCrawler
+from news_crawler.tapchidientunguoiduatin import TapChiDienTuNguoiDuaTinCrawler
+from news_crawler.tapchidiendandoanhnghiep import TapChiDienDanDoanhNghiepCrawler
+from news_crawler.tapchimotthegioi import TapChiMotTheGioiCrawler
+from news_crawler.tapchidientunhipsongthitruong import TapChiDienTuNhipSongThiTruongCrawler
+from news_crawler.baonhabaovacongluan import BaoNhaBaoVaCongLuanCrawler
+from news_crawler.thoibaovanhocnghethuat import ThoiBaoVanHocNgheThuatCrawler
+from news_crawler.tapchithoidai import TapChiThoiDaiCrawler
+from news_crawler.tapchidientukinhtechungkhoanvietnam import TapChiDienTuKinhTeChungKhoanVietNamCrawler
+from news_crawler.tapchichatluongcuocsong import TapChiChatLuongCuocSongCrawler
+from news_crawler.tapchidientugiaoducvietnam import TapChiDienTuGiaoDucVietNamCrawler
+from news_crawler.tapchimekongasean import TapChiMekongAseanCrawler
+from news_crawler.tapchidientutrithuc import TapChiDienTuTriThucCrawler
+from news_crawler.tapchithuonghieuvasanpham import TapChiThuongHieuVaSanPhamCrawler
+from news_crawler.tapchidoanhnghiepvietnam import TapChiDoanhNghiepVietNamCrawler
+from news_crawler.tapchidoanhnghiepvahoinhap import TapChiDoanhNghiepVaHoiNhapCrawler
+from news_crawler.tapchisuckhoecongdong import TapChiSucKhoeCongDongCrawler
+from news_crawler.tapchinhadautu import TapChiNhaDauTuCrawler
+from news_crawler.tapchidaututaichinh import TapChiDauTuTaiChinhCrawler
+from news_crawler.tapchidoanhnghiepvatiepthi import TapChiDoanhNghiepVaTiepThiCrawler
+from news_crawler.baodientudanviet import BaoDienTuDanVietCrawler
 
 CRAWLERS = {
             "vnexpress.net": VNExpressCrawler(),
@@ -102,18 +117,34 @@ CRAWLERS = {
             "thanhtravietnam.vn": TapChiThanhTraCrawler(),
             "nongnghiepmoitruong.vn": NongNghiepMoiTruongCrawler(),
             "daibieunhandan.vn": DaiBieuNhanDanCrawler(),
-            "haiquanonline.com.vn": BaoHaiQuanOnlineCrawler(),
-            "toquoc.vn": DienTuToQuocCrawler(),
-            "baodauthau.vn": BaoDauThauCrawler(),
-            "thethaovanhoa.vn": TheThaoVanHoaCrawler(),
-            "kinhtevadubao.vn": KinhTeVaDuBaoCrawler(),
-            "giaothong.tapchixaydung.vn": TapChiGiaoThongVanTaiCrawler(),
-            "ictvietnam.vn": TapChiThongTinVaTruyenThongCrawler(),
-            "dantocmiennui.baotintuc.vn": BaoDanTocMienNuiCrawler(),
-            "www.vietnamplus.vn": BaoVietnamPlusCrawler(),
-            "baoquocte.vn": BaoQuocTeCrawler(),
-            "baochinhphu.vn": BaoChinhPhuCrawler(),
-            "tapchixaydung.vn": TapChiXayDungCrawler(),
-            "tcnnld.vn": ToChucNhaNuocCrawler(),
-            "baokiemtoan.vn": BaoKiemToanCrawler()
+            "vjst.vn": TapChiKhoaHocVaCongNgheCrawler(),
+            "vtv.vn": VtvCrawler(),
+            "daidoanket.vn": DaiDoanKetCrawler(),
+            "nhandan.vn": BaoNhanDanCrawler(),
+            "thanhnien.vn": BaoThanhNienCrawler(),
+            "phunuvietnam.vn": PhuNuVietNamCrawler(),
+            "kienthuc.net.vn": TriThucVaCuocSongCrawler(),
+            "bongdaplus.vn": TapChiBongDaCrawler(),
+            "laodongcongdoan.vn": TapChiLaoDongCongDoanCrawler(),
+            "nguoiduatin.vn": TapChiDienTuNguoiDuaTinCrawler(),
+            "diendandoanhnghiep.vn": TapChiDienDanDoanhNghiepCrawler(),
+            "1thegioi.vn": TapChiMotTheGioiCrawler(),
+            "markettimes.vn": TapChiDienTuNhipSongThiTruongCrawler(),
+            "congluan.vn": BaoNhaBaoVaCongLuanCrawler(),
+            "arttimes.vn": ThoiBaoVanHocNgheThuatCrawler(),
+            "thoidai.com.vn": TapChiThoiDaiCrawler(),
+            "kinhtechungkhoan.vn": TapChiDienTuKinhTeChungKhoanVietNamCrawler(),
+            "chatluongvacuocsong.vn": TapChiChatLuongCuocSongCrawler(),
+            "giaoduc.net.vn": TapChiDienTuGiaoDucVietNamCrawler(),
+            "mekongasean.vn": TapChiMekongAseanCrawler(),
+            "znews.vn": TapChiDienTuTriThucCrawler(),
+            "thuonghieusanpham.vn": TapChiThuongHieuVaSanPhamCrawler(),
+            "doanhnghiepvn.vn": TapChiDoanhNghiepVietNamCrawler(),
+            "doanhnghiephoinhap.vn": TapChiDoanhNghiepVaHoiNhapCrawler(),
+            "suckhoecongdongonline.vn": TapChiSucKhoeCongDongCrawler(),
+            "nhadautu.vn": TapChiNhaDauTuCrawler(),
+            "vietnamfinance.vn": TapChiDauTuTaiChinhCrawler(),
+            "doanhnghieptiepthi.vn": TapChiDoanhNghiepVaTiepThiCrawler(),
+            "danviet.vn": BaoDienTuDanVietCrawler(),
             }
+

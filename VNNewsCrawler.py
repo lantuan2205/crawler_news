@@ -4,7 +4,7 @@ from threading import Thread
 import subprocess
 from logger import log
 from utils import utils
-from crawler.factory import get_crawler
+from news_crawler.factory import get_crawler
 from utils.ui_checker import UIChecker
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 
@@ -70,3 +70,4 @@ if __name__ == "__main__":
     parser.add_argument("--config", default="crawler_config.yml", help="Path to config file", dest="config_fpath") 
     args = parser.parse_args()
     main(**vars(args))
+

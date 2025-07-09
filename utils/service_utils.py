@@ -13,6 +13,14 @@ import concurrent.futures
 from tqdm import tqdm
 from io import BytesIO
 import mimetypes
+from kafka import KafkaProducer
+import json
+from datetime import datetime
+import pytz
+
+# Cấu hình Kafka
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.103:9092")
+KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
 
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
@@ -20,6 +28,43 @@ UPLOAD_API_HOST = "192.168.132.250"
 UPLOAD_API_PORT = "8080"
 UPLOAD_API_ENDPOINT = "/api/upload/multiple"
 UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
+
+# Khởi tạo Kafka Producer (singleton)
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+    value_serializer=lambda v: json.dumps(v).encode("utf-8")
+)
+
+def send_clean_article_to_kafka(article_data: dict):
+    """
+    Gửi article đã xử lý (cleaned) lên Kafka topic `news.crawler.cleaned`.
+
+    Args:
+        article_data (dict): Dữ liệu bài viết đã xử lý
+    """
+    try:
+        producer.send(KAFKA_TOPIC, article_data)
+        producer.flush()
+        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC}'")
+    except Exception as e:
+        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+
+
+def parse_datetime_to_timestamp(date_str: str) -> int:
+    # Bước 1: Loại bỏ phần (GMT+7)
+    date_str_clean = date_str.split(" (")[0]
+
+    # Bước 2: Parse string thành datetime
+    dt = datetime.strptime(date_str_clean, "%d/%m/%Y, %H:%M")
+
+    # Bước 3: Gán timezone Asia/Ho_Chi_Minh
+    tz = pytz.timezone("Asia/Ho_Chi_Minh")
+    dt = tz.localize(dt)
+
+    # Bước 4: Chuyển sang timestamp milliseconds
+    timestamp_ms = int(dt.timestamp())
+    return timestamp_ms
+
 
 def save_to_db(data, output_file=None):
     """
@@ -192,19 +237,20 @@ def clean_date(text_date):
 
     if "(GMT+7)" not in text_date:
         text_date += " (GMT+7)"
-
-    return text_date
+    return parse_datetime_to_timestamp(text_date)
+    
 
 def get_urls_of_type(self, article_type):
     articles_urls = set()
     page_number = 1
     progress = tqdm(desc="Pages", unit=" page")
+    num_workers_default = 5
     domain = self.base_url.split("/")[2]
     for suffix in [".com.vn", ".net.vn", ".gov.vn", ".org.vn", ".edu.vn", ".vn"]:
         if domain.endswith(suffix):
             domain = domain.replace(suffix, "")
             break
-    num_workers = 1 if domain in CRAWLERS_SELENIUM else self.num_workers
+    num_workers = 1 if domain in CRAWLERS_SELENIUM else num_workers_default
     with concurrent.futures.ThreadPoolExecutor(max_workers=num_workers) as executor:
         futures = {}
         while True:

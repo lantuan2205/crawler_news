@@ -1,6 +1,6 @@
 import argparse
 from utils import utils
-from crawler.factory import get_crawler
+from news_crawler.factory import get_crawler
 from utils.ui_checker import UIChecker
 
 def crawl_site(webname, config, ui_checker):
@@ -28,3 +28,4 @@ if __name__ == "__main__":
     parser.add_argument("--config", required=True)
     args = parser.parse_args()
     main(args.webname, args.config)
+
