@@ -63,7 +63,6 @@ class BaseCrawler(ABC):
             filename = Path(clean_url).name
             photoInfos[filename] = url_image
         data['photoInfos'] = photoInfos
-        print("------data--------", data)
         save_to_json(data)
         # save_to_db(data)
         send_clean_article_to_kafka(data)
