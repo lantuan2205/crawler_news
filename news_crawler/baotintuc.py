@@ -290,16 +290,14 @@ class BaoTinTucCrawler(BaseCrawler):
             time.sleep(sleep_time)
             soup = BeautifulSoup(content, "html.parser")
             urls = set()
-            results_ul = soup.find("ul", class_="list-newsest")
-            if results_ul:
-                items = results_ul.find_all("li", class_="item")
-                for item in items:
-                    a_tag = item.find("a", href=True)
-                    if a_tag:
-                        relative_url = a_tag["href"].strip()
-                        # Ghép thành URL đầy đủ
-                        full_url = f"https://baotintuc.vn{relative_url}"
-                        urls.add(full_url)
+            domain = "https://baotintuc.vn"
+            for li in soup.select("#search_result ul.list-newsest li.item"):
+                a_tag = li.find("a", class_="thumb")
+                if a_tag and a_tag.get("href"):
+                    href = a_tag["href"]
+                    if href.startswith("/"):
+                        href = domain + href
+                    urls.add(href)
 
             return list(urls)
         except Exception as e:

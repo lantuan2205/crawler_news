@@ -43,7 +43,7 @@ def build_phunumoi_url(keyword):
     return f"https://phunumoi.net.vn/tim-kiem.html?{urlencode({'q': keyword})}"
 
 def build_vneconomy_url(keyword):
-    return f"https://vneconomy.vn/tim-kiem.htm?{urlencode({'q': keyword})}"
+    return f"https://vneconomy.vn/tim-kiem.htm?q={quote(keyword)}"
 
 def build_kinhtedouong_url(keyword):
     return f"https://kinhtedouong.vn/tim-kiem.html?{urlencode({'q': keyword})}"

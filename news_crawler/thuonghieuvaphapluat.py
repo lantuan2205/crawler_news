@@ -223,6 +223,6 @@ class ThuongHieuPhapLuatCrawler(BaseCrawler):
                 href = a.get('href')
                 if href:
                     urls.add(href)
-                    return list(urls)
+            return list(urls)
         except Exception as e:
             return []

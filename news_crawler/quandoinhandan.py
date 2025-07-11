@@ -113,7 +113,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
         try:
-            response = requests.get(image_url, headers=headers, timeout=10)
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 

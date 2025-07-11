@@ -69,15 +69,7 @@ def process_crawl(data: dict):
     else:
         keyword = url.strip()
         domains_to_crawl = [
-                            "www.qdnd.vn",
                             "baotintuc.vn",
-                            "www.tainguyenvamoitruong.vn",
-
-                            
-                            "dangcongsan.vn",
-                            "phunumoi.net.vn",
-                            "vneconomy.vn",
-                            "kinhtedouong.vn",
                             "thuonghieuvaphapluat.vn",]
 
         for domain in domains_to_crawl:
