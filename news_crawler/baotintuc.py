@@ -279,3 +279,28 @@ class BaoTinTucCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            results_ul = soup.find("ul", class_="list-newsest")
+            if results_ul:
+                items = results_ul.find_all("li", class_="item")
+                for item in items:
+                    a_tag = item.find("a", href=True)
+                    if a_tag:
+                        relative_url = a_tag["href"].strip()
+                        # Ghép thành URL đầy đủ
+                        full_url = f"https://baotintuc.vn{relative_url}"
+                        urls.add(full_url)
+
+            return list(urls)
+        except Exception as e:
+            return []

@@ -203,3 +203,24 @@ class PhuNuMoiCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            # Lấy toàn bộ thẻ <a> trong vùng <div class="article list">
+            container = soup.find("div", class_="col-xs-12 col-sm-8 col-md-8 news2")
+            if container:
+                for h3 in container.find_all("h3", class_="news2Title"):
+                    a_tag = h3.find("a", href=True)
+                    if a_tag:
+                        urls.add(a_tag["href"])
+
+            return list(urls)
+        except Exception as e:
+            return []

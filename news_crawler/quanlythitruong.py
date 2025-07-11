@@ -217,3 +217,28 @@ class QuanLyThiTruongCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            results_div = soup.find("div", class_="bx-list fw lt mb clearfix")
+
+            if results_div:
+                articles = results_div.find_all("div", class_="article")
+                for article in articles:
+                    a_tag = article.find("a", class_="article-link", href=True)
+                    if a_tag:
+                        relative_url = a_tag["href"].strip()
+                        # Ghép thành URL đầy đủ
+                        full_url = f"https://qltt.vn/{relative_url.lstrip('/')}"
+                        urls.add(full_url)
+
+            return list(urls)
+        except Exception as e:
+            return []

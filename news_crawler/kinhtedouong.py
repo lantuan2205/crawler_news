@@ -247,3 +247,21 @@ class KinhTeDoUongCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            # Lấy toàn bộ thẻ <a> trong vùng <div class="article list">
+            for a in soup.select('div.item-post a.title'):
+                href = a.get('href')
+                if href:
+                    urls.add('https://kinhtedouong.vn' + href)
+            return list(urls)
+        except Exception as e:
+            return []
