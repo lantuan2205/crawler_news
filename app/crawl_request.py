@@ -68,7 +68,20 @@ def process_crawl(data: dict):
         return {"status": "ok", "url": url, "message": f"Đã crawl {len(urls)} bài viết. Dữ liệu đang được lưu."}
     else:
         keyword = url.strip()
-        domains_to_crawl = ["vietnamnet.vn", "vnexpress.net", "dantri.com.vn"]
+        domains_to_crawl = ["thoibaotaichinhvietnam.vn",
+                            "thanhtra.com.vn",
+                            "www.qdnd.vn",
+                            "qltt.vn",
+                            "baotintuc.vn",
+                            "baovephapluat.vn",
+                            "baodantoc.vn",
+                            "tapchicongthuong.vn",
+                            "www.tainguyenvamoitruong.vn",
+                            "dangcongsan.vn",
+                            "phunumoi.net.vn",
+                            "vneconomy.vn",
+                            "kinhtedouong.vn",
+                            "thuonghieuvaphapluat.vn",]
 
         for domain in domains_to_crawl:
             try:
