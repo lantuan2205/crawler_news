@@ -1,4 +1,4 @@
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import urlencode, quote_plus, quote
 
 def build_vietnamnet_url(keyword):
     return f"https://vietnamnet.vn/tim-kiem?{urlencode({'q': keyword})}"
@@ -16,13 +16,13 @@ def build_thanhtra_url(keyword):
     return f"https://thanhtra.com.vn/tim-kiem.html?{urlencode({'q': keyword})}"
 
 def build_qdnd_url(keyword):
-    return f"https://www.qdnd.vn/tim-kiem/q/{quote_plus(keyword)}"
+    return f"https://www.qdnd.vn/tim-kiem/q/{quote(keyword)}"
 
 def build_qltt_url(keyword):
     return f"https://qltt.vn/search_enginer.html?{urlencode({'p': 'tim-kiem', 'q': keyword})}"
 
 def build_baotintuc_url(keyword):
-    return f"https://baotintuc.vn/Search.aspx?{urlencode({'KeySearch': keyword, 'ar': 1, 'op': 1})}"
+    return f"https://baotintuc.vn/Search.aspx?KeySearch={quote(keyword)}&ar=1&op=1"
 
 def build_baovephapluat_url(keyword):
     return f"https://baovephapluat.vn/tim-kiem/q/{quote_plus(keyword)}"
@@ -49,7 +49,7 @@ def build_kinhtedouong_url(keyword):
     return f"https://kinhtedouong.vn/tim-kiem.html?{urlencode({'q': keyword})}"
 
 def build_thuonghieuvaphapluat_url(keyword):
-    return f"https://thuonghieuvaphapluat.vn/search/{quote_plus(keyword)}/"
+    return f"https://thuonghieuvaphapluat.vn/search/{quote(keyword)}/"
 
 SEARCH_URL_BUILDERS = {
     "vietnamnet.vn": build_vietnamnet_url,
