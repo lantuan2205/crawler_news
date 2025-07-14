@@ -1,5 +1,5 @@
 import argparse
-from utils.service_utils import save_to_json, send_json_to_api, clean_date, send_clean_article_to_kafka
+from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka
 import re
 from urllib.parse import urlencode, quote_plus
 import json
@@ -139,16 +139,21 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
         return article_data
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Crawl a news article by config file")
-    parser.add_argument('--config', required=True, help='Path to config JSON file')
+    parser = argparse.ArgumentParser(description="Crawl a news article by JSON config")
+    parser.add_argument('--conf', required=True, help='JSON config string')
     args = parser.parse_args()
-    # Đọc file config
-    with open(args.config, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+
+    # Parse JSON string
     try:
+        data = json.loads(args.conf)
+    except json.JSONDecodeError as e:
+        print(f"❌ Lỗi parse JSON conf: {e}")
+        exit(1)
+
+    try:
+        # Gọi process_crawl như cũ
         result = process_crawl({"message": data})
-        print("Kết quả crawl:")
+        print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except Exception as e:
-        print(f"Lỗi: {e}")
-
+        print(f"❌ Lỗi trong quá trình crawl: {e}")

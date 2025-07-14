@@ -23,7 +23,10 @@ pip install -r requirements.txt
 python3 VNNewsCrawler.py --config config/crawler_config.yml
 ```
 
-
+## Run trigger request
+```
+python3 -m app.crawl_request --conf '{"source": "NEWS", "action": "GENERAL", "body": {"url": "Ma tuý"}, "params": {"timeout": 30, "proxy": "http://proxy-server:8080", "useAuth": true}}'
+```
 
 ### Run Service API
 
