@@ -3,10 +3,12 @@ import concurrent.futures
 import json
 from tqdm import tqdm
 from pathlib import Path
+from datetime import datetime, timedelta
+import pytz
 import time
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 from utils.utils import init_output_dirs, create_dir, read_file
-from utils.service_utils import save_to_json, send_json_to_api, save_to_db, clean_date, send_clean_article_to_kafka
+from utils.service_utils import save_to_json, parse_datetime_to_timestamp, send_clean_article_to_kafka, remove_duplicate_urls
 class BaseCrawler(ABC):
 
     @abstractmethod
@@ -41,9 +43,15 @@ class BaseCrawler(ABC):
 
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
-                if result:
-                    results.append(result)
+            for future in tqdm(concurrent.futures.as_completed([executor.submit(self.crawl_url_thread, url, article_type) for url in urls]), total=num_urls, desc="URLs"):
+                try:
+                    result = future.result() # Lấy kết quả hoặc ném exception nếu có
+                    if result:
+                        results.append(result)
+                except ValueError as e:
+                    self.logger.critical(f"Stopping crawl due to critical error: {e}")
+                    executor.shutdown(wait=False, cancel_futures=True) # Hủy các task còn lại
+                    break # Thoát khỏi vòng lặp
 
         grouped_results = {}
         for article in results:
@@ -55,6 +63,14 @@ class BaseCrawler(ABC):
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
+        # 1. Lấy timestamp hiện tại (timenow)
+        vietnam_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+        now = datetime.now(vietnam_tz)
+        dt_24_hours_ago_naive = now - timedelta(hours=24)
+        formatted_str = dt_24_hours_ago_naive.strftime("%d/%m/%Y, %H:%M")
+        # Handle data không hợp lệ pushlishDate
+        if parse_datetime_to_timestamp(formatted_str) > data['publishedDate']:
+            raise ValueError(f"Failed to retrieve valid data for URL: {url}")
         photoInfos = {}
 
         data['comments'] = []
@@ -113,7 +129,7 @@ class BaseCrawler(ABC):
         return True
 
     def get_urls_of_type(self, article_type):
-        articles_urls = set()
+        articles_urls = []
         page_number = 1
         progress = tqdm(desc="Pages", unit=" page")
         domain = self.base_url.split("/")[2]
@@ -143,15 +159,15 @@ class BaseCrawler(ABC):
                         elif type(result) == set:
                             stop = True
                             result = list(result)
-                        articles_urls.update(result)
+                        articles_urls.extend(result)
                     except Exception as e:
                         self.logger.warning(f"[!] Error on page {page}: {e}")
 
                 futures.clear()
                 if stop:
                     break
-
-        return list(articles_urls)
+        articles_urls = remove_duplicate_urls(articles_urls)
+        return articles_urls
 
     # def get_urls_of_type(self, article_type):
     #     articles_urls = list()

@@ -289,3 +289,12 @@ def get_urls_of_type(self, article_type):
                 break
 
     return list(articles_urls)
+
+def remove_duplicate_urls(urls):
+    seen = set()
+    unique_urls = []
+    for url in urls:
+        if url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+    return unique_urls
