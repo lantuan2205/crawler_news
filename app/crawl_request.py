@@ -1,26 +1,90 @@
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Union
-from utils.service_utils import save_to_json, send_json_to_api, clean_date, send_clean_article_to_kafka
+import argparse
+from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka
 import re
 from urllib.parse import urlencode, quote_plus
 import json
+from datetime import datetime
 from pathlib import Path
 import time
+from typing import Dict, Any, Optional
+import requests
+import socks
 from constants.crawlers import CRAWLERS
+from typing import Optional, Dict
 from constants.search_url_builders import SEARCH_URL_BUILDERS
-app = FastAPI()
 
-@app.post("/crawl/")
-def crawl_article(data: dict):
+def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
+    """Thiết lập session với proxy"""
+    if not proxy_config:
+        print("[INFO] Không có proxy config, trả về session mặc định.")
+        return requests.Session()
+    
     try:
-        return process_crawl(data)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        username = proxy_config.get("username")
+        password = proxy_config.get("password")
+        host = proxy_config.get("host")
+        port = proxy_config.get("port")
+        proxy_type = proxy_config.get("proxyType", "HTTP").upper()
+        
+        if not all([host, port]):
+            print("[WARN] Thiếu thông tin host hoặc port proxy.")
+            return None
+        
+        session = requests.Session()
+        
+        # Tạo URL proxy dựa trên loại proxy
+        if username and password:
+            proxy_url = f"{proxy_type.lower()}://{username}:{password}@{host}:{port}"
+        else:
+            proxy_url = f"{proxy_type.lower()}://{host}:{port}"
+            
+        proxies = {
+            "http": proxy_url,
+            "https": proxy_url
+        }
+        
+        session.proxies = proxies
+        print(f"[INFO] Đã thiết lập {proxy_type} proxy: {host}:{port}")
 
-def process_crawl(data: dict):
+        # Kiểm tra và cài đặt SOCKS nếu cần
+        if proxy_type in ["SOCKS4", "SOCKS5"]:
+            try:
+                import socks as _socks
+                # Dòng này là cần thiết để requests có thể dùng SOCKS
+                # Nó sẽ vá module socket của Python để hoạt động với PySocks
+                # requests.get("http://example.com", proxies={"http": "socks5://..."})
+                # sẽ không hoạt động nếu thiếu dòng này
+                session.mount('http://', requests.adapters.HTTPAdapter())
+                session.mount('https://', requests.adapters.HTTPAdapter())
+
+            except ImportError:
+                print("[WARN] Thư viện PySocks không được cài đặt. SOCKS proxy sẽ không hoạt động.")
+                print("[INFO] Cài đặt: pip install PySocks")
+                return None
+
+        # Test proxy connection
+        try:
+            test_response = session.get("http://httpbin.org/ip", timeout=10)
+            if test_response.status_code == 200:
+                print(f"[INFO] Proxy kết nối thành công: {host}:{port}")
+                return session
+            else:
+                print(f"[WARN] Proxy test failed với status: {test_response.status_code}")
+                return None
+        except Exception as e:
+            print(f"[WARN] Không thể test proxy: {e}")
+            return None
+    except Exception as e:
+        print(f"[ERROR] Lỗi khi thiết lập proxy: {e}")
+        return None
+
+def process_crawl(data: Dict[str, Any]):
+    """
+    Xử lý tác vụ crawl web, hỗ trợ crawl URL cụ thể hoặc tìm kiếm theo từ khóa.
+    """
     print(f"Processing message: {data}")
     print(f"START crawling.....")
+
     try:
         parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
     except (json.JSONDecodeError, TypeError):
@@ -28,62 +92,137 @@ def process_crawl(data: dict):
 
     source = parsed_data.get("source")
     action = parsed_data.get("action")
-    url = parsed_data.get("body", {}).get("url")
+    input_data = parsed_data.get("body", {}).get("inputData")
+    jobId = parsed_data.get("body", {}).get("jobId")
+    proxy_config = parsed_data.get("proxy")
 
     if source != "NEWS" or action != "GENERAL":
         raise ValueError("Sai source hoặc action")
 
-    if not url:
-        raise ValueError("URL không được để trống")
+    if not input_data:
+        raise ValueError("URL hoặc keyword không được để trống")
     
-    if url.startswith("http://") or url.startswith("https://"):
-        domain = url.split("/")[2]
-        crawler = CRAWLERS.get(domain)
+    # Thiết lập proxy session nếu có
+    # Hàm setup_proxy_session() được giả định đã được cập nhật
+    # để trả về một requests.Session đã cấu hình proxy.
+    proxy_session = setup_proxy_session(proxy_config)
+    
+    if proxy_session:
+        print(f"[INFO] Sử dụng proxy: {proxy_config.get('host')}:{proxy_config.get('port')}")
+    else:
+        print("[INFO] Không sử dụng proxy")
+
+    # Sử dụng session để tạo crawler
+    def _create_crawler(domain: str):
+        from news_crawler.factory import get_crawler
+        return get_crawler(domain, proxy_session=proxy_session)
+
+    # Nếu inputData là một URL
+    if input_data.startswith("http://") or input_data.startswith("https://"):
+        domain = input_data.split("/")[2]
+        
+        crawler = _create_crawler(domain)
         if not crawler:
-            raise ValueError("Không hỗ trợ domain này")
+            raise ValueError(f"Không hỗ trợ crawler cho domain: {domain}")
 
         response = {
             "status": "success",
-            "url": url,
+            "url": input_data,
             "articles": [],
         }
 
+        # Kiểm tra xem có phải là URL bài viết cụ thể không
         is_article = any([
-            re.search(r'\d{6,}\.htm[l]?$', url),
-            re.search(r'/[^/]+-\d+\.htm[l]?$', url),
-            re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', url),
-            re.search(r'/[^/]+/\d{4}/\d{2}/', url),
-            re.search(r'-i\d+/?$', url)
+            re.search(r'\d{6,}\.htm[l]?$', input_data),
+            re.search(r'/[^/]+-\d+\.htm[l]?$', input_data),
+            re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', input_data),
+            re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
+            re.search(r'-i\d+/?$', input_data)
         ])
 
         if is_article:
-            article = get_article_details(crawler, url, True)
+            article = get_article_details(crawler, input_data, True, proxy_session, jobId)
             if not article:
                 raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
             response["articles"].append(article)
             return response
-        elif url.rstrip("/").endswith(domain):
-            try:
-                for category in crawler.article_type_dict.values():
-                    urls = crawler.get_all_articles(category)
-                    for article_url in urls:
-                        if article_url:
-                            get_article_details(crawler, article_url, False)
-            except Exception as e:
-                raise ValueError(f"Lỗi khi lấy danh sách bài viết: {e}")
         else:
-            raise ValueError("URL không hợp lệ hoặc chưa được hỗ trợ")
-        return {"status": "ok", "url": url, "message": f"Đã crawl {len(urls)} bài viết. Dữ liệu đang được lưu."}
-    else:
-        keyword = url.strip()
-        domains_to_crawl = ["vietnamnet.vn", "vnexpress.net", "dantri.com.vn"]
+            # Crawl toàn bộ domain
+            total_articles_crawled = 0
+            for category in crawler.article_type_dict.values():
+                urls = crawler.get_all_articles(category)
+                for article_url in urls:
+                    if article_url:
+                        get_article_details(crawler, article_url, False, proxy_session, jobId)
+                        total_articles_crawled += 1
+            
+            return {"status": "ok", "url": input_data, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
 
+    # Nếu inputData là một keyword
+    else:
+        keyword = input_data.strip()
+        # Chỉ sử dụng các domain có trong WEBNAMES
+        domains_to_crawl = [
+            "vietnamnet.vn",
+            "vnexpress.net", 
+            "dantri.com.vn",
+            "thoibaotaichinhvietnam.vn",
+            "thanhtra.com.vn",
+            "www.qdnd.vn",
+            "baotintuc.vn",
+            "baovephapluat.vn",
+            "baodantoc.vn",
+            "tapchicongthuong.vn",
+            "www.tainguyenvamoitruong.vn",
+            "dangcongsan.vn",
+            "phunumoi.net.vn",
+            "vneconomy.vn",
+            "kinhtedouong.vn",
+            "thuonghieuvaphapluat.vn",
+        ]
+        
+        # Domain mapping để chuyển đổi từ domain sang webname
+        domain_to_webname = {
+            "vietnamnet.vn": "vietnamnet",
+            "vnexpress.net": "vnexpress",
+            "dantri.com.vn": "dantri",
+            "thoibaotaichinhvietnam.vn": "thoibaotaichinhvietnam",
+            "thanhtra.com.vn": "thanhtra",
+            "www.qdnd.vn": "quandoinhandan",
+            "baotintuc.vn": "baotintuc",
+            "baovephapluat.vn": "baovephapluat",
+            "baodantoc.vn": "baodantoc",
+            "tapchicongthuong.vn": "tapchicongthuong",
+            "www.tainguyenvamoitruong.vn": "tainguyenvamoitruong",
+            "dangcongsan.vn": "dangcongsan",
+            "phunumoi.net.vn": "phunumoi",
+            "vneconomy.vn": "vneconomy",
+            "kinhtedouong.vn": "kinhtedouong",
+            "thuonghieuvaphapluat.vn": "thuonghieuvaphapluat",
+        }
+        
         for domain in domains_to_crawl:
             try:
                 search_url = build_search_url(domain, keyword)
                 print(f"[INFO] Search URL for {domain}: {search_url}")
 
-                crawler = CRAWLERS.get(domain)
+                # Lấy webname từ domain
+                webname = domain_to_webname.get(domain)
+                if not webname:
+                    print(f"[WARN] Không tìm thấy webname cho domain: {domain}")
+                    continue
+
+                # Tạo crawler với proxy session
+                if proxy_session:
+                    from news_crawler.factory import get_crawler
+                    try:
+                        crawler = get_crawler(webname, proxy_session=proxy_session)
+                    except KeyError as e:
+                        print(f"[ERROR] {e}")
+                        continue
+                else:
+                    crawler = CRAWLERS.get(domain)
+                    
                 if not crawler:
                     print(f"[WARN] Không hỗ trợ crawler cho domain: {domain}")
                     continue
@@ -93,12 +232,13 @@ def process_crawl(data: dict):
 
                 for article_url in urls:
                     if article_url:
-                        get_article_details(crawler, article_url, False)
+                        get_article_details(crawler, article_url, False, proxy_session, jobId)
 
             except Exception as e:
                 print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
+                continue
 
-    print(f"Finished crawling..............")
+        return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
 
 def build_search_url(domain, keyword):
     if domain in SEARCH_URL_BUILDERS:
@@ -106,9 +246,26 @@ def build_search_url(domain, keyword):
     else:
         raise ValueError(f"Domain không hỗ trợ: {domain}")
 
-def get_article_details(crawler, url: str, link) -> Optional[Dict]:
+def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
     print(f"==========Đang lấy thông tin url===========: {url}")
+    
+    # Inject proxy session vào crawler nếu có
+    if proxy_session:
+        print(f"[INFO] Áp dụng proxy cho crawler: {url}")
+        # Lưu proxy session vào crawler để sử dụng
+        crawler.proxy_session = proxy_session
+        
+        # Nếu crawler có thuộc tính session, cập nhật nó
+        if hasattr(crawler, 'session'):
+            crawler.session = proxy_session
+            print(f"[INFO] Đã cập nhật session của crawler với proxy")
+        
+        # Nếu crawler có thuộc tính proxies, cập nhật nó
+        if hasattr(crawler, 'proxies'):
+            crawler.proxies = proxy_session.proxies
+            print(f"[INFO] Đã cập nhật proxies của crawler")
+    
     try:
         title, description, content, published_date, author, content_image_urls = crawler.extract_content(url)
     except Exception as e:
@@ -137,9 +294,36 @@ def get_article_details(crawler, url: str, link) -> Optional[Dict]:
         "photoInfos": photoInfos,
         "comments": [""]
     }
+    
+    # Thêm jobId nếu có (cần truyền từ process_crawl)
+    if jobId:
+        article_data['jobId'] = jobId
+    
     save_to_json(article_data)
     #send_json_to_api()
     send_clean_article_to_kafka(article_data)
     time.sleep(1)
     if link:
         return article_data
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Crawl a news article by JSON config")
+    parser.add_argument('--conf', required=True, help='JSON config string')
+    args = parser.parse_args()
+
+    # Parse JSON string
+    try:
+        data = json.loads(args.conf)
+    except json.JSONDecodeError as e:
+        print(f"❌ Lỗi parse JSON conf: {e}")
+        exit(1)
+
+    try:
+        # Gọi process_crawl như cũ
+        result = process_crawl({"message": data})
+        print("✅ Kết quả crawl:")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print(f"❌ Lỗi trong quá trình crawl: {e}")
+        exit(1)
+

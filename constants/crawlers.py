@@ -45,6 +45,7 @@ from news_crawler.daibieunhandan import DaiBieuNhanDanCrawler
 from news_crawler.tapchikhoahocvacongnghe import TapChiKhoaHocVaCongNgheCrawler
 from news_crawler.vtv import VtvCrawler
 from news_crawler.baodaidoanket import DaiDoanKetCrawler
+# from news_crawler.baolaodong import BaoLaoDongCrawler
 from news_crawler.baonhandan import BaoNhanDanCrawler
 from news_crawler.baothanhnien import BaoThanhNienCrawler
 from news_crawler.phunuvietnam import PhuNuVietNamCrawler
@@ -120,10 +121,12 @@ CRAWLERS = {
             "vjst.vn": TapChiKhoaHocVaCongNgheCrawler(),
             "vtv.vn": VtvCrawler(),
             "daidoanket.vn": DaiDoanKetCrawler(),
+            # "laodong.vn": BaoLaoDongCrawler(),
             "nhandan.vn": BaoNhanDanCrawler(),
             "thanhnien.vn": BaoThanhNienCrawler(),
             "phunuvietnam.vn": PhuNuVietNamCrawler(),
             "kienthuc.net.vn": TriThucVaCuocSongCrawler(),
+            # "tienphong.vn": BaoTienPhongCrawler(),
             "bongdaplus.vn": TapChiBongDaCrawler(),
             "laodongcongdoan.vn": TapChiLaoDongCongDoanCrawler(),
             "nguoiduatin.vn": TapChiDienTuNguoiDuaTinCrawler(),

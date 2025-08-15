@@ -184,9 +184,19 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
 def get_crawler(webname, **kwargs):
     print(f"🛠️ get_crawler đang xử lý webname = {repr(webname)}")
     print(f"📦 Danh sách key hợp lệ: {list(WEBNAMES.keys())}")
-
+    print("-----------webname-------------", webname) 
     if webname not in WEBNAMES:
         raise KeyError(f"❌ Không tìm thấy key '{webname}' trong WEBNAMES.")
+
+    # Kiểm tra và xử lý proxy session
+    proxy_session = kwargs.get('proxy_session')
+    if proxy_session:
+        print(f"[INFO] Factory: Truyền proxy session vào crawler {webname}")
+        # Thêm proxy session vào kwargs
+        kwargs['proxy_session'] = proxy_session
+        # Thêm proxies nếu có
+        if hasattr(proxy_session, 'proxies'):
+            kwargs['proxies'] = proxy_session.proxies
 
     crawler = WEBNAMES[webname](**kwargs)
     return crawler

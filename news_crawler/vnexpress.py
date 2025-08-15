@@ -174,7 +174,13 @@ class VNExpressCrawler(BaseCrawler):
             return None
 
     def extract_content(self, url: str) -> tuple:
-        content = requests.get(url, headers=headers, timeout=10).content
+        # Sử dụng session từ base class (có thể là proxy session)
+        if hasattr(self, 'session'):
+            response = self.session.get(url, headers=headers, timeout=10)
+        else:
+            response = requests.get(url, headers=headers, timeout=10)
+            
+        content = response.content
         sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
         soup = BeautifulSoup(content, "html.parser")
@@ -243,9 +249,19 @@ class VNExpressCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
+        if(page_number == 2):
+            return []
         articles_urls = []
         try:
-            content = requests.get(page_url, headers=headers, timeout=10).content
+            # Sử dụng session từ base class (có thể là proxy session)
+            if hasattr(self, 'session'):
+                print(f"[INFO] Đã sử dụng session từ base class")
+                response = self.session.get(page_url, headers=headers, timeout=10)
+            else:
+                print(f"[INFO] Đã sử dụng requests")
+                response = requests.get(page_url, headers=headers, timeout=10)
+            # response = requests.get(page_url, headers=headers, timeout=10)
+            content = response.content
             sleep_time = random.uniform(1, 2)
             time.sleep(sleep_time)
             soup = BeautifulSoup(content, "html.parser")
@@ -277,7 +293,13 @@ class VNExpressCrawler(BaseCrawler):
     def get_all_articles_by_keyword(self, page_url):
         print(f"page_url: {page_url}")
         try:
-            content = requests.get(page_url, headers=headers, timeout=10).content
+            # Sử dụng session từ base class (có thể là proxy session)
+            if hasattr(self, 'session'):
+                response = self.session.get(page_url, headers=headers, timeout=10)
+            else:
+                response = requests.get(page_url, headers=headers, timeout=10)
+                
+            content = response.content
             sleep_time = random.uniform(1, 2)
             time.sleep(sleep_time)
             soup = BeautifulSoup(content, "html.parser")

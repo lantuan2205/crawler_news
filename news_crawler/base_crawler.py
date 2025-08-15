@@ -3,11 +3,29 @@ import concurrent.futures
 import json
 from tqdm import tqdm
 from pathlib import Path
+from datetime import datetime, timedelta
+import pytz
 import time
+import requests
 from constants.crawlerselenium import CRAWLERS_SELENIUM
 from utils.utils import init_output_dirs, create_dir, read_file
-from utils.service_utils import save_to_json, send_json_to_api, save_to_db, clean_date, send_clean_article_to_kafka
+from utils.service_utils import save_to_json, parse_datetime_to_timestamp, send_clean_article_to_kafka, remove_duplicate_urls
+
 class BaseCrawler(ABC):
+
+    def __init__(self, **kwargs):
+        # Khởi tạo proxy session nếu có
+        self.proxy_session = kwargs.get('proxy_session')
+        self.proxies = kwargs.get('proxies')
+        
+        # Tạo session mặc định hoặc sử dụng proxy session
+        if self.proxy_session:
+            self.session = self.proxy_session
+            self.proxies = self.proxy_session.proxies
+            print(f"[INFO] BaseCrawler: Sử dụng proxy session")
+        else:
+            self.session = requests.Session()
+            print(f"[INFO] BaseCrawler: Sử dụng session mặc định")
 
     @abstractmethod
     def extract_content(self, url):
@@ -26,6 +44,31 @@ class BaseCrawler(ABC):
         articles_urls = list()
         return articles_urls
 
+    def get_request_session(self):
+        """Trả về session để sử dụng cho requests"""
+        if self.proxy_session:
+            return self.proxy_session
+        return self.session
+
+    def make_request(self, url, **kwargs):
+        """Thực hiện request với proxy nếu có"""
+        session = self.get_request_session()
+        try:
+            response = session.get(url, **kwargs)
+            return response
+        except Exception as e:
+            print(f"[ERROR] Lỗi khi thực hiện request đến {url}: {e}")
+            # Fallback về session mặc định nếu proxy fail
+            if self.proxy_session:
+                print(f"[INFO] Thử lại với session mặc định")
+                try:
+                    response = self.session.get(url, **kwargs)
+                    return response
+                except Exception as e2:
+                    print(f"[ERROR] Lỗi khi thử lại với session mặc định: {e2}")
+                    raise e2
+            raise e
+
     def start_crawling(self):
         error_urls = list()
         if self.task=="url":
@@ -41,9 +84,15 @@ class BaseCrawler(ABC):
 
         results = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.num_workers) as executor:
-            for result in tqdm(executor.map(lambda url: self.crawl_url_thread(url, article_type), urls), total=num_urls, desc="URLs"):
-                if result:
-                    results.append(result)
+            for future in tqdm(concurrent.futures.as_completed([executor.submit(self.crawl_url_thread, url, article_type) for url in urls]), total=num_urls, desc="URLs"):
+                try:
+                    result = future.result() # Lấy kết quả hoặc ném exception nếu có
+                    if result:
+                        results.append(result)
+                except ValueError as e:
+                    self.logger.critical(f"Stopping crawl due to critical error: {e}")
+                    executor.shutdown(wait=False, cancel_futures=True) # Hủy các task còn lại
+                    break # Thoát khỏi vòng lặp
 
         grouped_results = {}
         for article in results:
@@ -55,6 +104,14 @@ class BaseCrawler(ABC):
         if data is None:
             self.logger.info(f"Crawling unsuccessfully: {url}")
             return None
+        # 1. Lấy timestamp hiện tại (timenow)
+        vietnam_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+        now = datetime.now(vietnam_tz)
+        dt_24_hours_ago_naive = now - timedelta(hours=24)
+        formatted_str = dt_24_hours_ago_naive.strftime("%d/%m/%Y, %H:%M")
+        # Handle data không hợp lệ pushlishDate
+        if parse_datetime_to_timestamp(formatted_str) > data['publishedDate']:
+            raise ValueError(f"Failed to retrieve valid data for URL: {url}")
         photoInfos = {}
 
         data['comments'] = []
@@ -63,7 +120,6 @@ class BaseCrawler(ABC):
             filename = Path(clean_url).name
             photoInfos[filename] = url_image
         data['photoInfos'] = photoInfos
-        print("------data--------", data)
         save_to_json(data)
         # save_to_db(data)
         send_clean_article_to_kafka(data)
@@ -114,7 +170,7 @@ class BaseCrawler(ABC):
         return True
 
     def get_urls_of_type(self, article_type):
-        articles_urls = set()
+        articles_urls = []
         page_number = 1
         progress = tqdm(desc="Pages", unit=" page")
         domain = self.base_url.split("/")[2]
@@ -144,15 +200,15 @@ class BaseCrawler(ABC):
                         elif type(result) == set:
                             stop = True
                             result = list(result)
-                        articles_urls.update(result)
+                        articles_urls.extend(result)
                     except Exception as e:
                         self.logger.warning(f"[!] Error on page {page}: {e}")
 
                 futures.clear()
                 if stop:
                     break
-
-        return list(articles_urls)
+        articles_urls = remove_duplicate_urls(articles_urls)
+        return articles_urls
 
     # def get_urls_of_type(self, article_type):
     #     articles_urls = list()

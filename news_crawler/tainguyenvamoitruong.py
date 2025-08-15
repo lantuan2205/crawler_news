@@ -225,3 +225,23 @@ class TaiNguyenVaMoiTruongCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            # Lấy toàn bộ thẻ <a> trong vùng <div class="article list">
+            for h3 in soup.select('div.list_news-page h3 a'):
+                href = h3.get('href', '')
+                if href and href.startswith('/'):
+                    urls.append('https://www.tainguyenvamoitruong.vn' + href)
+                elif href.startswith('http'):
+                    urls.add(href)
+            return list(urls)
+        except Exception as e:
+            return []

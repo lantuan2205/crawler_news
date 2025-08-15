@@ -193,7 +193,7 @@ class CongThuongCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_number = (page_number - 1) * 20
-        page_url = f"https://congthuong.vn/{article_type}&s_cond=&BRSR={page_number}"
+        page_url = f"https://congthuong.vn/{article_type}?s_cond=&BRSR={page_number}"
         
         try:
             response = requests.get(page_url, headers=headers, timeout=10)

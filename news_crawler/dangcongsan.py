@@ -216,3 +216,31 @@ class DangCongSanCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+
+
+    def get_all_articles_by_keyword(self, page_url):
+        print(f"page_url: {page_url}")
+
+        try:
+            content = requests.get(page_url, headers=headers, timeout=10).content
+            sleep_time = random.uniform(1, 2)
+            time.sleep(sleep_time)
+            soup = BeautifulSoup(content, "html.parser")
+            urls = set()
+            domain = "https://dangcongsan.vn"
+
+            for a in soup.select('div.search-byType a.item-title'):
+                href = a.get('href', '').strip()
+                # Bỏ qua nếu là chuyên mục hoặc rỗng
+                if href and href != '#' and not href.startswith('/tin-tuc.htm'):
+                    if href.startswith('/'):
+                        href = domain + href
+                    urls.add(href)
+
+            return list(urls)
+        except Exception as e:
+            return []
+
+
+
