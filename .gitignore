@@ -20,6 +20,6 @@ result-*/
 .profile
 .sudo_as_admin_successful
 .viminfo
-
+*.Zone.Identifier
 # Swap file của Vim (tự động sinh ra khi mở file trong Vim)
 *.swp

@@ -174,43 +174,43 @@ def process_crawl(data: Dict[str, Any]):
         keyword = input_data.strip()
         # Chỉ sử dụng các domain có trong WEBNAMES
         domains_to_crawl = [
-            "vietnamnet.vn",
-            "vnexpress.net",
-            "dantri.com.vn",
-            "thoibaotaichinhvietnam.vn",
-            "thanhtra.com.vn",
-            "www.qdnd.vn",
-            "baotintuc.vn",
-            "baovephapluat.vn",
-            "baodantoc.vn",
-            "tapchicongthuong.vn",
-            "www.tainguyenvamoitruong.vn",
-            "dangcongsan.vn",
-            "phunumoi.net.vn",
-            "vneconomy.vn",
-            "kinhtedouong.vn",
-            "thuonghieuvaphapluat.vn",
+            "vietnamnet",
+            "vnexpress",
+            "dantri",
+            "thoibaotaichinhvietnam",
+            "thanhtra",
+            "qdnd",
+            "baotintuc",
+            "baovephapluat",
+            "baodantoc",
+            "tapchicongthuong",
+            "tainguyenvamoitruong",
+            "dangcongsan",
+            "phunumoi",
+            "vneconomy",
+            "kinhtedouong",
+            "thuonghieuvaphapluat",
         ]
 
         # Domain mapping để chuyển đổi từ domain sang webname
-        domain_to_webname = {
-            "vietnamnet.vn": "vietnamnet",
-            "vnexpress.net": "vnexpress",
-            "dantri.com.vn": "dantri",
-            "thoibaotaichinhvietnam.vn": "thoibaotaichinhvietnam",
-            "thanhtra.com.vn": "thanhtra",
-            "www.qdnd.vn": "quandoinhandan",
-            "baotintuc.vn": "baotintuc",
-            "baovephapluat.vn": "baovephapluat",
-            "baodantoc.vn": "baodantoc",
-            "tapchicongthuong.vn": "tapchicongthuong",
-            "www.tainguyenvamoitruong.vn": "tainguyenvamoitruong",
-            "dangcongsan.vn": "dangcongsan",
-            "phunumoi.net.vn": "phunumoi",
-            "vneconomy.vn": "vneconomy",
-            "kinhtedouong.vn": "kinhtedouong",
-            "thuonghieuvaphapluat.vn": "thuonghieuvaphapluat",
-        }
+        # domain_to_webname = {
+        #     "vietnamnet.vn": "vietnamnet",
+        #     "vnexpress.net": "vnexpress",
+        #     "dantri.com.vn": "dantri",
+        #     "thoibaotaichinhvietnam.vn": "thoibaotaichinhvietnam",
+        #     "thanhtra.com.vn": "thanhtra",
+        #     "www.qdnd.vn": "quandoinhandan",
+        #     "baotintuc.vn": "baotintuc",
+        #     "baovephapluat.vn": "baovephapluat",
+        #     "baodantoc.vn": "baodantoc",
+        #     "tapchicongthuong.vn": "tapchicongthuong",
+        #     "www.tainguyenvamoitruong.vn": "tainguyenvamoitruong",
+        #     "dangcongsan.vn": "dangcongsan",
+        #     "phunumoi.net.vn": "phunumoi",
+        #     "vneconomy.vn": "vneconomy",
+        #     "kinhtedouong.vn": "kinhtedouong",
+        #     "thuonghieuvaphapluat.vn": "thuonghieuvaphapluat",
+        # }
 
         for domain in domains_to_crawl:
             try:
@@ -218,16 +218,16 @@ def process_crawl(data: Dict[str, Any]):
                 print(f"[INFO] Search URL for {domain}: {search_url}")
 
                 # Lấy webname từ domain
-                webname = domain_to_webname.get(domain)
-                if not webname:
-                    print(f"[WARN] Không tìm thấy webname cho domain: {domain}")
-                    continue
+                # webname = domain_to_webname.get(domain)
+                # if not webname:
+                #     print(f"[WARN] Không tìm thấy webname cho domain: {domain}")
+                #     continue
 
                 # Tạo crawler với proxy session
                 if proxy_session:
                     from news_crawler.factory import get_crawler
                     try:
-                        crawler = get_crawler(webname, proxy_session=proxy_session)
+                        crawler = get_crawler(domain, proxy_session=proxy_session)
                     except KeyError as e:
                         print(f"[ERROR] {e}")
                         continue

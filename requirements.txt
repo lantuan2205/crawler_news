@@ -16,4 +16,3 @@ webdriver-manager
 PyYAML>=5.4
 paramiko
 kafka-python
-PySocks
