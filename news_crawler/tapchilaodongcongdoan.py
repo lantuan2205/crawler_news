@@ -293,7 +293,7 @@ class TapChiLaoDongCongDoanCrawler(BaseCrawler):
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
 
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 

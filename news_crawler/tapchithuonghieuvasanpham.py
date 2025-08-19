@@ -294,7 +294,7 @@ class TapChiThuongHieuVaSanPhamCrawler(BaseCrawler):
                     urls.append(tag["href"])
 
         return urls
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 

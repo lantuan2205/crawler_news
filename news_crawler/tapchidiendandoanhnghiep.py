@@ -306,7 +306,7 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
             driver.quit()
         return seen_links
 
-    def get_all_articles(self):
+    def get_all_articles(self, category):
         
         all_articles = []
 

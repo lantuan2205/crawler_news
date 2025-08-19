@@ -106,6 +106,7 @@ def process_crawl(data: Dict[str, Any]):
     action = parsed_data.get("action")
     input_data = parsed_data.get("body", {}).get("inputData")
     jobId = parsed_data.get("body", {}).get("jobId")
+    crawlId = parsed_data.get("body", {}).get("crawlId")
     proxy_config = parsed_data.get("proxy")
 
     if source != "NEWS" or action != "GENERAL":
@@ -152,7 +153,7 @@ def process_crawl(data: Dict[str, Any]):
         ])
 
         if is_article:
-            article = get_article_details(crawler, input_data, True, proxy_session, jobId)
+            article = get_article_details(crawler, input_data, True, proxy_session, jobId, crawlId)
             if not article:
                 raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
             response["articles"].append(article)
@@ -164,7 +165,7 @@ def process_crawl(data: Dict[str, Any]):
                 urls = crawler.get_all_articles(category)
                 for article_url in urls:
                     if article_url:
-                        get_article_details(crawler, article_url, False, proxy_session, jobId)
+                        get_article_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
 
             return {"status": "ok", "url": input_data, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
@@ -243,7 +244,7 @@ def process_crawl(data: Dict[str, Any]):
 
                 for article_url in urls:
                     if article_url:
-                        get_article_details(crawler, article_url, False, proxy_session, jobId)
+                        get_article_details(crawler, article_url, False, proxy_session, jobId, crawlId)
 
             except Exception as e:
                 print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
@@ -257,7 +258,7 @@ def build_search_url(domain, keyword):
     else:
         raise ValueError(f"Domain không hỗ trợ: {domain}")
 
-def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None) -> Optional[Dict]:
+def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
     print(f"==========Đang lấy thông tin url===========: {url}")
 
@@ -309,6 +310,9 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None)
     # Thêm jobId nếu có (cần truyền từ process_crawl)
     if jobId:
         article_data['jobId'] = jobId
+
+    if crawlId:
+        article_data['crawlId'] = crawlId
     
     save_to_json(article_data)
     #send_json_to_api()
