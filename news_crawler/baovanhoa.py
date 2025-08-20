@@ -190,7 +190,8 @@ class BaoVanHoaCrawler(BaseCrawler):
             publish_date = time_tag.text.strip() if time_tag else None
 
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find('div', class_='detail__content')
+            div = soup.find('div', class_='detail__content')
+            content = div.get_text(separator="\n").strip() if div else ""
             images = content_div.find_all('img')
             content_images = [img['src'] for img in images if img.get('src')]
 

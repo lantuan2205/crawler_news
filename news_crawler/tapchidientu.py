@@ -125,8 +125,8 @@ class TapChiDienTuCrawler(BaseCrawler):
             description = intro_p.get_text(strip=True) if intro_p else None
 
             main_content = soup.find("div", id="main-detail")
-            content = [p.get_text(strip=True) for p in main_content.find_all("p")] if main_content else []
-
+            content_list = [p.get_text(strip=True) for p in main_content.find_all("p")] if main_content else []
+            content = "\n".join(content_list)
             # Trích xuất ngày viết bài
             datetime_div = soup.find("div", class_="datetimeup")
             publish_date = datetime_div.get_text(strip=True) if datetime_div else None
