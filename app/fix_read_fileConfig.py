@@ -13,21 +13,6 @@ from constants.crawlers import CRAWLERS
 from typing import Optional, Dict
 from constants.search_url_builders import SEARCH_URL_BUILDERS
 
-
-
-
-
-
-
-try:
-    from app.server import start_background_server
-    start_background_server(port=8000)
-    print("[INFO] Stop/Health API started on port 8000")
-except Exception as e:
-    print(f"[WARN] Không thể khởi động stop server: {e}")
-
-
-
 def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
     """Thiết lập session với proxy"""
     if not proxy_config:
@@ -208,37 +193,10 @@ def process_crawl(data: Dict[str, Any]):
             "thuonghieuvaphapluat",
         ]
 
-        # Domain mapping để chuyển đổi từ domain sang webname
-        # domain_to_webname = {
-        #     "vietnamnet.vn": "vietnamnet",
-        #     "vnexpress.net": "vnexpress",
-        #     "dantri.com.vn": "dantri",
-        #     "thoibaotaichinhvietnam.vn": "thoibaotaichinhvietnam",
-        #     "thanhtra.com.vn": "thanhtra",
-        #     "www.qdnd.vn": "quandoinhandan",
-        #     "baotintuc.vn": "baotintuc",
-        #     "baovephapluat.vn": "baovephapluat",
-        #     "baodantoc.vn": "baodantoc",
-        #     "tapchicongthuong.vn": "tapchicongthuong",
-        #     "www.tainguyenvamoitruong.vn": "tainguyenvamoitruong",
-        #     "dangcongsan.vn": "dangcongsan",
-        #     "phunumoi.net.vn": "phunumoi",
-        #     "vneconomy.vn": "vneconomy",
-        #     "kinhtedouong.vn": "kinhtedouong",
-        #     "thuonghieuvaphapluat.vn": "thuonghieuvaphapluat",
-        # }
-
         for domain in domains_to_crawl:
             try:
                 search_url = build_search_url(domain, keyword)
                 print(f"[INFO] Search URL for {domain}: {search_url}")
-
-                # Lấy webname từ domain
-                # webname = domain_to_webname.get(domain)
-                # if not webname:
-                #     print(f"[WARN] Không tìm thấy webname cho domain: {domain}")
-                #     continue
-
                 # Tạo crawler với proxy session
                 if proxy_session:
                     from news_crawler.factory import get_crawler
@@ -331,29 +289,55 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
     
     save_to_json(article_data)
     #send_json_to_api()
-    send_clean_article_to_kafka(article_data)
+    if article_data.get("publishedDate")  or article_data.get("content"):
+        send_clean_article_to_kafka(article_data)
+    else:
+        print("Dữ liệu bị lỗi: 'publishedDate' không hợp lệ. Bỏ qua việc gửi.")
     time.sleep(1)
     if link:
         return article_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crawl a news article by JSON config")
-    parser.add_argument('--conf', required=True, help='JSON config string')
+    parser.add_argument(
+        '--conf', help='JSON config string (inline JSON)', required=False
+    )
+    parser.add_argument(
+        '--conf-file', help='Path to JSON config file', required=False
+    )
     args = parser.parse_args()
 
-    # Parse JSON string
-    try:
-        data = json.loads(args.conf)
-    except json.JSONDecodeError as e:
-        print(f"❌ Lỗi parse JSON conf: {e}")
+    data = None
+
+    # Ưu tiên conf-file
+    if args.conf_file:
+        try:
+            with open(args.conf_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            print(f"✅ Loaded config từ file {args.conf_file}")
+        except Exception as e:
+            print(f"❌ Lỗi đọc file {args.conf_file}: {e}")
+            exit(1)
+
+    elif args.conf:
+        try:
+            data = json.loads(args.conf)
+            print("✅ Loaded config từ chuỗi --conf")
+        except json.JSONDecodeError as e:
+            print(f"❌ Lỗi parse JSON conf: {e}")
+            exit(1)
+
+    else:
+        print("❌ Thiếu config: cần truyền --conf hoặc --conf-file")
         exit(1)
 
+    # Gọi process_crawl
     try:
-        # Gọi process_crawl như cũ
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
+
 

@@ -26,4 +26,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Chạy Commandline
-CMD ["python", "app/crawl_request.py"]
+#CMD ["python","-m" , "app/crawl_request.py"]
+
+# Copy entrypoint.sh
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Entrypoint chạy script
+ENTRYPOINT ["/app/entrypoint.sh"]
