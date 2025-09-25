@@ -26,5 +26,6 @@ else
 fi
 
 # Chạy Stop/Health API
-exec uvicorn app.server:app --host 0.0.0.0 --port 9000
+PORT=${API_PORT:-9222}
+exec uvicorn app.server:app --host 0.0.0.0 --port $PORT
 
