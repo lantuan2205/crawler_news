@@ -12,6 +12,9 @@ import socks
 from constants.crawlers import CRAWLERS
 from typing import Optional, Dict
 from constants.search_url_builders import SEARCH_URL_BUILDERS
+import os
+import signal
+import sys
 
 
 try:
