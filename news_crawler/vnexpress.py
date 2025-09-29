@@ -11,6 +11,17 @@ from io import BytesIO
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+import time
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from typing import Optional  
+
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]
 if str(ROOT) not in sys.path:
@@ -19,6 +30,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.beautifulSoup_utils import  extract_categories_from_soup
 from utils.service_utils import clean_date, get_urls_of_type
 from utils.mongodb_utils import save_image_metadata
 
@@ -173,6 +185,68 @@ class VNExpressCrawler(BaseCrawler):
             print(f"Lỗi khi tải ảnh {image_url}: {e}")
             return None
 
+    def extract_profile_domain(self, url: str):
+        
+        chrome_options = Options()
+        chrome_options.binary_location = "/usr/bin/chromium-browser"
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--window-size=1920,1080")
+
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver.get(url)
+        time.sleep(1)  # chờ JS render footer
+
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        driver.quit()
+
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": str(uuid.uuid4())
+        }
+
+        footer = soup.select_one("footer#wrapper_footer")
+        if footer:
+            text_lines = footer.get_text("\n", strip=True).split("\n")
+
+            for line in text_lines:
+                if "Số giấy phép:" in line:
+                    info["license"] = line.replace("Số giấy phép:", "").strip()
+                elif "Tổng biên tập:" in line:
+                    info["editor_in_chief"] = line.replace("Tổng biên tập:", "").strip()
+                elif "Địa chỉ:" in line:
+                    info["address"] = line.replace("Địa chỉ:", "").strip()
+                elif "Điện thoại:" in line:
+                    info["phone"] = line.replace("Điện thoại:", "").strip()
+
+            email_tag = footer.select_one("a[href^=mailto]")
+            if email_tag:
+                info["email"] = email_tag.get_text(strip=True)
+
+            last_p = footer.select("p")[-1] if footer.select("p") else None
+            if last_p:
+                info["infor_copyright"] = last_p.get_text(strip=True)
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", "")
+        )
+
+        
+
     def extract_content(self, url: str) -> tuple:
         # Sử dụng session từ base class (có thể là proxy session)
         if hasattr(self, 'session'):
@@ -190,13 +264,12 @@ class VNExpressCrawler(BaseCrawler):
             return None, None, None
         title = title.text
 
-        # some sport news have location-stamp child tag inside description tag
         desc_tag = soup.find("p", class_="description")
         description = desc_tag.get_text(strip=True) if desc_tag else ""
         paragraph_tags = soup.find_all("p", class_="Normal")
         if paragraph_tags:
-            author = paragraph_tags[-1].text.strip()  # Lấy tác giả từ thẻ cuối
-            del paragraph_tags[-1]  # Xóa để tránh lặp
+            author = paragraph_tags[-1].text.strip() 
+            del paragraph_tags[-1]
         else:
             author = None
 
@@ -207,20 +280,22 @@ class VNExpressCrawler(BaseCrawler):
         time_element = soup.find("span", class_="date")
         published_date = time_element.text.strip() if time_element else None
 
+        categories_array = extract_categories_from_soup(soup)
+        categories = "\n".join(categories_array)
+
         # Lấy tất cả các ảnh trong nội dung bài viết
         image_tags = soup.find_all("img", class_="lazy")
         content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]
 
-        return title, description, content, published_date, author, content_image_urls
+        return title, description, content, published_date, author, content_image_urls, categories
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, content, published_date, author, content_image_urls = self.extract_content(url)
+            title, description, content, published_date, author, content_image_urls, categories = self.extract_content(url)
             if not title:  # Nếu không có tiêu đề, bỏ qua bài viết
                 return None
 
             # Lấy thể loại từ URL
-            category = article_type
 
             # Tải và lưu ảnh nội dung
             # content_image_paths = []
@@ -238,6 +313,7 @@ class VNExpressCrawler(BaseCrawler):
                 "description": description,
                 "content": content,
                 "contentImageUrls": content_image_urls,
+                "categories": categories
                 # # "localContentImagePaths": content_image_paths
             }
 

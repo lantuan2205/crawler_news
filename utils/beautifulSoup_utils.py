@@ -8,6 +8,13 @@ def get_text_from_tag(tag):
         return tag
     return tag.text
 
+def extract_categories_from_soup(soup):
+    categories = []
+    for ul in soup.find_all("ul", class_="breadcrumb"):
+        cats = [a.get_text(strip=True) for a in ul.find_all("a")]
+        if cats:
+            categories.append(cats)
+    return categories
 
 def extract_author_from_strong_tags(soup):
     strong_tags = soup.select("p > strong")

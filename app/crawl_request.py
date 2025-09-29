@@ -1,5 +1,5 @@
 import argparse
-from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka
+from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka
 import re
 from urllib.parse import urlencode, quote_plus
 import json
@@ -169,6 +169,8 @@ def process_crawl(data: Dict[str, Any]):
             response["articles"].append(article)
             return response
         else:
+            get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
+            return
             # Crawl toàn bộ domain
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
@@ -301,6 +303,56 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
     time.sleep(1)
     if link:
         return article_data
+
+def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
+    """Hàm lấy chi tiết bài báo"""
+    # Inject proxy session vào crawler nếu có
+    print(f"[INFO] ======================= PROFILE INFORMATION=====================: {url}")
+    if proxy_session:
+        print(f"[INFO] Áp dụng proxy cho crawler: {url}")
+        # Lưu proxy session vào crawler để sử dụng
+        crawler.proxy_session = proxy_session
+
+        # Nếu crawler có thuộc tính session, cập nhật nó
+        if hasattr(crawler, 'session'):
+            crawler.session = proxy_session
+            print(f"[INFO] Đã cập nhật session của crawler với proxy")
+
+        # Nếu crawler có thuộc tính proxies, cập nhật nó
+        if hasattr(crawler, 'proxies'):
+            crawler.proxies = proxy_session.proxies
+            print(f"[INFO] Đã cập nhật proxies của crawler")
+
+    try:
+        license_infor, description, editor_in_chief, address, phone, email, infor_copyright = crawler.extract_profile_domain(url)
+    except Exception as e:
+        print(f"Lỗi khi lấy nội dung bài báo: {e}")
+        return None
+
+    profile_info = {
+        "name": url,
+        "description": description,
+        "license": license_infor,
+        "editor_in_chief": editor_in_chief,
+        "address": address,
+        "phone": phone,
+        "email": email,
+        "infor_copyright": infor_copyright,
+    }
+    
+    # Thêm jobId nếu có (cần truyền từ process_crawl)
+    if jobId:
+        profile_info['jobId'] = jobId
+
+    if crawlId:
+        profile_info['crawlId'] = crawlId
+    
+    save_to_json(profile_info)
+    #send_json_to_api()
+    send_profile_to_kafka(profile_info)
+    time.sleep(1)
+    if link:
+        return profile_info
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crawl a news article by JSON config")

@@ -21,7 +21,7 @@ import pytz
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:9092")
 KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
-
+KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
 # UPLOAD_API_HOST = "localhost"
@@ -36,16 +36,18 @@ producer = KafkaProducer(
 )
 
 def send_clean_article_to_kafka(article_data: dict):
-    """
-    Gửi article đã xử lý (cleaned) lên Kafka topic `news.crawler.cleaned`.
-
-    Args:
-        article_data (dict): Dữ liệu bài viết đã xử lý
-    """
     try:
         producer.send(KAFKA_TOPIC, article_data)
         producer.flush()
         print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC}'")
+    except Exception as e:
+        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+
+def send_profile_to_kafka(profileInfor: dict):
+    try:
+        producer.send(KAFKA_TOPIC_PROFILE, profileInfor)
+        producer.flush()
+        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_PROFILE}'")
     except Exception as e:
         print(f"[✗] Gửi article tới Kafka thất bại: {e}")
 
