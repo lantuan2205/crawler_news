@@ -371,6 +371,8 @@ if __name__ == "__main__":
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        # Sau khi crawl xong thì stop container ngay
+        os.kill(os.getpid(), signal.SIGTERM)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
