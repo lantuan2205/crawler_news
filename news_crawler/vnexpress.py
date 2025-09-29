@@ -186,20 +186,16 @@ class VNExpressCrawler(BaseCrawler):
             return None
 
     def extract_profile_domain(self, url: str):
-        
-        chrome_options = Options()
-        chrome_options.binary_location = "/usr/bin/chromium-browser"
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
-
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-        driver.get(url)
-        time.sleep(1)  # chờ JS render footer
-
-        soup = BeautifulSoup(driver.page_source, "html.parser")
-        driver.quit()
+        headers = {"User-Agent": "Mozilla/5.0"}
+        if hasattr(self, 'session'):
+            response = self.session.get(url, headers=headers, timeout=10)
+        else:
+            response = requests.get(url, headers=headers, timeout=10)
+        content = response.content
+        print("-----------", content)
+        soup = BeautifulSoup(content, "html.parser")
+        url = "https://vnexpress.net"
+        job_id = 1
 
         info = {
             "name": url,
@@ -210,31 +206,45 @@ class VNExpressCrawler(BaseCrawler):
             "phone": None,
             "email": None,
             "infor_copyright": None,
-            "jobId": str(uuid.uuid4())
+            "jobId": job_id or str(uuid.uuid4())
         }
+        footer_copyright = soup.select_one(".copyright-footer")
+        if footer_copyright:
+            text = footer_copyright.get_text("\n", strip=True)
 
-        footer = soup.select_one("footer#wrapper_footer")
-        if footer:
-            text_lines = footer.get_text("\n", strip=True).split("\n")
+            # License
+            if "Số giấy phép:" in text:
+                license_line = [line for line in text.split("\n") if "Số giấy phép:" in line]
+                if license_line:
+                    info["license"] = license_line[0].replace("Số giấy phép:", "").strip()
 
-            for line in text_lines:
-                if "Số giấy phép:" in line:
-                    info["license"] = line.replace("Số giấy phép:", "").strip()
-                elif "Tổng biên tập:" in line:
-                    info["editor_in_chief"] = line.replace("Tổng biên tập:", "").strip()
-                elif "Địa chỉ:" in line:
-                    info["address"] = line.replace("Địa chỉ:", "").strip()
-                elif "Điện thoại:" in line:
-                    info["phone"] = line.replace("Điện thoại:", "").strip()
+            # Tổng biên tập
+            if "Tổng biên tập:" in text:
+                editor_line = [line for line in text.split("\n") if "Tổng biên tập:" in line]
+                if editor_line:
+                    info["editor_in_chief"] = editor_line[0].replace("Tổng biên tập:", "").strip()
 
-            email_tag = footer.select_one("a[href^=mailto]")
+            # Địa chỉ
+            if "Địa chỉ:" in text:
+                addr_line = [line for line in text.split("\n") if "Địa chỉ:" in line]
+                if addr_line:
+                    info["address"] = addr_line[0].replace("Địa chỉ:", "").strip()
+
+            # Điện thoại
+            if "Điện thoại:" in text:
+                phone_line = [line for line in text.split("\n") if "Điện thoại:" in line]
+                if phone_line:
+                    info["phone"] = phone_line[0].replace("Điện thoại:", "").strip()
+
+            # Email
+            email_tag = footer_copyright.select_one("a[href^=mailto]")
             if email_tag:
                 info["email"] = email_tag.get_text(strip=True)
 
-            last_p = footer.select("p")[-1] if footer.select("p") else None
+            # Thông tin bản quyền
+            last_p = footer_copyright.select("p")[-1]
             if last_p:
                 info["infor_copyright"] = last_p.get_text(strip=True)
-
         return (
             info.get("license", ""),
             info.get("description", ""),
@@ -281,8 +291,10 @@ class VNExpressCrawler(BaseCrawler):
         published_date = time_element.text.strip() if time_element else None
 
         categories_array = extract_categories_from_soup(soup)
-        categories = "\n".join(categories_array)
+        if categories_array and isinstance(categories_array[0], list):
+            categories_array = categories_array[0]
 
+        categories = ", ".join(categories_array)
         # Lấy tất cả các ảnh trong nội dung bài viết
         image_tags = soup.find_all("img", class_="lazy")
         content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]

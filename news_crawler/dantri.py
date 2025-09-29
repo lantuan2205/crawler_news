@@ -257,7 +257,13 @@ class DanTriCrawler(BaseCrawler):
             author_tag = soup.find("div", class_="author-name")
             author = author_tag.get_text(strip=True) if author_tag else None
 
-            return title, description, content, publish_date, author, content_images
+            categories = [
+                a.get_text(strip=True)
+                for a in soup.select("ul.dt-text-c808080.dt-text-base.dt-leading-5.dt-p-0.dt-list-none li a")
+            ]
+            categories = ", ".join(categories)
+
+            return title, description, content, publish_date, author, content_images, categories
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -265,6 +271,7 @@ class DanTriCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -272,7 +279,7 @@ class DanTriCrawler(BaseCrawler):
         @param output_fpath (str): file path to save crawled result
         @return (bool): True if crawl successfully and otherwise
         """
-        title, description, content, publish_date, author, content_images = self.extract_content(url)
+        title, description, content, publish_date, author, content_images, categories = self.extract_content(url)
         if not title:
             return None
             
@@ -293,6 +300,7 @@ class DanTriCrawler(BaseCrawler):
             "description": description,
             "content": content,
             "contentImageUrls": content_images,
+            "categories": categories
             # # "localContentImagePaths": content_image_paths
         }
 

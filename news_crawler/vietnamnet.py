@@ -164,11 +164,19 @@ class VietNamNetCrawler(BaseCrawler):
                 if link_author:
                     author = link_author.text.strip()
 
-        return title, description, content, published_date, author, content_images
+        breadcrumb = soup.select("div.bread-crumb-detail ul > li > a")
+        categories = []
+        for a in breadcrumb:
+            text = a.get_text(strip=True)
+            if text and "icon-home" not in a.get("class", []):
+                categories.append(text)
+        categories = ", ".join(categories)
+
+        return title, description, content, published_date, author, content_images, categories
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, content, published_date, author, content_images = self.extract_content(url)
+            title, description, content, published_date, author, content_images, categories = self.extract_content(url)
             if not title:
                 return None
             
@@ -192,6 +200,7 @@ class VietNamNetCrawler(BaseCrawler):
                 "description": description,
                 "content": content,
                 "contentImageUrls": content_images,
+                "categories": categories
                 # # "localContentImagePaths": content_image_paths
             }
 

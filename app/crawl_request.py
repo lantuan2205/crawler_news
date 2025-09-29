@@ -169,8 +169,8 @@ def process_crawl(data: Dict[str, Any]):
             response["articles"].append(article)
             return response
         else:
-            get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
-            return
+            # get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
+            # return
             # Crawl toàn bộ domain
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
@@ -262,14 +262,13 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
             print(f"[INFO] Đã cập nhật proxies của crawler")
 
     try:
-        title, description, content, published_date, author, content_image_urls = crawler.extract_content(url)
+        title, description, content, published_date, author, content_image_urls, categories = crawler.extract_content(url)
     except Exception as e:
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
 
     if not title:
         return None
-
     # Xử lý Url ảnh
     photoInfos = {}
     for url_image in content_image_urls:
@@ -287,6 +286,7 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
         "content": content,
         "contentImageUrls": content_image_urls,
         "photoInfos": photoInfos,
+        "categories": categories,
         "comments": [""]
     }
     
