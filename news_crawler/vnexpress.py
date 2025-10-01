@@ -20,6 +20,7 @@ import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from typing import Optional  
 
 FILE = Path(__file__).resolve()
@@ -186,17 +187,7 @@ class VNExpressCrawler(BaseCrawler):
             return None
 
     def extract_profile_domain(self, url: str):
-        headers = {"User-Agent": "Mozilla/5.0"}
-        if hasattr(self, 'session'):
-            response = self.session.get(url, headers=headers, timeout=10)
-        else:
-            response = requests.get(url, headers=headers, timeout=10)
-        content = response.content
-        print("-----------", content)
-        soup = BeautifulSoup(content, "html.parser")
-        url = "https://vnexpress.net"
         job_id = 1
-
         info = {
             "name": url,
             "description": "",
@@ -206,45 +197,99 @@ class VNExpressCrawler(BaseCrawler):
             "phone": None,
             "email": None,
             "infor_copyright": None,
-            "jobId": job_id or str(uuid.uuid4())
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
         }
-        footer_copyright = soup.select_one(".copyright-footer")
-        if footer_copyright:
-            text = footer_copyright.get_text("\n", strip=True)
 
-            # License
-            if "Số giấy phép:" in text:
-                license_line = [line for line in text.split("\n") if "Số giấy phép:" in line]
-                if license_line:
-                    info["license"] = license_line[0].replace("Số giấy phép:", "").strip()
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            container = soup.find("div", class_="container")
+            h1_tag = container.find("h1") if container else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
 
-            # Tổng biên tập
-            if "Tổng biên tập:" in text:
-                editor_line = [line for line in text.split("\n") if "Tổng biên tập:" in line]
-                if editor_line:
-                    info["editor_in_chief"] = editor_line[0].replace("Tổng biên tập:", "").strip()
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
 
-            # Địa chỉ
-            if "Địa chỉ:" in text:
-                addr_line = [line for line in text.split("\n") if "Địa chỉ:" in line]
-                if addr_line:
-                    info["address"] = addr_line[0].replace("Địa chỉ:", "").strip()
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(20)
 
-            # Điện thoại
-            if "Điện thoại:" in text:
-                phone_line = [line for line in text.split("\n") if "Điện thoại:" in line]
-                if phone_line:
-                    info["phone"] = phone_line[0].replace("Điện thoại:", "").strip()
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
 
-            # Email
-            email_tag = footer_copyright.select_one("a[href^=mailto]")
-            if email_tag:
-                info["email"] = email_tag.get_text(strip=True)
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located(("css selector", "div.copyright-footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
 
-            # Thông tin bản quyền
-            last_p = footer_copyright.select("p")[-1]
-            if last_p:
-                info["infor_copyright"] = last_p.get_text(strip=True)
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("div", class_="copyright-footer")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                if "Số giấy phép:" in text:
+                    license_line = [line for line in lines if "Số giấy phép:" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Số giấy phép:", "").strip()
+
+                # Tổng biên tập
+                if "Tổng biên tập:" in text:
+                    editor_line = [line for line in lines if "Tổng biên tập:" in line]
+                    if editor_line:
+                        info["editor_in_chief"] = editor_line[0].replace("Tổng biên tập:", "").strip()
+
+                # Địa chỉ
+                if "Địa chỉ:" in text:
+                    addr_line = [line for line in lines if "Địa chỉ:" in line]
+                    if addr_line:
+                        info["address"] = addr_line[0].replace("Địa chỉ:", "").strip()
+
+                # Điện thoại
+                if "Điện thoại:" in text:
+                    phone_line = [line for line in lines if "Điện thoại:" in line]
+                    if phone_line:
+                        info["phone"] = phone_line[0].replace("Điện thoại:", "").strip()
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True)
+
+                # Thông tin bản quyền
+                last_p = footer_copyright.select("p")[-1]
+                if last_p:
+                    info["infor_copyright"] = last_p.get_text(strip=True)
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
         return (
             info.get("license", ""),
             info.get("description", ""),
@@ -252,10 +297,9 @@ class VNExpressCrawler(BaseCrawler):
             info.get("address", ""), 
             info.get("phone", ""),
             info.get("email", ""),
-            info.get("infor_copyright", "")
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
         )
-
-        
 
     def extract_content(self, url: str) -> tuple:
         # Sử dụng session từ base class (có thể là proxy session)

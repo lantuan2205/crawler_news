@@ -194,8 +194,8 @@ class CongAnNhanDanCrawler(BaseCrawler):
             author_box = soup.find('div', class_='box-author')
             author_tag = author_box.find('strong')
             author = author_tag.get_text(strip=True).rstrip('-').strip() if author_tag else None
-
-            return title, description, content, publish_date, author, content_images
+            categories = "1,2,3"
+            return title, description, content, publish_date, author, content_images, categories
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")

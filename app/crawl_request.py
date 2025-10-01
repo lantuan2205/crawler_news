@@ -172,8 +172,7 @@ def process_crawl(data: Dict[str, Any]):
             response["articles"].append(article)
             return response
         else:
-            # get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
-            # return
+            get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
             # Crawl toàn bộ domain
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
@@ -327,7 +326,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
             print(f"[INFO] Đã cập nhật proxies của crawler")
 
     try:
-        license_infor, description, editor_in_chief, address, phone, email, infor_copyright = crawler.extract_profile_domain(url)
+        license_infor, description, editor_in_chief, address, phone, email, infor_copyright, logo = crawler.extract_profile_domain(url)
     except Exception as e:
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
@@ -341,6 +340,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         "phone": phone,
         "email": email,
         "infor_copyright": infor_copyright,
+        "logo": logo,
     }
     
     # Thêm jobId nếu có (cần truyền từ process_crawl)
@@ -374,9 +374,8 @@ if __name__ == "__main__":
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        # Sau khi crawl xong thì stop container ngay
-        pid = 1  # PID của process uvicorn (FastAPI)
-        os.kill(pid, signal.SIGTERM)  # Gửi tín hiệu SIGTERM cho process chính
+        pid = 1
+        os.kill(pid, signal.SIGTERM)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
