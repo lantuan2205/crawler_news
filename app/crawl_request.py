@@ -375,7 +375,8 @@ if __name__ == "__main__":
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
         # Sau khi crawl xong thì stop container ngay
-        os.kill(os.getpid(), signal.SIGTERM)
+        pid = 1  # PID của process uvicorn (FastAPI)
+        os.kill(pid, signal.SIGTERM)  # Gửi tín hiệu SIGTERM cho process chính
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
