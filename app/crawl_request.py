@@ -164,17 +164,17 @@ def process_crawl(data: Dict[str, Any]):
             re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
             re.search(r'-i\d+/?$', input_data)
         ])
-
+        url = re.sub(r"/+$", "", input_data)
         if is_article:
-            get_comment_details(crawler, input_data, False, proxy_session, jobId, crawlId)
+            get_comment_details(crawler, url, False, proxy_session, jobId, crawlId)
             return
-            article = get_article_details(crawler, input_data, True, proxy_session, jobId, crawlId)
+            article = get_article_details(crawler, url, True, proxy_session, jobId, crawlId)
             if not article:
                 raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
             response["articles"].append(article)
             return response
         else:
-            get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
+            get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
             # Crawl toàn bộ domain
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
@@ -185,7 +185,7 @@ def process_crawl(data: Dict[str, Any]):
                         get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
 
-            return {"status": "ok", "url": input_data, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
+            return {"status": "ok", "url": url, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
 
     # Nếu inputData là một keyword
     else:
@@ -302,10 +302,10 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
     if crawlId:
         article_data['crawlId'] = crawlId
     
-    save_to_json(article_data)
+    # save_to_json(article_data)
     #send_json_to_api()
     send_clean_article_to_kafka(article_data)
-    time.sleep(1)
+    time.sleep(0.2)
     if link:
         return article_data
 
@@ -332,11 +332,9 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
     except Exception as e:
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
-
-    save_to_json(comments)
-    #send_json_to_api()
-    send_comment_article_to_kafka(comments)
-    time.sleep(0.5)
+    for comment in comments:
+        send_comment_article_to_kafka(comment)
+        time.sleep(0.2)
     if link:
         return comments
 

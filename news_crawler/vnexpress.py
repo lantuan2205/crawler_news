@@ -373,7 +373,7 @@ class VNExpressCrawler(BaseCrawler):
                         EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
                     )
                     show_more_btn.click()
-                    time.sleep(1)  # chờ comment load
+                    time.sleep(0.5)  # chờ comment load
                 except (TimeoutException, NoSuchElementException):
                     break  # hết nút để click
 
@@ -420,21 +420,21 @@ class VNExpressCrawler(BaseCrawler):
                 if reply_tag:
                     reply_count = int(reply_tag.get("data-total", 0))
                     reply_info = {
-                        "comment_id": reply_tag.get("rel"),
+                        "commentId": reply_tag.get("rel"),
                         "total": reply_count,
                         "offset": reply_tag.get("data-offset", 0)
                     }
                 
                 comments.append({
                     "url": url,
-                    "comment_id": comment_id,
-                    "user_id": user_id,
+                    "commentId": comment_id,
+                    "userId": user_id,
                     "username": username,
                     "avatar": avatar,
                     "content": content,
                     "time": time_text,
                     "reactions": reactions,
-                    "reply_count": reply_count
+                    "replyCount": reply_count
                 })
             return comments
         except WebDriverException as e:
