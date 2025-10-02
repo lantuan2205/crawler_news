@@ -397,14 +397,15 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         return None
 
     profile_info = {
-        "name": url,
+        "domain": url,
+        "name": extract_main_domain(url),
         "description": description,
         "license": license_infor,
-        "editor_in_chief": editor_in_chief,
+        "editorInChief": editor_in_chief,
         "address": address,
         "phone": phone,
         "email": email,
-        "infor_copyright": infor_copyright,
+        "inforCopyright": infor_copyright,
         "logo": logo,
     }
     

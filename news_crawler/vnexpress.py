@@ -21,6 +21,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.common.by import By
 from typing import Optional  
 
 FILE = Path(__file__).resolve()
@@ -223,7 +224,7 @@ class VNExpressCrawler(BaseCrawler):
         driver = None
         try:
             driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(20)
+            driver.set_page_load_timeout(100)
 
             try:
                 driver.get(url)
@@ -234,7 +235,7 @@ class VNExpressCrawler(BaseCrawler):
             # Chờ phần footer xuất hiện
             try:
                 footer = WebDriverWait(driver, 10).until(
-                    EC.presence_of_element_located(("css selector", "div.copyright-footer"))
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.copyright-footer"))
                 )
             except TimeoutException:
                 print("⚠️ Không tìm thấy footer.")
@@ -277,7 +278,7 @@ class VNExpressCrawler(BaseCrawler):
                 # Email
                 email_tag = footer_copyright.select_one("a[href^=mailto]")
                 if email_tag:
-                    info["email"] = email_tag.get_text(strip=True)
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
 
                 # Thông tin bản quyền
                 last_p = footer_copyright.select("p")[-1]
@@ -409,7 +410,6 @@ class VNExpressCrawler(BaseCrawler):
             print("---------123-----", comments)
 
         return comments
-
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
