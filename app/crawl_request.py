@@ -1,5 +1,5 @@
 import argparse
-from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka
+from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka, send_comment_article_to_kafka
 import re
 from urllib.parse import urlencode, quote_plus
 import json
@@ -19,8 +19,8 @@ import sys
 
 try:
     from app.server import start_background_server
-    start_background_server(port=8000)
-    print("[INFO] Stop/Health API started on port 8000")
+    start_background_server(port=8111)
+    print("[INFO] Stop/Health API started on port 8111")
 except Exception as e:
     print(f"[WARN] Không thể khởi động stop server: {e}")
 
@@ -166,6 +166,8 @@ def process_crawl(data: Dict[str, Any]):
         ])
 
         if is_article:
+            # get_comment_details(crawler, input_data, False, proxy_session, jobId, crawlId)
+            # return
             article = get_article_details(crawler, input_data, True, proxy_session, jobId, crawlId)
             if not article:
                 raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
@@ -180,6 +182,7 @@ def process_crawl(data: Dict[str, Any]):
                 for article_url in urls:
                     if article_url:
                         get_article_details(crawler, article_url, False, proxy_session, jobId, crawlId)
+                        # get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
 
             return {"status": "ok", "url": input_data, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
@@ -305,6 +308,68 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
     time.sleep(1)
     if link:
         return article_data
+
+def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
+    """Hàm lấy chi tiết bài báo"""
+    # Inject proxy session vào crawler nếu có
+    if proxy_session:
+        print(f"[INFO] Áp dụng proxy cho crawler: {url}")
+        # Lưu proxy session vào crawler để sử dụng
+        crawler.proxy_session = proxy_session
+
+        # Nếu crawler có thuộc tính session, cập nhật nó
+        if hasattr(crawler, 'session'):
+            crawler.session = proxy_session
+            print(f"[INFO] Đã cập nhật session của crawler với proxy")
+
+        # Nếu crawler có thuộc tính proxies, cập nhật nó
+        if hasattr(crawler, 'proxies'):
+            crawler.proxies = proxy_session.proxies
+            print(f"[INFO] Đã cập nhật proxies của crawler")
+
+    try:
+        comments = crawler.extract_comment(url)
+    except Exception as e:
+        print(f"Lỗi khi lấy nội dung bài báo: {e}")
+        return None
+
+    if not title:
+        return None
+    # Xử lý Url ảnh
+    photoInfos = {}
+    for url_image in content_image_urls:
+        clean_url = url_image.split('?')[0]
+        filename = Path(clean_url).name
+        photoInfos[filename] = url_image
+
+    comment_data = {
+        "dataSource": "/".join(url.split("/")[:3]),
+        "title": title,
+        "url": url,
+        "author": author,
+        "publishedDate": clean_date(published_date),
+        "description": description,
+        "content": content,
+        "contentImageUrls": content_image_urls,
+        "photoInfos": photoInfos,
+        "categories": categories,
+        "comments": [""]
+    }
+    
+    # Thêm jobId nếu có (cần truyền từ process_crawl)
+    if jobId:
+        comment_data['jobId'] = jobId
+
+    if crawlId:
+        comment_data['crawlId'] = crawlId
+    
+    save_to_json(comment_data)
+    #send_json_to_api()
+    send_comment_article_to_kafka(comment_data)
+    time.sleep(1)
+    if link:
+        return comment_data
+
 
 def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""

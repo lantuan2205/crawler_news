@@ -345,6 +345,72 @@ class VNExpressCrawler(BaseCrawler):
 
         return title, description, content, published_date, author, content_image_urls, categories
 
+    def extract_comment(self, url: str):
+                # Sử dụng session từ base class (có thể là proxy session)
+        if hasattr(self, 'session'):
+            response = self.session.get(url, headers=headers, timeout=10)
+        else:
+            response = requests.get(url, headers=headers, timeout=10)
+            
+        content = response.content
+        sleep_time = random.uniform(1, 2)
+        time.sleep(sleep_time)
+        soup = BeautifulSoup(content, "html.parser")
+        
+        comments = []
+
+        for item in soup.select("div.comment_item"):
+            # comment_id
+            comment_id = item.select_one("a.link_thich")
+            comment_id = comment_id["id"] if comment_id else None
+            
+            # user_id
+            user_div = item.select_one("div.user_status")
+            user_id = user_div.get("data-userid") if user_div else None
+            
+            # username
+            nickname = item.select_one("a.nickname")
+            username = nickname.get_text(strip=True) if nickname else None
+            
+            # avatar
+            avatar_tag = item.select_one("a.avata_coment img")
+            avatar = avatar_tag["src"] if avatar_tag else None
+            
+            # content
+            content_tag = item.select_one("p.full_content")
+            content = content_tag.get_text(" ", strip=True) if content_tag else None
+            
+            # time
+            time_tag = item.select_one("span.time-com")
+            time = time_tag.get_text(strip=True) if time_tag else None
+            
+            # reactions
+            reactions = {}
+            for r in item.select("div.reactions-detail div.item"):
+                label = r.select_one("span.icons img")["alt"] if r.select_one("span.icons img") else None
+                count = r.select_one("strong")
+                reactions[label] = int(count.get_text()) if count else 0
+            
+            # reply count
+            reply_tag = item.select_one("p.count-reply a.view_all_reply")
+            reply_count = int(reply_tag["data-total"]) if reply_tag and reply_tag.has_attr("data-total") else 0
+            
+            comments.append({
+                "comment_id": comment_id,
+                "user_id": user_id,
+                "username": username,
+                "avatar": avatar,
+                "content": content,
+                "time": time,
+                "reactions": reactions,
+                "reply_count": reply_count
+            })
+
+            print("---------123-----", comments)
+
+        return comments
+
+
     def write_content(self, url: str, article_type: str) -> bool:
         try:
             title, description, content, published_date, author, content_image_urls, categories = self.extract_content(url)

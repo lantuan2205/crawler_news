@@ -20,11 +20,11 @@ def stop_crawl():
     return {"status": f"Stopping process {pid}"}
 
 
-def _run_server(port: int = 8000, host: str = "0.0.0.0"):
+def _run_server(port: int = 8111, host: str = "0.0.0.0"):
     uvicorn.run(app, host=host, port=port, log_level="info")
 
 
-def start_background_server(port: int = 8000, host: str = "0.0.0.0"):
+def start_background_server(port: int = 8111, host: str = "0.0.0.0"):
     server_thread = threading.Thread(
         target=_run_server,
         kwargs={"port": port, "host": host},
