@@ -166,8 +166,8 @@ def process_crawl(data: Dict[str, Any]):
         ])
 
         if is_article:
-            # get_comment_details(crawler, input_data, False, proxy_session, jobId, crawlId)
-            # return
+            get_comment_details(crawler, input_data, False, proxy_session, jobId, crawlId)
+            return
             article = get_article_details(crawler, input_data, True, proxy_session, jobId, crawlId)
             if not article:
                 raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
@@ -182,7 +182,7 @@ def process_crawl(data: Dict[str, Any]):
                 for article_url in urls:
                     if article_url:
                         get_article_details(crawler, article_url, False, proxy_session, jobId, crawlId)
-                        # get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
+                        get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
 
             return {"status": "ok", "url": input_data, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
@@ -333,42 +333,12 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
 
-    if not title:
-        return None
-    # Xử lý Url ảnh
-    photoInfos = {}
-    for url_image in content_image_urls:
-        clean_url = url_image.split('?')[0]
-        filename = Path(clean_url).name
-        photoInfos[filename] = url_image
-
-    comment_data = {
-        "dataSource": "/".join(url.split("/")[:3]),
-        "title": title,
-        "url": url,
-        "author": author,
-        "publishedDate": clean_date(published_date),
-        "description": description,
-        "content": content,
-        "contentImageUrls": content_image_urls,
-        "photoInfos": photoInfos,
-        "categories": categories,
-        "comments": [""]
-    }
-    
-    # Thêm jobId nếu có (cần truyền từ process_crawl)
-    if jobId:
-        comment_data['jobId'] = jobId
-
-    if crawlId:
-        comment_data['crawlId'] = crawlId
-    
-    save_to_json(comment_data)
+    save_to_json(comments)
     #send_json_to_api()
-    send_comment_article_to_kafka(comment_data)
-    time.sleep(1)
+    send_comment_article_to_kafka(comments)
+    time.sleep(0.5)
     if link:
-        return comment_data
+        return comments
 
 
 def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:

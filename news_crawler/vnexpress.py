@@ -347,69 +347,102 @@ class VNExpressCrawler(BaseCrawler):
         return title, description, content, published_date, author, content_image_urls, categories
 
     def extract_comment(self, url: str):
-                # Sử dụng session từ base class (có thể là proxy session)
-        if hasattr(self, 'session'):
-            response = self.session.get(url, headers=headers, timeout=10)
-        else:
-            response = requests.get(url, headers=headers, timeout=10)
-            
-        content = response.content
-        sleep_time = random.uniform(1, 2)
-        time.sleep(sleep_time)
-        soup = BeautifulSoup(content, "html.parser")
-        
-        comments = []
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
 
-        for item in soup.select("div.comment_item"):
-            # comment_id
-            comment_id = item.select_one("a.link_thich")
-            comment_id = comment_id["id"] if comment_id else None
-            
-            # user_id
-            user_div = item.select_one("div.user_status")
-            user_id = user_div.get("data-userid") if user_div else None
-            
-            # username
-            nickname = item.select_one("a.nickname")
-            username = nickname.get_text(strip=True) if nickname else None
-            
-            # avatar
-            avatar_tag = item.select_one("a.avata_coment img")
-            avatar = avatar_tag["src"] if avatar_tag else None
-            
-            # content
-            content_tag = item.select_one("p.full_content")
-            content = content_tag.get_text(" ", strip=True) if content_tag else None
-            
-            # time
-            time_tag = item.select_one("span.time-com")
-            time = time_tag.get_text(strip=True) if time_tag else None
-            
-            # reactions
-            reactions = {}
-            for r in item.select("div.reactions-detail div.item"):
-                label = r.select_one("span.icons img")["alt"] if r.select_one("span.icons img") else None
-                count = r.select_one("strong")
-                reactions[label] = int(count.get_text()) if count else 0
-            
-            # reply count
-            reply_tag = item.select_one("p.count-reply a.view_all_reply")
-            reply_count = int(reply_tag["data-total"]) if reply_tag and reply_tag.has_attr("data-total") else 0
-            
-            comments.append({
-                "comment_id": comment_id,
-                "user_id": user_id,
-                "username": username,
-                "avatar": avatar,
-                "content": content,
-                "time": time,
-                "reactions": reactions,
-                "reply_count": reply_count
-            })
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(180)
 
-            print("---------123-----", comments)
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
 
-        return comments
+
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
+                    )
+                    show_more_btn.click()
+                    time.sleep(1)  # chờ comment load
+                except (TimeoutException, NoSuchElementException):
+                    break  # hết nút để click
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            for item in soup.select("div.comment_item"):
+                # comment_id
+                comment_id = item.select_one("a.link_thich")
+                comment_id = comment_id["id"] if comment_id else ""
+                
+                # user_id
+                user_div = item.select_one("div.user_status")
+                user_id = user_div.get("data-userid") if user_div else ""
+                
+                # username
+                nickname = item.select_one("a.nickname")
+                username = nickname.get_text(strip=True) if nickname else ""
+                
+                # avatar
+                avatar_tag = item.select_one("a.avata_coment img")
+                avatar = avatar_tag["src"] if avatar_tag else ""
+                
+                # content
+                # content: ưu tiên content_more, nếu không thì lấy full_content
+                content_tag = item.select_one("p.content_more") or item.select_one("p.full_content")
+                content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
+                
+                # time
+                time_tag = item.select_one("span.time-com")
+                time_text = time_tag.get_text(strip=True) if time_tag else ""
+                
+                # reactions
+                reactions = {}
+                for r in item.select("div.reactions-detail div.item"):
+                    label = r.select_one("span.icons img")["alt"] if r.select_one("span.icons img") else ""
+                    count = r.select_one("strong")
+                    reactions[label] = int(count.get_text()) if count else 0
+                
+                # reply count
+                reply_count = 0
+                reply_info = None
+                reply_tag = item.select_one("p.count-reply a.view_all_reply")
+                if reply_tag:
+                    reply_count = int(reply_tag.get("data-total", 0))
+                    reply_info = {
+                        "comment_id": reply_tag.get("rel"),
+                        "total": reply_count,
+                        "offset": reply_tag.get("data-offset", 0)
+                    }
+                
+                comments.append({
+                    "url": url,
+                    "comment_id": comment_id,
+                    "user_id": user_id,
+                    "username": username,
+                    "avatar": avatar,
+                    "content": content,
+                    "time": time_text,
+                    "reactions": reactions,
+                    "reply_count": reply_count
+                })
+            return comments
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
@@ -447,7 +480,7 @@ class VNExpressCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
-        if(page_number == 2):
+        if(page_number == 20):
             return []
         articles_urls = []
         try:
