@@ -17,6 +17,7 @@ from kafka import KafkaProducer
 import json
 from datetime import datetime
 import pytz
+from urllib.parse import urlparse
 
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:9092")
@@ -35,6 +36,14 @@ producer = KafkaProducer(
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
+
+def send_postcast_to_kafka(postcast_data: dict):
+    try:
+        producer.send(KAFKA_TOPIC_POST_CAST, postcast_data)
+        producer.flush()
+        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_POST_CAST}'")
+    except Exception as e:
+        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
 
 def send_clean_article_to_kafka(article_data: dict):
     try:
@@ -309,3 +318,19 @@ def remove_duplicate_urls(urls):
             seen.add(url)
             unique_urls.append(url)
     return unique_urls
+
+def normalize_url_to_root_https(url: str) -> str:
+    if not url:
+        raise ValueError("Empty url")
+    if "://" not in url:
+        url = "https://" + url
+
+    parsed = urlparse(url.strip())
+    host = parsed.hostname or ""
+    if host.startswith("www."):
+        host = host[4:]
+
+    if not host:
+        raise ValueError(f"Cannot extract host from: {url}")
+
+    return f"https://{host}"

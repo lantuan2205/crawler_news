@@ -28,7 +28,7 @@ class BaseCrawler(ABC):
             print(f"[INFO] BaseCrawler: Sử dụng session mặc định")
 
     @abstractmethod
-    def extract_content(self, url):
+    def extract_content(self, url, has_video=False):
         title = str()
         description = list()
         paragraphs = list()

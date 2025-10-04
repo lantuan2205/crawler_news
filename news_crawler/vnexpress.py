@@ -10,7 +10,6 @@ import paramiko
 from io import BytesIO
 from pathlib import Path
 from bs4 import BeautifulSoup
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -33,7 +32,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.beautifulSoup_utils import  extract_categories_from_soup
-from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_postcast_to_kafka
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -216,10 +215,21 @@ class VNExpressCrawler(BaseCrawler):
 
         # --- Phase 2: lấy footer bằng Selenium ---
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {"profile.managed_default_content_settings.javascript": 2}
+        )
+        chrome_options.set_capability("pageLoadStrategy", "none")
 
         driver = None
         try:
@@ -302,7 +312,7 @@ class VNExpressCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         # Sử dụng session từ base class (có thể là proxy session)
         if hasattr(self, 'session'):
             response = self.session.get(url, headers=headers, timeout=10)
@@ -339,12 +349,54 @@ class VNExpressCrawler(BaseCrawler):
         if categories_array and isinstance(categories_array[0], list):
             categories_array = categories_array[0]
 
-        categories = ", ".join(categories_array)
+        # Lấy tags
+        tags_array = [tag.get_text(strip=True) for tag in soup.select("div.tags h4.item-tag a")]
+        all_categories = categories_array + tags_array
+        categories = ", ".join(all_categories)
+
         # Lấy tất cả các ảnh trong nội dung bài viết
         image_tags = soup.find_all("img", class_="lazy")
         content_image_urls = [img.get("data-src") for img in image_tags if img.get("data-src")]
 
-        return title, description, content, published_date, author, content_image_urls, categories
+        thumbnail_url = ""
+        video_box = soup.select_one("div.box_img_video img")
+        if video_box:
+            thumbnail_url = video_box.get("src")
+
+        # --- Lấy video URL bằng Selenium nếu có ---
+        video_url = ""
+        if has_video:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-images")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+
+            driver = None
+            try:
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.set_page_load_timeout(120)
+                driver.set_script_timeout(120)
+                driver.get(url)
+                try:
+                    video_elem = driver.find_element(By.CSS_SELECTOR, "div.video-js")
+                    video_url = video_elem.get_attribute("src")
+                except NoSuchElementException:
+                    pass
+            except WebDriverException as e:
+                print("⚠️ Lỗi Selenium khi lấy video:", e)
+            finally:
+                if driver:
+                    driver.quit()
+
+
+        return title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url
 
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
@@ -354,25 +406,35 @@ class VNExpressCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
-
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
         driver = None
         try:
             driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(180)
+            driver.set_page_load_timeout(60)
 
             try:
                 driver.get(url)
             except TimeoutException:
                 print("⚠️ Load trang quá lâu, bỏ qua:", url)
-
-
             # --- Click "Xem thêm ý kiến" để load thêm comment ---
             while True:
                 try:
                     show_more_btn = WebDriverWait(driver, 5).until(
                         EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
                     )
-                    show_more_btn.click()
+                    # Cuộn tới nút
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    # Click bằng JS (bypass quảng cáo che)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
                     time.sleep(0.5)  # chờ comment load
                 except (TimeoutException, NoSuchElementException):
                     break  # hết nút để click
@@ -442,7 +504,6 @@ class VNExpressCrawler(BaseCrawler):
         finally:
             if driver:
                 driver.quit()
-
 
     def write_content(self, url: str, article_type: str) -> bool:
         try:
@@ -544,3 +605,119 @@ class VNExpressCrawler(BaseCrawler):
             return list(urls)
         except Exception as e:
             return []
+
+    def crawl_podcast_category(self, category_url: str):
+        # podcast_type_dict = {
+        #     0: "toi-ke",
+        #     1: "vnexpress-hom-nay",
+        #     2: "giai-ma",
+        #     3: "hop-den",
+        #     4: "ho-so-toi-ac",
+        #     5: "tai-chinh-ca-nhan",
+        #     6: "tham-thi",
+        #     7: "ho-noi-gi",
+        #     8: "news-explainer",
+        #     9: "nguoi-tro-ve",
+        #     10: "ban-on-khong",
+        #     11: "tien-lam-gi",
+        #     12: "ly-hon",
+        #     13: "toi-trong-guong",
+        #     14: "nguy-co",
+        #     15: "diem-tin"
+        # }
+
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--disable-dev-shm-usage")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.set_page_load_timeout(60)
+
+        podcasts = []
+        try:
+            driver.get(category_url)
+            time.sleep(2)
+
+            items = driver.find_elements(By.CSS_SELECTOR, "article.item-ev")
+            for item in items:
+                try:
+                    title_elem = item.find_element(By.CSS_SELECTOR, "h2.title-ev a")
+                    title = title_elem.get_attribute("title")
+                    url = title_elem.get_attribute("href")
+                except NoSuchElementException:
+                    continue
+
+                # Lấy thumbnail
+                try:
+                    thumb_elem = item.find_element(By.CSS_SELECTOR, "div.thumb-ev img")
+                    thumbnail = thumb_elem.get_attribute("src")
+                except NoSuchElementException:
+                    thumbnail = ""
+
+                # Lấy category
+                try:
+                    cate_elem = item.find_element(By.CSS_SELECTOR, "span.cate")
+                    category = cate_elem.text.strip()
+                except NoSuchElementException:
+                    category = ""
+
+                # Lấy audio url từ data-player (JSON trong attribute)
+                try:
+                    data_player = item.get_attribute("data-player")
+                    if data_player:
+                        player_json = json.loads(data_player.replace("&quot;", '"'))
+                        audio_url = player_json.get("playlist", [{}])[0].get("src", "")
+                    else:
+                        audio_url = ""
+                except Exception:
+                    audio_url = ""
+                podcasts.append({
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url
+                })
+        finally:
+            driver.quit()
+
+        return podcasts
+
+
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "toi-ke",
+            1: "vnexpress-hom-nay",
+            2: "giai-ma",
+            3: "hop-den",
+            4: "ho-so-toi-ac",
+            5: "tai-chinh-ca-nhan",
+            6: "tham-thi",
+            7: "ho-noi-gi",
+            8: "news-explainer",
+            9: "nguoi-tro-ve",
+            10: "ban-on-khong",
+            11: "tien-lam-gi",
+            12: "ly-hon",
+            13: "toi-trong-guong",
+            14: "nguy-co",
+            15: "diem-tin"
+        }
+
+        print("----------------call---")
+        return
+        BASE_URL = "https://vnexpress.net/vne-go/podcast/"
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = BASE_URL + slug
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            podcasts = crawler.crawl_podcast_category(category_url)
+            for podcast in podcasts:
+                send_postcast_to_kafka(podcast)
