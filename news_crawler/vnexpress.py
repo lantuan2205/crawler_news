@@ -32,7 +32,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.beautifulSoup_utils import  extract_categories_from_soup
-from utils.service_utils import clean_date, get_urls_of_type, send_postcast_to_kafka
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -606,90 +606,89 @@ class VNExpressCrawler(BaseCrawler):
         except Exception as e:
             return []
 
-    def crawl_podcast_category(self, category_url: str):
-        # podcast_type_dict = {
-        #     0: "toi-ke",
-        #     1: "vnexpress-hom-nay",
-        #     2: "giai-ma",
-        #     3: "hop-den",
-        #     4: "ho-so-toi-ac",
-        #     5: "tai-chinh-ca-nhan",
-        #     6: "tham-thi",
-        #     7: "ho-noi-gi",
-        #     8: "news-explainer",
-        #     9: "nguoi-tro-ve",
-        #     10: "ban-on-khong",
-        #     11: "tien-lam-gi",
-        #     12: "ly-hon",
-        #     13: "toi-trong-guong",
-        #     14: "nguy-co",
-        #     15: "diem-tin"
-        # }
+    def get_audio_from_article(self, url):
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        resp = requests.get(url, headers=headers)
+        soup = BeautifulSoup(resp.text, "html.parser")
 
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--remote-debugging-port=9222")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--disable-dev-shm-usage")
+        # 1) Tìm thẻ <audio> có src
+        audio_tag = soup.find("audio", src=True)
+        if audio_tag:
+            return audio_tag["src"]
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.set_page_load_timeout(60)
+        # 2) Nếu không có trực tiếp, thì fallback sang cách parse JSON trong data-player
+        players = soup.find_all(attrs={"data-player": True})
+        for p in players:
+            raw = p.get("data-player", "")
+            if not raw:
+                continue
+            try:
+                data_clean = (raw
+                            .replace("&quot;", '"')
+                            .replace("&#34;", '"')
+                            .replace("'", '"')
+                            )
+                data_json = json.loads(data_clean)
+                playlist = data_json.get("playlist", [])
+                if playlist and "src" in playlist[0]:
+                    return playlist[0]["src"]
+            except:
+                pass
+
+        return ""
+
+    def crawl_podcast_bs4(self, category_url: str):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.get(category_url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        items = soup.select("article")  # hoặc "article.item-ev" nếu muốn chính xác hơn
 
         podcasts = []
-        try:
-            driver.get(category_url)
-            time.sleep(2)
 
-            items = driver.find_elements(By.CSS_SELECTOR, "article.item-ev")
-            for item in items:
-                try:
-                    title_elem = item.find_element(By.CSS_SELECTOR, "h2.title-ev a")
-                    title = title_elem.get_attribute("title")
-                    url = title_elem.get_attribute("href")
-                except NoSuchElementException:
-                    continue
+        for item in items:
+            # 1. Title + URL
+            title_elem = item.select_one("a[title]")
+            if not title_elem:
+                continue
+            title = title_elem.get("title", "").strip()
+            url = title_elem.get("href", "")
 
-                # Lấy thumbnail
-                try:
-                    thumb_elem = item.find_element(By.CSS_SELECTOR, "div.thumb-ev img")
-                    thumbnail = thumb_elem.get_attribute("src")
-                except NoSuchElementException:
-                    thumbnail = ""
+            # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+            thumb_elem = item.select_one("img")
+            thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
 
-                # Lấy category
-                try:
-                    cate_elem = item.find_element(By.CSS_SELECTOR, "span.cate")
-                    category = cate_elem.text.strip()
-                except NoSuchElementException:
-                    category = ""
+            # 3. Category (nếu cần)
+            # Lấy category ở đầu trang
+            cat_tag = soup.select_one("h1.name-s")
+            category = cat_tag.get_text(strip=True) if cat_tag else ""
 
-                # Lấy audio url từ data-player (JSON trong attribute)
-                try:
-                    data_player = item.get_attribute("data-player")
-                    if data_player:
-                        player_json = json.loads(data_player.replace("&quot;", '"'))
-                        audio_url = player_json.get("playlist", [{}])[0].get("src", "")
-                    else:
-                        audio_url = ""
-                except Exception:
-                    audio_url = ""
-                podcasts.append({
-                    "title": title,
-                    "url": url,
-                    "thumbnail": thumbnail,
-                    "category": category,
-                    "audio_url": audio_url
-                })
-        finally:
-            driver.quit()
+            # 4. Audio URL (trong data-player)
+            audio_url = ""
+            audio_url = self.get_audio_from_article(url)
 
-        return podcasts
+            podcast = {
+                "title": title,
+                "url": url,
+                "thumbnail": thumbnail,
+                "category": category,
+                "audio_url": audio_url
+            }
+            send_podcast_to_kafka(podcast)
+            # podcasts.append({
+            #     "title": title,
+            #     "url": url,
+            #     "thumbnail": thumbnail,
+            #     "category": category,
+            #     "audio_url": audio_url
+            # })
 
+        # return podcasts
 
     def crawl_postcast(self):
         podcast_type_dict = {
@@ -711,13 +710,9 @@ class VNExpressCrawler(BaseCrawler):
             15: "diem-tin"
         }
 
-        print("----------------call---")
-        return
         BASE_URL = "https://vnexpress.net/vne-go/podcast/"
 
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            podcasts = crawler.crawl_podcast_category(category_url)
-            for podcast in podcasts:
-                send_postcast_to_kafka(podcast)
+            self.crawl_podcast_bs4(category_url)

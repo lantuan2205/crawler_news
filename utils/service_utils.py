@@ -24,6 +24,7 @@ KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:9
 KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
 KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
 KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
+KAFKA_TOPIC_POST_CAST = os.getenv("KAFKA_TOPIC_PODCAST","news.podcast.crawler.raw")
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
 # UPLOAD_API_HOST = "localhost"
@@ -37,9 +38,9 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
 
-def send_postcast_to_kafka(postcast_data: dict):
+def send_podcast_to_kafka(podcast_data: dict):
     try:
-        producer.send(KAFKA_TOPIC_POST_CAST, postcast_data)
+        producer.send(KAFKA_TOPIC_POST_CAST, podcast_data)
         producer.flush()
         print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_POST_CAST}'")
     except Exception as e:
