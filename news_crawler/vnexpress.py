@@ -32,7 +32,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.beautifulSoup_utils import  extract_categories_from_soup
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -449,7 +449,15 @@ class VNExpressCrawler(BaseCrawler):
                 
                 # user_id
                 user_div = item.select_one("div.user_status")
-                user_id = user_div.get("data-userid") if user_div else ""
+                user_id = ""
+                user_url = ""
+                if user_div:
+                    a_tag = user_div.select_one("a.avata_coment")
+                    if a_tag and "href" in a_tag.attrs:
+                        # Lấy user ID từ URL
+                        user_url = a_tag["href"].rstrip("/")
+                        user_id = a_tag["href"].rstrip("/").split("/")[-1]
+
                 
                 # username
                 nickname = item.select_one("a.nickname")
@@ -467,13 +475,27 @@ class VNExpressCrawler(BaseCrawler):
                 # time
                 time_tag = item.select_one("span.time-com")
                 time_text = time_tag.get_text(strip=True) if time_tag else ""
+                time_comment = parse_vnexpress_time_ms(time_text)
                 
                 # reactions
+                reaction_map = {
+                    "Thích": "Like",
+                    "Yêu thích": "Love",
+                    "Haha": "Haha",
+                    "Wow": "Wow",
+                    "Buồn": "Sad",
+                    "Phẫn nộ": "Angry",
+                }
+
                 reactions = {}
                 for r in item.select("div.reactions-detail div.item"):
-                    label = r.select_one("span.icons img")["alt"] if r.select_one("span.icons img") else ""
-                    count = r.select_one("strong")
-                    reactions[label] = int(count.get_text()) if count else 0
+                    img_tag = r.select_one("span.icons img")
+                    label = img_tag["alt"] if img_tag else ""
+                    # Chuyển sang tiếng Anh
+                    label_en = reaction_map.get(label, label)
+                    
+                    count_tag = r.select_one("strong")
+                    reactions[label_en] = int(count_tag.get_text()) if count_tag else 0
                 
                 # reply count
                 reply_count = 0
@@ -492,9 +514,10 @@ class VNExpressCrawler(BaseCrawler):
                     "commentId": comment_id,
                     "userId": user_id,
                     "username": username,
+                    "user_url": user_url,
                     "avatar": avatar,
                     "content": content,
-                    "time": time_text,
+                    "time": time_comment,
                     "reactions": reactions,
                     "replyCount": reply_count
                 })

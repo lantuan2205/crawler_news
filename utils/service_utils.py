@@ -3,7 +3,7 @@ import re
 import os
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 from pathlib import Path
 from utils.mongodb_utils import save_article, save_image_metadata, save_category
@@ -335,3 +335,58 @@ def normalize_url_to_root_https(url: str) -> str:
         raise ValueError(f"Cannot extract host from: {url}")
 
     return f"https://{host}"
+
+
+def parse_vnexpress_time_ms(time_str):
+    """
+    Chuyển thời gian comment VNExpress sang timestamp milliseconds.
+    Bao quát các case:
+    - "4h trước", "50' trước"
+    - "1 ngày trước"
+    - "Hôm nay HH:MM", "Hôm qua HH:MM"
+    - "DD/MM/YYYY HH:MM"
+    """
+    if not time_str:
+        return None
+
+    now = datetime.now()
+    time_str = time_str.strip()
+
+    # Case: 'Xh trước' hoặc "Y' trước"
+    match = re.match(r"(\d+)\s*([hH]|')", time_str)
+    if match:
+        value, unit = match.groups()
+        value = int(value)
+        dt = now - timedelta(hours=value) if unit.lower() == "h" else now - timedelta(minutes=value)
+        return int(dt.timestamp() * 1000)
+
+    # Case: 'Z ngày trước'
+    match_day = re.match(r"(\d+)\s*ngày trước", time_str)
+    if match_day:
+        value = int(match_day.group(1))
+        dt = now - timedelta(days=value)
+        return int(dt.timestamp() * 1000)
+
+    # Case: 'Hôm nay HH:MM'
+    match_today = re.match(r"Hôm nay\s*(\d{1,2}):(\d{2})", time_str)
+    if match_today:
+        hour, minute = map(int, match_today.groups())
+        dt = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        return int(dt.timestamp() * 1000)
+
+    # Case: 'Hôm qua HH:MM'
+    match_yesterday = re.match(r"Hôm qua\s*(\d{1,2}):(\d{2})", time_str)
+    if match_yesterday:
+        hour, minute = map(int, match_yesterday.groups())
+        yesterday = now - timedelta(days=1)
+        dt = yesterday.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        return int(dt.timestamp() * 1000)
+
+    # Case: 'DD/MM/YYYY HH:MM'
+    try:
+        dt = datetime.strptime(time_str, "%d/%m/%Y %H:%M")
+        return int(dt.timestamp() * 1000)
+    except ValueError:
+        pass
+
+    return None  # Không parse được
