@@ -514,7 +514,7 @@ class VNExpressCrawler(BaseCrawler):
                     "commentId": comment_id,
                     "userId": user_id,
                     "username": username,
-                    "user_url": user_url,
+                    "userUrl": user_url,
                     "avatar": avatar,
                     "content": content,
                     "time": time_comment,
