@@ -32,7 +32,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.beautifulSoup_utils import  extract_categories_from_soup
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -510,6 +510,7 @@ class VNExpressCrawler(BaseCrawler):
                     }
                 
                 comments.append({
+                    "domain": normalize_url_to_root_https(url),
                     "url": url,
                     "commentId": comment_id,
                     "userId": user_id,
