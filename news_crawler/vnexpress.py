@@ -220,16 +220,19 @@ class VNExpressCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-images")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         chrome_options.add_experimental_option(
             "prefs",
-            {"profile.managed_default_content_settings.javascript": 2}
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
         )
-        chrome_options.set_capability("pageLoadStrategy", "none")
+        chrome_options.set_capability("pageLoadStrategy", "eager")
 
         driver = None
         try:
