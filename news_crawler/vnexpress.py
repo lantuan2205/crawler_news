@@ -333,7 +333,17 @@ class VNExpressCrawler(BaseCrawler):
         title = title.text
 
         desc_tag = soup.find("p", class_="description")
-        description = desc_tag.get_text(strip=True) if desc_tag else ""
+        location = ""
+        description = ""
+        if desc_tag:
+            # Lấy thẻ <span class="location-stamp">
+            location_tag = desc_tag.find("span", class_="location-stamp")
+            if location_tag:
+                location = location_tag.get_text(strip=True)
+                location_tag.extract()
+            description = desc_tag.get_text(strip=True)
+
+
         paragraph_tags = soup.find_all("p", class_="Normal")
         if paragraph_tags:
             author = paragraph_tags[-1].text.strip() 
@@ -399,7 +409,7 @@ class VNExpressCrawler(BaseCrawler):
                     driver.quit()
 
 
-        return title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url
+        return title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url, location
 
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)

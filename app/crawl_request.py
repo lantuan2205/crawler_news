@@ -273,7 +273,7 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
             print(f"[INFO] Đã cập nhật proxies của crawler")
 
     try:
-        title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url  = crawler.extract_content(url, has_video)
+        title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url, location  = crawler.extract_content(url, has_video)
     except Exception as e:
         print(f"Lỗi khi lấy nội dung bài báo: {e}")
         return None
@@ -298,7 +298,8 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
         "contentImageUrls": content_image_urls,
         "photoInfos": photoInfos,
         "categories": categories,
-        "thumbnailUrl": thumbnail_url
+        "thumbnailUrl": thumbnail_url,
+        "location": location,
     }
 
     if has_video:
