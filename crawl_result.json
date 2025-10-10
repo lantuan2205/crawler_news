@@ -1,13 +1,13 @@
 {
-    "domain": "https://vnexpress.net",
-    "name": "vnexpress",
-    "description": "Báo tiếng Việt nhiều người xem nhất - Thuộc Bộ Khoa học và Công nghệ",
-    "license": "548/GP-BTTTT do Bộ Thông tin và Truyền thông cấp ngày 24/08/2021",
-    "editorInChief": "Phạm Văn Hiếu",
-    "address": "Tầng 10, Tòa A FPT Tower, số 10 Phạm Văn Bạch, phường Cầu Giấy, Hà Nội",
-    "phone": "024 7300 8899 - máy lẻ 4500",
-    "email": "webmaster@vnexpress.net",
-    "inforCopyright": "© 1997-2025. Toàn bộ bản quyền thuộc VnExpress",
-    "logo": "https://s1.vnecdn.net/vnexpress/restruct/i/v9715/v2_2019/pc/graphics/logo_tagline.svg",
+    "domain": "https://vietnamnet.vn",
+    "name": "vietnamnet",
+    "description": "Cơ quan chủ quản: Bộ Dân Tộc và Tôn Giáo - Số giấy phép: 09/GP - BTTTT, cấp ngày 07/01/2019",
+    "license": "09/GP - BTTTT, cấp ngày 07/01/2019",
+    "editorInChief": "Nguyễn Văn Bá",
+    "address": "Tầng 18, Toà nhà Cục Viễn thông (VNTA), 68 Dương Đình Nghệ, phường Cầu Giấy, TP. Hà Nội.",
+    "phone": "02439369898 - Hotline: 0923457788",
+    "email": "vietnamnet@vietnamnet.vn",
+    "inforCopyright": "© 1997 Báo VietNamNet. All rights reserved.\nChỉ được phát hành lại thông tin từ website này khi có sự\nđồng ý bằng văn bản của báo VietNamNet.",
+    "logo": "https://static.vnncdn.net/v1/logo/logoVietnamNet.svg",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }

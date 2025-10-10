@@ -2,6 +2,7 @@ import requests
 import sys
 import json
 import os
+import re
 from pathlib import Path
 import random
 import time
@@ -9,7 +10,15 @@ from urllib.parse import urljoin
 import paramiko
 from io import BytesIO
 from pathlib import Path
-
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 from bs4 import BeautifulSoup
 from utils.service_utils import clean_date, get_urls_of_type
 
@@ -35,21 +44,21 @@ class VietNamNetCrawler(BaseCrawler):
         self.base_url = "https://vietnamnet.vn"
         self.article_type_dict = {
             0: "thoi-su",
-            1: "kinh-doanh",
-            2: "the-thao",
-            3: "van-hoa",
-            4: "giai-tri",
-            5: "the-gioi",
-            6: "doi-song",
-            7: "giao-duc",
-            8: "suc-khoe",
-            9: "thong-tin-truyen-thong",
-            10: "phap-luat",
-            11: "oto-xe-may",
-            12: "bat-dong-san",
-            13: "du-lich",
-            14: "chinh-tri",
-            15: "ban-doc",
+            # 1: "kinh-doanh",
+            # 2: "the-thao",
+            # 3: "van-hoa",
+            # 4: "giai-tri",
+            # 5: "the-gioi",
+            # 6: "doi-song",
+            # 7: "giao-duc",
+            # 8: "suc-khoe",
+            # 9: "thong-tin-truyen-thong",
+            # 10: "phap-luat",
+            # 11: "oto-xe-may",
+            # 12: "bat-dong-san",
+            # 13: "du-lich",
+            # 14: "chinh-tri",
+            # 15: "ban-doc",
         }
 
     def download_image(self, image_url, article_title, category, published_date):
@@ -118,7 +127,150 @@ class VietNamNetCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi khi tải ảnh {image_url}: {e}")
             return None
+            
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
 
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            logo_tag = soup.select_one("header.vnn-header img")
+            logo_src = logo_tag["src"] if logo_tag and logo_tag.has_attr("src") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.footer__bottom"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("div", class_="footer__bottom")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                if "Số giấy phép:" in text:
+                    license_line = [line for line in lines if "Số giấy phép:" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Số giấy phép:", "").strip()
+
+                # Tổng biên tập
+                if "Tổng biên tập:" in text:
+                    editor_line = [line for line in lines if "Tổng biên tập:" in line]
+                    if editor_line:
+                        info["editor_in_chief"] = editor_line[0].replace("Tổng biên tập:", "").strip()
+
+                # Địa chỉ
+                if "Địa chỉ:" in text:
+                    addr_line = [line for line in lines if "Địa chỉ:" in line]
+                    if addr_line:
+                        info["address"] = addr_line[0].replace("Địa chỉ:", "").strip()
+
+                # Điện thoại
+                li_phone = soup.select_one("div.footer__bottom-address li:contains('Điện thoại')")
+
+                if li_phone:
+                    text = li_phone.get_text(" ", strip=True)
+                    cleaned = text.replace("Điện thoại:", "", 1).strip()
+                    info["phone"] = cleaned
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
+                else:
+                    li_tags = footer_copyright.select("li")
+                    email_found = None
+                    for li in li_tags:
+                        text = li.get_text(strip=True)
+                        # Tìm cụm có chứa chữ "Email" hoặc có định dạng email
+                        if "email" in text.lower() or "@" in text:
+                            match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text)
+                            if match:
+                                email_found = match.group(0)
+                                break
+                    if email_found:
+                        info["email"] = email_found
+                        
+                # Thông tin bản quyền
+                last_li = soup.select_one("div.footer__bottom-address li:last-child")
+                if last_li:
+                    info["infor_copyright"] = last_li.get_text(strip=True)
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+    
     def extract_content(self, url: str) -> tuple:
         content = requests.get(url, headers=headers, timeout=10).content
         sleep_time = random.uniform(1, 2)
