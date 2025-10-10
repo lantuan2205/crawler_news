@@ -30,6 +30,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -326,6 +327,158 @@ class VietNamNetCrawler(BaseCrawler):
 
         return title, description, content, published_date, author, content_images, categories
 
+    def extract_comment(self, url: str):
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "i.arrow"))
+                    )
+                    # Cuộn tới nút
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    # Click bằng JS (bypass quảng cáo che)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
+                    time.sleep(0.5)  # chờ comment load
+                except (TimeoutException, NoSuchElementException):
+                    break  # hết nút để click
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            items = soup.select("div.user__item")
+            print("🧩 Found items 2:", len(items), flush=True)
+            items = soup.select("div.user__item.relative.grid")
+            print("🧩 Found items 3:", len(items), flush=True)
+
+            for item in soup.select("div.user__item"):
+                # comment_id
+                comment_div = item.select_one("div.font-notosans-regular.mr-[25px]")
+                comment_id = comment_div.get_text(strip=True) if comment_div else ""
+                print("✅ commenid", comment_div,flush=True)
+
+                # user_id
+                user_div = item.select_one("div.bg-no-repeat.uppercase")
+                user_id = ""
+                user_url = ""
+                if user_div:
+                    a_tag = user_div.select_one("div.bg-no-repeat uppercase")
+                    if a_tag and "href" in a_tag.attrs:
+                        # Lấy user ID từ URL
+                        user_url = a_tag["href"].rstrip("/")
+                        user_id = a_tag["href"].rstrip("/").split("/")[-1]
+                print("✅ user_div", user_div,flush=True)
+
+                # username
+                nickname = item.select_one("div.text-[#2D67AD] mb-[5px] flex items-center")
+                username = nickname.get_text(strip=True) if nickname else ""
+                print("✅ username", username)
+
+                # avatar
+                avatar_tag = ""
+                avatar = avatar_tag["src"] if avatar_tag else ""
+                
+                # content
+                # content: ưu tiên content_more, nếu không thì lấy full_content
+                content_tag = item.select_one("p.__content") or item.select_one("p.full_content")
+                if content_tag:
+                    # kiểm tra xem có nút "...Đọc tiếp" không
+                    read_more = item.select_one("span.LinesEllipsis-ellipsis")
+                    if read_more and "Đọc tiếp" in read_more.get_text():
+                        try:
+                            # cuộn tới và click nút "Đọc tiếp"
+                            driver.execute_script("arguments[0].scrollIntoView(true);", read_more)
+                            driver.execute_script("arguments[0].click();", read_more)
+                            time.sleep(0.3)
+                        except Exception:
+                            pass
+                    # lấy lại text sau khi có thể đã mở rộng
+                    content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
+
+                # time
+                time_tag = item.select_one("div.content__wrapper span:last-of-type")
+                time_text = time_tag.get_text(strip=True) if time_tag else ""
+                time_comment = parse_vnexpress_time_ms(time_text)
+                
+                # reactions
+                reaction_map = {
+                    "Thích": "Like",
+                    "Yêu thích": "Love",
+                    "Haha": "Haha",
+                    "Wow": "Wow",
+                    "Buồn": "Sad",
+                    "Phẫn nộ": "Angry",
+                }
+
+                reactions = {}
+                for r in item.select("div.flex.items-center.flex-row-reverse div.p-[5px].w-[24px].h-[24px].rounded-[50%].bg-[#EEF5FF]"):
+                    img_tag = r.select_one("img.w-[14px] h-[14px]")
+                    label = img_tag["alt"] if img_tag else ""
+                    # Chuyển sang tiếng Anh
+                    label_en = reaction_map.get(label, label)
+                    
+                    count_tag = r.select_one("span")
+                    reactions[label_en] = int(count_tag.get_text()) if count_tag else 0
+                
+                # reply count
+                reply_count = 0
+                reply_info = None
+                # reply_tag = item.select_one("p.count-reply a.view_all_reply")
+                # if reply_tag:
+                #     reply_count = int(reply_tag.get("data-total", 0))
+                #     reply_info = {
+                #         "commentId": reply_tag.get("rel"),
+                #         "total": reply_count,
+                #         "offset": reply_tag.get("data-offset", 0)
+                #     }
+                
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "commentId": comment_id,
+                    "userId": user_id,
+                    "username": username,
+                    "userUrl": user_url,
+                    "avatar": avatar,
+                    "content": content,
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": reply_count
+                })
+            return comments
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+
+    
     def write_content(self, url: str, article_type: str) -> bool:
         try:
             title, description, content, published_date, author, content_images, categories = self.extract_content(url)
