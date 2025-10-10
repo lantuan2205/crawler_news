@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 import random
 import time
+import uuid
 from urllib.parse import urljoin
 import paramiko
 from io import BytesIO
@@ -30,6 +31,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -326,6 +328,124 @@ class VietNamNetCrawler(BaseCrawler):
 
         return title, description, content, published_date, author, content_images, categories
 
+    def extract_comment(self, url: str):
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            try:
+                iframe = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[src*='comment']"))
+                )
+                driver.switch_to.frame(iframe)
+                print("Đã switch vào iframe comment")
+            except Exception as e:
+                print("Không tìm thấy iframe comment:", e)
+                return []
+
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "i.arrow"))
+                    )
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
+                    time.sleep(0.5)
+                except (TimeoutException, NoSuchElementException):
+                    break
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+            tab_panel = soup.find("div", class_="react-tabs__tab-panel react-tabs__tab-panel--selected")
+            items = tab_panel.find_all("div", class_="mb-[10px]") if tab_panel else []
+
+            for item in items:
+
+                comment_id = ""
+                username_tag = item.find("div", class_=re.compile(r"text-\[#2D67AD\]"))
+                username = username_tag.get_text(strip=True) if username_tag else ""
+                content_tag = item.select_one("div.content__wrapper p") or item.select_one("div.LinesEllipsis")
+                content = ""
+                if content_tag:
+                    content = content_tag.get_text(" ", strip=True)
+                    # Nếu phần username lẫn trong nội dung thì loại bỏ
+                    if username and content.startswith(username):
+                        content = content.replace(username, "").strip()
+
+                time_text = ""
+                for span in item.find_all("span"):
+                    txt = span.get_text(strip=True)
+                    if "trước" in txt or "giây" in txt or "giờ" in txt:
+                        time_text = txt
+                        break
+                time_comment = parse_vnexpress_time_ms(time_text) if time_text else None
+
+                reactions = {}
+                tooltip_div = item.find("div", class_=lambda c: c and "tooltip-actions" in c)
+
+                if tooltip_div:
+                    like_span = tooltip_div.find("span", class_=lambda c: c and "text-[#838383]" in c)
+                    if like_span:
+                        txt = like_span.get_text(strip=True)
+                        try:
+                            reactions["like"] = int(txt)
+                        except ValueError:
+                            reactions["like"] = txt
+                    else:
+                        reactions["like"] = 0
+                else:
+                    reactions["like"] = 0
+
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "userId": username,
+                    "commentId": f"{username}_{uuid.uuid4().hex}",
+                    "username": username,
+                    "content": content,
+                    "userUrl": "",
+                    "avatar": "",
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": 0
+                })
+
+
+            return comments
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+            return []
+
+        finally:
+            if driver:
+                driver.quit()
+
+
+    
     def write_content(self, url: str, article_type: str) -> bool:
         try:
             title, description, content, published_date, author, content_images, categories = self.extract_content(url)
