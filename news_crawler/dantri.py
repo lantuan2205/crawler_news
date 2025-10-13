@@ -9,7 +9,16 @@ import os
 from datetime import datetime
 import paramiko
 from io import BytesIO
-
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
+from selenium.webdriver.common.by import By
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
 if str(ROOT) not in sys.path:
@@ -222,7 +231,136 @@ class DanTriCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            logo_tag = soup.select_one(".header-logo img")
+            logo_src = logo_tag["src"] if logo_tag else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "footer.footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("footer", class_="footer")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                if "Giấy phép" in text:
+                    license_line = [line for line in lines if "Giấy phép" in line]
+                    if license_line:
+                        info["license"] = license_line[0].strip()
+
+                # Tổng biên tập
+                editor = next((editor for editor in soup.select("ul.footer-list li b")
+                        if "tổng biên tập" in ((editor.previous_sibling or "").strip().lower())), None)
+                info["editor_in_chief"] = editor.get_text(strip=True) if editor else ""
+
+                # Địa chỉ
+                address = next((address for address in soup.select("ul.footer-list li b")
+                        if "địa chỉ" in ((address.previous_sibling or "").strip().lower())), None)
+                info["address"] = address.get_text(strip=True) if address else ""
+
+
+
+                # Điện thoại
+                # tìm <li> có chữ "Điện thoại"
+                li = next((li for li in soup.find_all("li") if "Điện thoại" in li.get_text()), None)
+                if li:
+                    phones = [a.get_text(strip=True) for a in li.find_all("a", href=True) if a["href"].startswith("tel:")]
+                    info["phone"] = ", ".join(phones) if phones else ""
+
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
+
+                # Thông tin bản quyền
+                last_p = footer_copyright.select("div")[-1]
+                if last_p:
+                    info["infor_copyright"] = last_p.get_text(strip=True)
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+   
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
