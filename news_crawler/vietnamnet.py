@@ -271,8 +271,7 @@ class VietNamNetCrawler(BaseCrawler):
             info.get("infor_copyright", ""),
             info.get("logo", "")
         )
-    
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         content = requests.get(url, headers=headers, timeout=10).content
         sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
@@ -280,30 +279,38 @@ class VietNamNetCrawler(BaseCrawler):
 
         title_tag = soup.find("h1", class_="content-detail-title")
         desc_tag = soup.find("h2", class_=["content-detail-sapo", "sm-sapo-mb-0"])
-        main_content_tag = soup.find("div", class_=["maincontent", "main-content"])
+        location = ""
+        description = ""
+        if desc_tag:
+            desc_text= desc_tag.get_text(strip=True)
+            if "-" in desc_text:
+                location = desc_text.split("-", 1)[0].strip().strip('"')
+            else:
+                location = ""
+            description = desc_text
 
+        main_content_tag = soup.find("div", class_=["maincontent", "main-content"])
         date_tag = soup.find("div", class_="bread-crumb-detail__time")
         published_date = date_tag.text.strip() if date_tag else "Không có thông tin"
 
         # Lấy tất cả các ảnh trong nội dung bài viết (cập nhật theo cấu trúc HTML Vietnamnet)
-        content_images = []
+        content_image_urls = []
         if main_content_tag:
             img_tags = main_content_tag.find_all("img")
             for img in img_tags:
                 img_url_content = img.get("src") or img.get("data-original")
                 if img_url_content and not img_url_content.startswith("data:image"):
-                    content_images.append(urljoin("https://vietnamnet.vn", img_url_content) if img_url_content.startswith("/") else img_url_content)
+                    content_image_urls.append(urljoin("https://vietnamnet.vn", img_url_content) if img_url_content.startswith("/") else img_url_content)
                 elif img.find_parent("picture"):
                     source = img.find_previous("source")
                     if source and source.get("data-srcset"):
                         srcset = source["data-srcset"].split(',')[0].strip().split()[0].strip()
-                        content_images.append(urljoin("https://vietnamnet.vn", srcset))
+                        content_image_urls.append(urljoin("https://vietnamnet.vn", srcset))
 
         if not all([title_tag, desc_tag, main_content_tag]):
             return None, None, None, None, None, None, None, None
 
         title = title_tag.text
-        description = desc_tag.get_text(strip=True) if desc_tag else ""
         paragraphs = (get_text_from_tag(p) for p in main_content_tag.find_all("p"))
         content = "\n".join(paragraphs)
         author = ""
@@ -324,8 +331,51 @@ class VietNamNetCrawler(BaseCrawler):
             if text and "icon-home" not in a.get("class", []):
                 categories.append(text)
         categories = ", ".join(categories)
+        
+        # --- Lấy video URL & thumbnail bằng Selenium (theo DOM đã gửi) ---
+        
+        thumbnail_url = ""
+        video_url = ""
+        if has_video:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-images")
+            chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--disable-dev-shm-usage")
 
-        return title, description, content, published_date, author, content_images, categories
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(120)
+            driver.set_script_timeout(120)
+            driver.get(url)
+            wait = WebDriverWait(driver, 15)
+
+            try:
+                # --- Lấy VIDEO URL ---
+                video_el = wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "#vnnplayer video")
+                ))
+                video_url = video_el.get_attribute("src") or ""
+
+                # --- Lấy THUMBNAIL URL ---
+                thumb_el = wait.until(EC.presence_of_element_located(
+                    (By.CSS_SELECTOR, "#vnnplayer .vjs-poster img")
+                ))
+                thumbnail_url = thumb_el.get_attribute("src") or ""
+
+            except (TimeoutException, NoSuchElementException) as e:
+                print("❌ Không thấy thẻ <video> hoặc poster img:", e)
+                video_url = ""
+                thumbnail_url = ""
+            driver.quit()
+
+
+        return title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url, location
 
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
@@ -481,7 +531,7 @@ class VietNamNetCrawler(BaseCrawler):
     
     def write_content(self, url: str, article_type: str) -> bool:
         try:
-            title, description, content, published_date, author, content_images, categories = self.extract_content(url)
+            title, description, content, published_date, author, content_image_urls, categories = self.extract_content(url)
             if not title:
                 return None
             
@@ -490,7 +540,7 @@ class VietNamNetCrawler(BaseCrawler):
                 
             # Tải và lưu ảnh nội dung
             # content_image_paths = []
-            # for img_url in content_images:
+            # for img_url in content_image_urls:
             #     if img_url:
             #         img_path = self.download_image(img_url, title, category, published_date)
             #         if img_path:
@@ -504,7 +554,7 @@ class VietNamNetCrawler(BaseCrawler):
                 "publishedDate": clean_date(published_date),
                 "description": description,
                 "content": content,
-                "contentImageUrls": content_images,
+                "contentImageUrls": content_image_urls,
                 "categories": categories
                 # # "localContentImagePaths": content_image_paths
             }
