@@ -20,6 +20,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Optional  
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 
 FILE = Path(__file__).resolve()
@@ -166,6 +167,138 @@ class VovCrawler(BaseCrawler):
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
         
+    
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            container = soup.find("div", class_="logo--image")
+            h1_tag = container.find("h1") if container else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "footer.vovvn-footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("footer", class_="vovvn-footer")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                if "Giấy phép số " in text:
+                    license_line = [line for line in lines if "Giấy phép số " in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Giấy phép số ", "").strip()
+
+                # Tổng biên tập
+                if "Tổng Biên tập: " in text:
+                    editor_line = [line for line in lines if "Tổng Biên tập: " in line]
+                    if editor_line:
+                        info["editor_in_chief"] = editor_line[0].replace("Tổng Biên tập: ", "").strip()
+
+                # Địa chỉ
+                if "Trụ sở:" in text:
+                    addr_line = [line for line in lines if "Trụ sở:" in line]
+                    if addr_line:
+                        info["address"] = addr_line[0].replace("Trụ sở:", "").strip()
+
+                # Điện thoại
+                if "Điện thoại:" in text:
+                    phone_line = [line for line in lines if "Điện thoại:" in line]
+                    if phone_line:
+                        info["phone"] = phone_line[0].replace("Điện thoại:", "").strip()
+
+                # Email
+                if "Thư điện tử:" in text:
+                    email_tag = [line for line in lines if "Thư điện tử:" in line]
+                    if email_tag:
+                        info["email"] = email_tag[0].replace("Thư điện tử:", "").strip()
+                # Ban quyen
+                if "Không được sao chép" in text:
+                    copyright_tag = [line for line in lines if "Không được sao chép" in line]
+                    if copyright_tag:
+                        info["infor_copyright"] = copyright_tag[0]
+
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
