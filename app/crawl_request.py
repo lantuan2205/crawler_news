@@ -15,6 +15,7 @@ from constants.search_url_builders import SEARCH_URL_BUILDERS
 import os
 import signal
 import sys
+import uuid
 
 
 try:
@@ -292,6 +293,7 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
         "title": title,
         "url": url,
         "author": author,
+        "authorId": f"{author}_{uuid.uuid4().hex}" if author else "",
         "publishedDate": clean_date(published_date),
         "description": description,
         "content": content,

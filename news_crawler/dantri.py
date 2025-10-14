@@ -403,8 +403,11 @@ class DanTriCrawler(BaseCrawler):
                 for a in soup.select("ul.dt-text-c808080.dt-text-base.dt-leading-5.dt-p-0.dt-list-none li a")
             ]
             categories = ", ".join(categories)
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-            return title, description, content, publish_date, author, content_images, categories
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -459,21 +462,14 @@ class DanTriCrawler(BaseCrawler):
             tab_panel = soup.find("div", class_="comment-container")
             items = tab_panel.find_all("div", class_="comment-item") if tab_panel else []
             for item in items:
-                # comment_id 
-                comment_id = ""
-
-                # comment_id = item.select_one("button.like") if comment_id else ""
-                # print("comment_id",comment_id)
-
                 # user_id
                 user_div = item.select_one("a.comment-avatar")
                 user_id = ""
                 user_url = ""
                 if user_div and user_div.has_attr("href"):
                     user_url = user_div["href"].rstrip("/")
-                    m = re.search(r"id\.(\d+)|/(\d+)\.htm(?:$|\?)", user_url)
-                    if m:
-                        user_id = next(g for g in m.groups() if g) 
+                    match = re.search(r'gg_id:(\d+)', user_url)
+                    user_id = match.group(1) if match else None
                 
                 nickname = item.select_one("a.comment-author")
                 username = nickname.get_text(strip=True) if nickname else ""
@@ -534,7 +530,6 @@ class DanTriCrawler(BaseCrawler):
                     "reactions": reactions,
                     "replyCount": reply_count
                 })
-                print("3 replyCount",avatar, time_comment)
             return comments
         except WebDriverException as e:
             print("⚠️ Lỗi Selenium:", e)
@@ -613,7 +608,6 @@ class DanTriCrawler(BaseCrawler):
 
         return all_articles
     
-
     def get_all_articles_by_keyword(self, page_url):
         print(f"page_url: {page_url}")
 
@@ -634,3 +628,6 @@ class DanTriCrawler(BaseCrawler):
             return list(urls)
         except Exception as e:
             return []
+    
+    def crawl_postcast(self):
+        return
