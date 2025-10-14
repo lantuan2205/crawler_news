@@ -401,10 +401,13 @@ def parse_vnexpress_time_ms(time_str):
         return int(dt.timestamp() * 1000)
 
     # Case: 'DD/MM/YYYY HH:MM'
-    try:
-        dt = datetime.strptime(time_str, "%d/%m/%Y %H:%M")
-        return int(dt.timestamp() * 1000)
-    except ValueError:
-        pass
+    s = time_str.replace("\u200b", "").replace("\xa0", " ").strip()
+
+    for fmt in ("%d/%m/%Y %H:%M", "%d/%m/%Y, %H:%M"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            pass
 
     return None  # Không parse được
