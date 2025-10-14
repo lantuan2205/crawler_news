@@ -179,6 +179,7 @@ def process_crawl(data: Dict[str, Any]):
         else:
             if "profile" in data_to_collect:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+                return
             # Crawl toàn bộ domain
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():

@@ -156,6 +156,7 @@ class VTCNewsCrawler(BaseCrawler):
 
     def extract_profile_domain(self, url: str):
         job_id = 1
+        base_url = "https://vtcnews.vn"
         info = {
             "name": url,
             "description": "",
@@ -175,8 +176,20 @@ class VTCNewsCrawler(BaseCrawler):
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             container = soup.select_one("div.topbar") 
-            h1_tag = container.select_one("h1.logo a.logo-img img") if container else None
-            src = h1_tag.get("src")  if h1_tag else ""
+            logo_img = container.select_one("h1.logo img") if container else None
+
+            src = ""
+            if logo_img:
+                # Ưu tiên src thật (nếu không phải base64)
+                real_src = logo_img.get("src") or ""
+                data_src = logo_img.get("data-src") or ""
+
+                # Nếu src bị base64 thì lấy data-src
+                if real_src.startswith("data:image"):
+                    src = data_src
+                else:
+                    src = real_src
+
             info["logo"] = urljoin(url, src) if src else ""
 
         except Exception as e:
@@ -233,7 +246,7 @@ class VTCNewsCrawler(BaseCrawler):
                 ul = soup.select_one("ul.mb20.font13.gray-31.clearfix")
                 info["description"] = (
                     ul.select_one(":scope > li:nth-of-type(2)").get_text(" ", strip=True) if ul else ""
-)
+                )
                 # License
                 ul = soup.select_one("ul.mb20.font13.gray-31.clearfix")
                 info["license"] = ""
@@ -379,7 +392,7 @@ class VTCNewsCrawler(BaseCrawler):
 
             soup = BeautifulSoup(driver.page_source, "html.parser")
             comments = []
-
+            base_url = "https://vtcnews.vn"
             for item in soup.select("div.comment-items"):
                 # comment_id
                 comment_id = item.select_one("a.btn-reply")
@@ -391,7 +404,7 @@ class VTCNewsCrawler(BaseCrawler):
 
                 # avatar
                 avatar_tag = item.select_one("img.h35.w35.radius-circle.overflow")
-                avatar = avatar_tag["src"] if avatar_tag else ""
+                avatar = urljoin(base_url, avatar_tag["src"])  if avatar_tag else ""
 
                 # content: ưu tiên content_more, nếu không thì lấy full_content
                 content_tag = item.select_one("div.pl50 p.mt2") or item.select_one("p.mt2.gray-21.pd7.radius-10.bg-cmt.fl.break-word")
@@ -399,10 +412,10 @@ class VTCNewsCrawler(BaseCrawler):
 
                 # time
                 time_tag = item.select_one("span.gray-71.mr10")
+                if not time_tag:
+                    time_tag = item.select_one("span.gray-71") or item.find("span", class_=["gray-71", "mr10"])
                 time_text = time_tag.get_text(strip=True) if time_tag else ""
-                time_comment = parse_vnexpress_time_ms(time_text)  if time_text else None
-                if time_comment:
-                    print("- co time", time_comment)
+                time_comment = parse_vnexpress_time_ms(time_text) if time_text else None
                 
                 # reactions
                 reaction_map = {

@@ -351,12 +351,23 @@ def parse_vnexpress_time_ms(time_str):
 
     now = datetime.now()
     time_str = time_str.strip()
+    time_str = time_str.lower().strip()
+    time_str = re.sub(r"\s+", " ", time_str)
+    time_str = time_str.replace("giờ", "giờ")
+
 
     #Case: "-5882 giây trước" hoặc "5882 giây trước"
     match_seconds = re.search(r"(-?\d+)\s*giây", time_str)
     if match_seconds:
         secs = abs(int(match_seconds.group(1)))
         dt = now - timedelta(seconds=secs)
+        return int(dt.timestamp() * 1000)
+
+    # Case: 'X giờ trước' hoặc 'Xh trước' hoặc "X' trước"
+    match_hour_vi = re.match(r"(\d+)\s*giờ", time_str, flags=re.IGNORECASE)
+    if match_hour_vi:
+        value = int(match_hour_vi.group(1))
+        dt = now - timedelta(hours=value)
         return int(dt.timestamp() * 1000)
 
     # Case: 'Xh trước' hoặc "Y' trước"
