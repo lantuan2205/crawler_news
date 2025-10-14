@@ -3,6 +3,8 @@ import requests
 import sys
 from pathlib import Path
 import re
+from bs4 import NavigableString, Tag
+import uuid
 
 import random
 from bs4 import BeautifulSoup
@@ -20,6 +22,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from typing import Optional  
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 
 FILE = Path(__file__).resolve()
@@ -31,6 +34,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -152,7 +156,170 @@ class CongAnNhanDanCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
+
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            container = soup.find("div", class_="logo")
+            p_tag = container.find("p") if container else None
+            logo_src = p_tag.find("img")["src"] if p_tag and p_tag.find("img") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "section.footersite"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("section", class_="footersite")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                info["description"] =""
+
+                # License
+                if "Giấy phép hoạt động báo chí" in text:
+                    license_line = [line for line in lines if "Giấy phép hoạt động báo chí" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Giấy phép hoạt động báo chí", "").strip()
+
+                # Tổng biên tập
+                if "Tổng Biên tập: " in text:
+                    editor_line = [line for line in lines if "Tổng Biên tập: " in line]
+                    if editor_line:
+                        info["editor_in_chief"] = editor_line[0].replace("Tổng Biên tập: ", "").strip()
+
+                # Địa chỉ
+                addr = ""
+                b = soup.find("b", string=lambda s: s and "trụ sở" in s.lower())
+                if b:
+                    chunks = []
+                    for sib in b.next_siblings:
+                        if isinstance(sib, Tag) and sib.name == "b":
+                            break
+                        if isinstance(sib, Tag):
+                            if sib.name == "br":
+                                continue
+                            txt = sib.get_text(" ", strip=True)
+                        else:
+                            txt = str(sib)
+                        txt = txt.replace("\u200b", "").strip(' :"\n\t')
+                        if txt:
+                            chunks.append(txt)
+                    addr = " ".join(chunks)
+                    # làm sạch khoảng trắng thừa
+                    addr = re.sub(r"\s{2,}", " ", addr)
+                info["address"] = addr
+
+                # Điện thoại                
+                phone = ""
+                b = soup.find("b", string=lambda s: s and "điện thoại" in s.lower())
+                if b:
+                    parts = []
+                    for sib in b.next_siblings:
+                        if isinstance(sib, Tag) and sib.name == "b":
+                            break
+                        txt = sib.get_text(" ", strip=True) if isinstance(sib, Tag) else str(sib)
+                        txt = txt.replace("\u200b", "").strip()
+                        if txt:
+                            parts.append(txt)
+                    phone = " ".join(parts).strip(' :"\n\t')
+                info["phone"] = phone
+
+                # Email
+                email_text = ""
+                b = soup.find("b", string=lambda s: s and "email" in s.lower())
+                if b:
+                    parts = []
+                    for sib in b.next_siblings:
+                        if isinstance(sib, Tag) and sib.name == "b":
+                            break
+                        txt = sib.get_text(" ", strip=True) if isinstance(sib, Tag) else str(sib)
+                        txt = txt.replace("\u200b", "").strip()
+                        if txt:
+                            parts.append(txt)
+                    email_text  = " ".join(parts).strip(' :"\n\t')
+                info["email"] = email_text 
+                # Ban quyen
+                copyright_div = soup.select_one("div.footer-bottom")
+                if copyright_div:
+                    text = copyright_div.get_text(" ", strip=True)
+                    info["infor_copyright"] = text
+
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+    
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -204,6 +371,120 @@ class CongAnNhanDanCrawler(BaseCrawler):
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
     
+    def extract_comment(self, url: str):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+
+            # ==== Đợi đúng container comment xuất hiện ====
+            root_sel = "div.box-content.box-comment-list.bounder-content-data[data-id='comments']"
+            try:
+                root_el = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, root_sel))
+                )
+            except TimeoutException:
+                print("❌ Không thấy container comment")
+                return []
+
+            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", root_el)
+
+            # ==== Bấm 'Xem thêm' tới khi hết ====
+            def article_count(drv):
+                return len(drv.find_elements(
+                    By.CSS_SELECTOR,
+                    "div.uk-comment-list-bounder ul.uk-comment-list li > article.uk-comment"
+                ))
+
+            while True:
+                before = article_count(driver)
+                try:
+                    show_more_btn = WebDriverWait(driver, 2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.btn-next"))
+                    )
+                except TimeoutException:
+                    break  # không có nút
+
+                # nếu nút đang disabled/ẩn thì dừng
+                cls = (show_more_btn.get_attribute("class") or "").lower()
+                aria = (show_more_btn.get_attribute("aria-disabled") or "").lower()
+                style_display = (show_more_btn.value_of_css_property("display") or "").lower()
+                if "disabled" in cls or "uk-disabled" in cls or aria == "true" or style_display == "none":
+                    break
+
+                # cuộn và click
+                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", show_more_btn)
+                time.sleep(0.2)
+                driver.execute_script("arguments[0].click();", show_more_btn)
+
+                try:
+                    WebDriverWait(driver, 5).until(lambda d: article_count(d) > before)
+                except TimeoutException:
+                    break
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            root = soup.select_one(root_sel)
+            bounder = root.select_one("div.uk-comment-list-bounder") if root else None
+            items = bounder.select("ul.uk-comment-list li > article.uk-comment") if bounder else []
+
+            for item in items:
+                nickname = item.select_one("a.author-name")
+                username = nickname.get_text(strip=True) if nickname else ""
+
+
+                content_tag = item.select_one("div.uk-comment-body p") or item.select_one("div.uk-comment-body")
+                content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
+
+                time_tag = item.select_one("small.uk-comment-date")
+                time_text = time_tag.get_text(strip=True) if time_tag else ""
+                time_comment = parse_vnexpress_time_ms(time_text)
+
+                reactions = {}
+                a = item.select_one("small.uk-comment-like a.btn-like")
+                reactions["Like"] = int(a.get("data-like", "0")) if a else 0
+
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "commentId": f"{username}_{uuid.uuid4().hex}",
+                    "userId": username,
+                    "username": username,
+                    "userUrl": "",
+                    "avatar": "",
+                    "content": content,
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": 0
+                })
+            return comments
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
