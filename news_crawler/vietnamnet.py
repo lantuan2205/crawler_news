@@ -22,6 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from bs4 import BeautifulSoup
 from utils.service_utils import clean_date, get_urls_of_type
+from urllib.parse import urljoin, urlparse
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -226,7 +227,7 @@ class VietNamNetCrawler(BaseCrawler):
                         info["address"] = addr_line[0].replace("Địa chỉ:", "").strip()
 
                 # Điện thoại
-                li_phone = soup.select_one("div.footer__bottom-address li:contains('Điện thoại')")
+                li_phone = soup.select_one("div.footer__bottom-address li:-soup-contains('Điện thoại')")
 
                 if li_phone:
                     text = li_phone.get_text(" ", strip=True)
@@ -273,7 +274,7 @@ class VietNamNetCrawler(BaseCrawler):
             info.get("logo", "")
         )
     
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         content = requests.get(url, headers=headers, timeout=10).content
         sleep_time = random.uniform(1, 2)
         time.sleep(sleep_time)
@@ -325,8 +326,10 @@ class VietNamNetCrawler(BaseCrawler):
             if text and "icon-home" not in a.get("class", []):
                 categories.append(text)
         categories = ", ".join(categories)
-
-        return title, description, content, published_date, author, content_images, categories
+        video_url = ""
+        thumbnail_url = ""
+        location = ""
+        return title, description, content, published_date, author, content_images, categories, video_url, thumbnail_url, location
 
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
@@ -533,3 +536,128 @@ class VietNamNetCrawler(BaseCrawler):
             return list(urls)
         except Exception as e:
             return []
+
+    def get_url_podcast(self, url, category):
+        base = "https://vietnamnet.vn"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+
+        all_urls = set()
+        page = 0
+
+        while True:
+            url = f"{url}/{category}-page{page}"
+            print(f"Đang crawl: {url}")
+
+            res = requests.get(url, headers=headers)
+            if res.status_code != 200:
+                print(f"⛔ Trang không tồn tại hoặc lỗi HTTP ({res.status_code}), dừng!")
+                break
+
+            soup = BeautifulSoup(res.text, "html.parser")
+            
+            # Lấy bài viết theo class yêu cầu:
+            posts = soup.select("div.horizontalPost.podcast.stream.mb-20 a[href]")
+            
+            if not posts:  # Nếu không còn bài => dừng
+                print("✅ Không còn bài viết nào nữa, dừng!")
+                break
+
+            for a in posts:
+                link = a["href"]
+                if link.startswith("/"):
+                    link = base + link
+                all_urls.add(link)
+
+            page += 1
+        return all_urls
+
+    def get_audio_from_article(self, url):
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        resp = requests.get(url, headers=headers)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        # 1) Tìm thẻ <audio> có src
+        audio_tag = soup.find("audio", src=True)
+        if audio_tag:
+            return audio_tag["src"]
+
+        # 2) Nếu không có trực tiếp, thì fallback sang cách parse JSON trong data-player
+        players = soup.find_all(attrs={"data-player": True})
+        for p in players:
+            raw = p.get("data-player", "")
+            if not raw:
+                continue
+            try:
+                data_clean = (raw
+                            .replace("&quot;", '"')
+                            .replace("&#34;", '"')
+                            .replace("'", '"')
+                            )
+                data_json = json.loads(data_clean)
+                playlist = data_json.get("playlist", [])
+                if playlist and "src" in playlist[0]:
+                    return playlist[0]["src"]
+            except:
+                pass
+
+        return ""
+
+    def crawl_podcast_bs4(self, url: str, category: str):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        # Title
+        title_tag = soup.find("h1", class_="content-detail-title")
+        title = title_tag.get_text(strip=True) if title_tag else ""
+
+        # Thumbnail
+        thumb = soup.find("meta", property="og:image")
+        thumbnail = thumb["content"] if thumb else ""
+
+        # Audio URL
+        audio_url = ""
+        audio_tag = soup.find("audio")
+        if audio_tag:
+            # Ưu tiên lấy từ <source src="">
+            source_tag = audio_tag.find("source")
+            if source_tag and source_tag.get("src"):
+                audio_url = source_tag.get("src")
+
+            # Nếu <audio src="">
+            if audio_tag.get("src"):
+                audio_url = audio_tag.get("src")
+
+        podcast = {
+            "title": title,
+            "url": url,
+            "thumbnail": thumbnail,
+            "category": category,
+            "audio_url": audio_url
+        }
+        send_podcast_to_kafka(podcast)
+
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0:  "doc-la",
+            1:  "goc-nhin",
+            2:  "ban-tin-thoi-su",
+            3:  "song-tre",
+            4:  "sach-hay",
+            5:  "chuyen-cua-nhung-dong-song",
+        }
+
+        BASE_URL = "https://vietnamnet.vn/podcast"
+
+        for idx, slug in podcast_type_dict.items():
+            urls = self.get_url_podcast(BASE_URL, slug)
+            for url in urls:
+                self.crawl_podcast_bs4(url, slug)
+            
+
