@@ -1,13 +1,13 @@
 {
-    "domain": "https://cand.com.vn",
-    "name": "cand",
+    "domain": "https://thanhnien.vn",
+    "name": "thanhnien",
     "description": "",
-    "license": "số 08/GP-BTTTT, cấp ngày: 05/01/2021 của Bộ thông tin & Truyền thông",
-    "editorInChief": "Thiếu tướng Phạm Khải",
-    "address": "Số 2A Đinh Lễ, phường Hoàn Kiếm, TP Hà Nội.",
-    "phone": "0243.8222157 (máy lẻ 701).",
-    "email": "candonline@gmail.com",
-    "inforCopyright": "©2004-2025. Bản quyền thuộc về Báo Công An Nhân Dân. ®Không sao chép dưới mọi hình thức khi chưa có sự đồng ý bằng văn bản của Báo Công An Nhân Dân.",
-    "logo": "https://img.cand.com.vn/Content/images/logo.png",
+    "license": "Giấy phép xuất bản số 110/GP - BTTTT cấp ngày 24.3.2020",
+    "editorInChief": "Nguyễn Ngọc Toàn",
+    "address": "",
+    "phone": " 0906 645 777",
+    "email": "toasoan@thanhnien.vn",
+    "inforCopyright": "© 2003-2025 Bản quyền thuộc về Báo Thanh Niên. Cấm sao chép dưới mọi hình thức nếu không có sự chấp\n                    thuận bằng văn bản.",
+    "logo": "https://static.thanhnien.com.vn/thanhnien.vn/image/logo.svg",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }
