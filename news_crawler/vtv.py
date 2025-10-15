@@ -555,7 +555,7 @@ class VtvCrawler(BaseCrawler):
                 url = title_elem.get("href", "")
                 if url.startswith("/"):
                     url = BASE_DOMAIN + url
-                print("title", title)
+
                 # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
                 thumb_elem = item.select_one("img")
                 thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
