@@ -337,8 +337,10 @@ class VTCNewsCrawler(BaseCrawler):
             # Trích xuất tác giả
             author = soup.select_one('.author-make span')
             author = author.get_text(strip=True) if author else ''
-
-            return title, description, content, publish_date, author, content_images
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -461,7 +463,6 @@ class VTCNewsCrawler(BaseCrawler):
             if driver:
                 driver.quit()
 
-    
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath

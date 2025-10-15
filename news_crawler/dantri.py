@@ -234,6 +234,7 @@ class DanTriCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
+
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -415,6 +416,7 @@ class DanTriCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
+
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
         # --- Phase 2: lấy footer bằng Selenium ---

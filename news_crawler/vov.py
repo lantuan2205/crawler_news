@@ -106,9 +106,9 @@ class VovCrawler(BaseCrawler):
             60: "du-lich/tu-van",
             61: "du-lich/san-tour",
             62: "du-lich/checkin",
-
-
         }
+
+
     def download_image(self, image_url, article_title, category, publish_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
         try:
@@ -166,8 +166,7 @@ class VovCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
-    
+
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -345,8 +344,10 @@ class VovCrawler(BaseCrawler):
             author_box = soup.find('div', class_='article-author')
             author_tag = author_box.find('a')
             author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
-
-            return title, description, content, publish_date, author, content_images
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -387,6 +388,7 @@ class VovCrawler(BaseCrawler):
         }
 
         return article_data
+
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
@@ -452,8 +454,6 @@ class VovCrawler(BaseCrawler):
 
         return all_articles
     
-
-
     def get_audio_from_article(self, url):
         chrome_options = Options()
         chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
