@@ -3,7 +3,7 @@ import requests
 import sys
 from pathlib import Path
 import re
-
+import json
 import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -31,7 +31,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -451,3 +451,100 @@ class VovCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+
+
+    def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
+        chrome_options.add_argument("--no-sandbox")   
+        chrome_options.add_argument("--headless=new")  # chạy ẩn
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+
+        audio_tag = soup.find("video", src=True)
+        if audio_tag:
+            return audio_tag["src"]
+
+        driver.quit()
+
+        return ""
+
+    def crawl_podcast_bs4(self, category_url: str):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.get(category_url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        items = soup.select("div.col-12") 
+        BASE_DOMAIN = "https://vov.vn"
+        podcasts = []
+
+        for item in items:
+            # 1. Title + URL
+            title_elem = item.select_one("div.article-media")
+            if not title_elem:
+                continue
+
+            # Lấy thẻ <h5> chứa tiêu đề
+            title_tag = title_elem.select_one("h5.media-title")
+            title = title_tag.get_text(strip=True) if title_tag else ""
+
+            # Lấy href của thẻ <a> chứa tiêu đề
+            a_tag = title_elem.select_one("div.media-body a.vovvn-title")
+            url = a_tag.get("href", "") if a_tag else ""
+
+            if url.startswith("/"):
+                url = BASE_DOMAIN + url
+
+
+            # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+            thumb_elem = title_elem.select_one("a.vovvn-title picture img")
+            thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
+            # 3. Category (nếu cần)
+            # Lấy category ở đầu trang
+            cat_tag = soup.select_one("title")
+            category = cat_tag.get_text(strip=True).split("|")[0].strip() if cat_tag else ""
+
+            # 4. Audio URL (trong data-player)
+            audio_url = ""
+            audio_url = self.get_audio_from_article(url)
+
+            podcast = {
+                "title": title,
+                "url": url,
+                "thumbnail": thumbnail,
+                "category": category,
+                "audio_url": audio_url
+            }
+            send_podcast_to_kafka(podcast)
+            # podcasts.append({
+            #     "title": title,
+            #     "url": url,
+            #     "thumbnail": thumbnail,
+            #     "category": category,
+            #     "audio_url": audio_url
+            # })
+
+        # return podcasts
+
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "cau-chuyen-thoi-su",
+            1: "doc-truyen-dem-khuya",
+            2: "cua-so-tinh-yeu",
+            3: "ke-chuyen-cho-be",
+            4: "hat-giong-tam-hon",
+        }
+
+        BASE_URL = "https://vov.vn/podcast/"
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = BASE_URL + slug
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            self.crawl_podcast_bs4(category_url)
