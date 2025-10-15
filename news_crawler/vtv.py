@@ -3,7 +3,7 @@ import requests
 import sys
 from pathlib import Path
 import re
-
+import json
 import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
@@ -22,7 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 from typing import Optional  
-from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 
 
 FILE = Path(__file__).resolve()
@@ -33,6 +33,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
+
 from utils.service_utils import clean_date
 
 headers = {
@@ -475,3 +476,133 @@ class VtvCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+        
+    def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+
+        audio_tag = soup.find("audio", src=True)
+        if audio_tag:
+            return audio_tag["src"]
+        return ""
+
+    def crawl_podcast_bs4(self, category_url: str):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.get(category_url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        items = soup.select("div.flex-latest-news.br-bot div.box-liti-news div.box-category-middle div.box-category-item")
+        BASE_DOMAIN = "https://vtv.vn"
+        podcasts = []
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+            try:
+                driver.get(category_url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", category_url)
+                driver.quit()
+                return
+
+            # click "Xem thêm" nhiều lần
+            while True:
+                try:
+                    btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, 'a.btn-views[title="Xem thêm"]'))
+                    )
+                    driver.execute_script("arguments[0].scrollIntoView(true);", btn)
+                    time.sleep(0.2)
+                    driver.execute_script("arguments[0].click();", btn)
+                    time.sleep(0.5)
+                except (TimeoutException, NoSuchElementException):
+                    break
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            driver.quit()
+
+            items = soup.select(
+                "div.flex-latest-news.br-bot div.box-liti-news div.box-category-middle div.box-category-item"
+            )
+            for item in items:
+                # 1. Title + URL
+                title_elem = item.select_one("a[title]")
+                if not title_elem:
+                    continue
+                title = title_elem.get("title", "").strip()
+                url = title_elem.get("href", "")
+                if url.startswith("/"):
+                    url = BASE_DOMAIN + url
+                print("title", title)
+                # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+                thumb_elem = item.select_one("img")
+                thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
+                # 3. Category (nếu cần)
+                # Lấy category ở đầu trang
+                cat_tag = item.select_one("a.box-category-category")
+                category = cat_tag.get_text(strip=True) if cat_tag else ""
+
+                # 4. Audio URL 
+                audio_url = ""
+                audio_url = self.get_audio_from_article(url)
+
+                podcast = {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url
+                }
+                send_podcast_to_kafka(podcast)
+                # podcasts.append({
+                #     "title": title,
+                #     "url": url,
+                #     "thumbnail": thumbnail,
+                #     "category": category,
+                #     "audio_url": audio_url
+                # })
+            # return podcasts
+        except Exception as e:
+            print("❌ Lỗi trong quá trình crawl:", e)
+            try:
+                driver.quit()
+            except:
+                pass
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "hat-giong-tam-hon.htm",
+            1: "oi-nghe-ne.htm",
+            2: "doi-thoai-truc-tuyen.htm",
+            3: "nhip-song-24h.htm",
+            4: "thoi-su-hang-ngay.htm",
+            5: "tam-su-dem.htm",
+        }
+
+        BASE_URL = "https://vtv.vn/podcast/"
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = BASE_URL + slug
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            self.crawl_podcast_bs4(category_url)
