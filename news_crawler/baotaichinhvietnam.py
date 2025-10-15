@@ -291,8 +291,11 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
             images = content_div.find_all("img")
             content_images = [img['src'] for img in images if img.get('src')]
-
-            return title, description, content, publish_date, author, content_images
+            categories = ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
