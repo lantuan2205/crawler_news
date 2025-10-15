@@ -431,7 +431,6 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
                 # nếu category_url đã có query thì nối bằng '&', ngược lại dùng '?'
                 sep = '&'
                 page_url = f"{category_url}{sep}BRSR={offset}"
-                print(f"\n➡️  Đang crawl trang: {page_url}")
                 try:
                     resp = requests.get(page_url, headers=headers, timeout=15)
                     resp.raise_for_status()
@@ -501,7 +500,6 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
                 # Nếu trang này không có bài mới nào so với những gì đã thấy → dừng
                 if new_count == 0:
-                    print(f"✅ Không thấy link mới ở {page_url}, dừng.")
                     break
 
                 # tăng offset cho trang kế tiếp
