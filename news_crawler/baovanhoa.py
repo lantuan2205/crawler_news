@@ -531,13 +531,50 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
+        result = {
+            "content_url": "",        # link mp3/mp4 (audio)
+            "author_url": "",         # tên tác giả / nghệ sĩ nếu có
+            "end_time_mp3_url": "",   # độ dài/timestamp nếu trang có expose
+            "datetime_url": ""        # thời gian đăng bài
+        }
 
+        article = soup.find("article", class_="detail-wrap")
+        if not article:
+            print("⚠️ Không tìm thấy article trong trang:", url)
+            return {
+                "content_url": "",
+                "author_url": "",
+                "end_time_mp3_url": "",
+                "datetime_url": ""
+            }
+        
         # 1) Tìm thẻ <audio> có src
         audio_tag = soup.find(attrs={"data-audio-src": True})
+        audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
 
-        if audio_tag:
-            return audio_tag["data-audio-src"]
-        return ""
+        # 2 Tác giả (trong span.detail__author)
+        author_tag = article.select_one("span.detail__author")
+        author_url = author_tag.get_text(strip=True) if author_tag else ""
+
+        summary_tag = soup.find("h2", class_="detail__summary")
+        content_url = summary_tag.get_text(strip=True) if summary_tag else ""
+
+        # 3 Thời gian đăng (div.detail__time)
+        time_tag = article.select_one("div.detail__time time")
+        datetime_url = time_tag.get_text(strip=True) if time_tag else ""
+
+        # 4 Thời lượng audio (data-audio-duration, nếu có)
+
+        duration_tag = article.select_one("span.shk-time_duration")
+        end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
+
+        return {
+            "audio_url": audio_url or "",
+            "content_url": content_url or "",
+            "author_url": author_url or "",
+            "end_time_mp3_url": end_time_mp3_url or "",
+            "datetime_url": datetime_url or ""
+        }
     
 
     def crawl_podcast_bs4(self, category_url: str):
@@ -583,18 +620,24 @@ class BaoVanHoaCrawler(BaseCrawler):
                 # 3) Category (nếu không có trong item thì để rỗng)
                 cat_tag = soup.select_one("span.text-primary")
                 category = cat_tag.get_text(strip=True) if cat_tag else ""
-                print("cate",category)
 
-                # 4) Audio URL
-                audio_url=""
-                audio_url = self.get_audio_from_article(url)
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["content_url"]
+                author_url    = meta["author_url"]
+                end_time_url  = meta["end_time_mp3_url"]
+                datetime_url  = meta["datetime_url"]
 
                 podcast = {
                     "title": title,
                     "url": url,
                     "thumbnail": thumbnail,
                     "category": category,
-                    "audio_url": audio_url
+                    "audio_url": audio_url,
+                    "author_url": author_url,
+                    "content_url": content_url,
+                    "end_time_mp3_url": end_time_url,
+                    "datetime_url": datetime_url,
                 }
                 send_podcast_to_kafka(podcast)
               # -> tìm nút Next và sang trang kế
