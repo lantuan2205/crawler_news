@@ -531,23 +531,11 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
-        result = {
-            "content_url": "",        # link mp3/mp4 (audio)
-            "author_url": "",         # tên tác giả / nghệ sĩ nếu có
-            "end_time_mp3": "",   # độ dài/timestamp nếu trang có expose
-            "publishedDate": ""        # thời gian đăng bài
-        }
 
         article = soup.find("article", class_="detail-wrap")
         if not article:
             print("⚠️ Không tìm thấy article trong trang:", url)
-            return {
-                "content_url": "",
-                "author_url": "",
-                "end_time_mp3": "",
-                "publishedDate": ""
-            }
-        
+            return 0
         # 1) Tìm thẻ <audio> có src
         audio_tag = soup.find(attrs={"data-audio-src": True})
         audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
@@ -569,11 +557,11 @@ class BaoVanHoaCrawler(BaseCrawler):
         end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
 
         return {
-            "audio_url": audio_url or "",
-            "description": content_url or "",
-            "author": author_url or "",
-            "end_time_mp3": end_time_mp3_url or "",
-            "publishedDate": datetime_url or ""
+            "audio_url": audio_url,
+            "description": content_url,
+            "author": author_url,
+            "end_time_mp3": end_time_mp3_url,
+            "publishedDate": datetime_url
         }
     
 
