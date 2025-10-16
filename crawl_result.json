@@ -1,13 +1,13 @@
 {
-    "domain": "https://cand.com.vn",
-    "name": "cand",
+    "domain": "https://baovanhoa.vn",
+    "name": "baovanhoa",
     "description": "",
-    "license": "số 08/GP-BTTTT, cấp ngày: 05/01/2021 của Bộ thông tin & Truyền thông",
-    "editorInChief": "Thiếu tướng Phạm Khải",
-    "address": "Số 2A Đinh Lễ, phường Hoàn Kiếm, TP Hà Nội.",
-    "phone": "0243.8222157 (máy lẻ 701).",
-    "email": "candonline@gmail.com",
-    "inforCopyright": "©2004-2025. Bản quyền thuộc về Báo Công An Nhân Dân. ®Không sao chép dưới mọi hình thức khi chưa có sự đồng ý bằng văn bản của Báo Công An Nhân Dân.",
-    "logo": "https://img.cand.com.vn/Content/images/logo.png",
+    "license": "422/GP-BTTTT, cấp ngày 19.8.2016",
+    "editorInChief": "NGUYỄN ANH VŨ",
+    "address": "Số 33 ngõ 294/2 Kim Mã, phường Ngọc Hà, TP Hà Nội",
+    "phone": "024.38220036",
+    "email": "baovanhoa@fpt.vn",
+    "inforCopyright": "© Bản quyền thuộc về Báo Văn Hóa. Không sao chép dưới mọi hình thức nếu chưa có sự chấp thuận bằng văn bản.",
+    "logo": "https://media.baovanhoa.vn/web/images/logo-bvh.png",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }
