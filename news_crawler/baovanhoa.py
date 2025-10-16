@@ -8,17 +8,27 @@ from urllib.parse import urljoin
 import os
 from datetime import datetime
 import paramiko
+import json
 from io import BytesIO
-
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
 if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))  # add ROOT to PATH
-
+from urllib.parse import urljoin, urlparse, parse_qs
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -166,7 +176,139 @@ class BaoVanHoaCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
+
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            header_logo = soup.find("h1", class_="logo")
+            img_tag = header_logo.find("img")
+            info["logo"] = img_tag["src"].strip()
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "footer.site-footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("footer", class_="site-footer")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                info["description"] = ""
+
+                # License
+                if "Giấy phép số:" in text:
+                    license_line = [line for line in lines if "Giấy phép số:" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Giấy phép số:", "").strip()
+
+                # Tổng biên tập
+                editor_tag = footer_copyright.find(string=lambda s: "Tổng Biên tập" in s if s else False)
+                if editor_tag:
+                    strong_tag = editor_tag.find_next("strong")
+                    if strong_tag:
+                        info["editor_in_chief"] = strong_tag.get_text(strip=True)
+                # Địa chỉ
+                addr_icon = footer_copyright.find("i", class_="fa-location-dot")
+                if addr_icon:
+                    address_text = addr_icon.find_next(string=True)
+                    if address_text:
+                        info["address"] = address_text.strip()
+
+                # Điện thoại
+                phone_icon = footer_copyright.find("i", class_="fa-phone")
+                if phone_icon:
+                    phone_line = phone_icon.find_next(string=True)
+                    if phone_line:
+                        info["phone"] = phone_line.strip()
+
+                # Email
+                email_icon = footer_copyright.find("i", class_="fa-envelope")
+                if email_icon:
+                    email_tag = email_icon.find_next(string=True)
+                    if email_tag:
+                        info["email"] = email_tag.strip()
+
+                # Thông tin bản quyền
+                if "© Bản quyền" in text:
+                    copyright_line = [line for line in lines if "© Bản quyền" in line]              
+                    if copyright_line:
+                        info["infor_copyright"] = copyright_line[0].strip()
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -192,13 +334,16 @@ class BaoVanHoaCrawler(BaseCrawler):
             # Lấy tất cả các ảnh trong phần tử này
             div = soup.find('div', class_='detail__content')
             content = div.get_text(separator="\n").strip() if div else ""
-            images = content_div.find_all('img')
+            images = content.find_all('img')
             content_images = [img['src'] for img in images if img.get('src')]
 
             # Trích xuất tác giả
             author = soup.find('span', class_='detail__author').text.strip()
-
-            return title, description, content, publish_date, author, content_images
+            categories = ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -206,6 +351,97 @@ class BaoVanHoaCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
+        
+    def extract_comment(self, url: str):
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
+                    )
+                    # Cuộn tới nút
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    # Click bằng JS (bypass quảng cáo che)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
+                    time.sleep(0.5)  # chờ comment load
+                except (TimeoutException, NoSuchElementException):
+                    break  # hết nút để click
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            for item in soup.select("div.comment_item"):
+                # comment_id
+                comment_id =  ""
+                
+                # user_id
+                user_id = ""
+                user_url = ""
+
+                
+                username = ""      
+                avatar = ""
+                content = ""
+                time_comment = ""
+                reaction_map = {
+                    "Thích": "Like",
+                    "Yêu thích": "Love",
+                    "Haha": "Haha",
+                    "Wow": "Wow",
+                    "Buồn": "Sad",
+                    "Phẫn nộ": "Angry",
+                }
+
+                reactions = {}
+                reply_count = 0
+                
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "commentId": comment_id,
+                    "userId": user_id,
+                    "username": username,
+                    "userUrl": user_url,
+                    "avatar": avatar,
+                    "content": content,
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": reply_count
+                })
+            return comments
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -280,3 +516,153 @@ class BaoVanHoaCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+        result = {
+            "content_url": "",        # link mp3/mp4 (audio)
+            "author_url": "",         # tên tác giả / nghệ sĩ nếu có
+            "end_time_mp3_url": "",   # độ dài/timestamp nếu trang có expose
+            "datetime_url": ""        # thời gian đăng bài
+        }
+
+        article = soup.find("article", class_="detail-wrap")
+        if not article:
+            print("⚠️ Không tìm thấy article trong trang:", url)
+            return {
+                "content_url": "",
+                "author_url": "",
+                "end_time_mp3_url": "",
+                "datetime_url": ""
+            }
+        
+        # 1) Tìm thẻ <audio> có src
+        audio_tag = soup.find(attrs={"data-audio-src": True})
+        audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
+
+        # 2 Tác giả (trong span.detail__author)
+        author_tag = article.select_one("span.detail__author")
+        author_url = author_tag.get_text(strip=True) if author_tag else ""
+
+        summary_tag = soup.find("h2", class_="detail__summary")
+        content_url = summary_tag.get_text(strip=True) if summary_tag else ""
+
+        # 3 Thời gian đăng (div.detail__time)
+        time_tag = article.select_one("div.detail__time time")
+        datetime_url = time_tag.get_text(strip=True) if time_tag else ""
+
+        # 4 Thời lượng audio (data-audio-duration, nếu có)
+
+        duration_tag = article.select_one("span.shk-time_duration")
+        end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
+
+        return {
+            "audio_url": audio_url or "",
+            "content_url": content_url or "",
+            "author_url": author_url or "",
+            "end_time_mp3_url": end_time_mp3_url or "",
+            "datetime_url": datetime_url or ""
+        }
+    
+
+    def crawl_podcast_bs4(self, category_url: str):
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        response = requests.get(category_url, headers=headers, timeout=15)
+        response.raise_for_status()
+        BASE_URL = "https://baovanhoa.vn"
+        url_page = category_url
+        seen_urls = set()
+        soup = BeautifulSoup(response.text, "html.parser")
+        items = soup.select("article.story.story--podcast.mb-4")  
+      
+        podcasts = []
+        while True:
+            # tải trang
+            resp = requests.get(url_page, headers=headers, timeout=15)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # quét bài trong trang
+            items = soup.select("article.story.story--podcast.mb-4")
+            if not items:
+                break
+
+            for item in items:
+                # 1) Title + URL
+                title_elem = item.select_one("a[title]")
+                if not title_elem:
+                    continue
+
+                title = title_elem.get("title", "").strip()
+
+                url = title_elem.get("href", "") or ""
+                if url.startswith("/"):
+                    url = BASE_URL + url
+                # Chuẩn hoá URL tuyệt đối
+
+                # 2) Thumbnail
+                thumb_elem = item.select_one("img")
+                thumbnail = ""
+                if thumb_elem:
+                    thumbnail = thumb_elem.get("src") or thumb_elem.get("data-src") or thumb_elem.get("data-mobile") or ""
+                # 3) Category (nếu không có trong item thì để rỗng)
+                cat_tag = soup.select_one("span.text-primary")
+                category = cat_tag.get_text(strip=True) if cat_tag else ""
+
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["content_url"]
+                author_url    = meta["author_url"]
+                end_time_url  = meta["end_time_mp3_url"]
+                datetime_url  = meta["datetime_url"]
+
+                podcast = {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url,
+                    "author_url": author_url,
+                    "content_url": content_url,
+                    "end_time_mp3_url": end_time_url,
+                    "datetime_url": datetime_url,
+                }
+                send_podcast_to_kafka(podcast)
+              # -> tìm nút Next và sang trang kế
+            next_a = soup.select_one('a#nextControl[href]')
+            # dừng nếu không có next, hoặc class có 'disabled', hoặc thuộc tính disabled xuất hiện
+            if (not next_a) or ('disabled' in (next_a.get('class') or [])) or next_a.has_attr('disabled'):
+                print("✅ Không còn trang tiếp theo, dừng.")
+                break
+
+            next_href = next_a.get('href', '').strip()
+            if not next_href:
+                print("✅ Next không có href, dừng.")
+                break
+
+            url_page = urljoin(BASE_URL, next_href)
+            # ngủ nhẹ tránh bị chặn
+            time.sleep(random.uniform(0.8, 1.8))
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "podcast/",
+        }
+
+        BASE_URL = "https://baovanhoa.vn/"
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = BASE_URL + slug
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            self.crawl_podcast_bs4(category_url)
