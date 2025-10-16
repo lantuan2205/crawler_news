@@ -534,8 +534,8 @@ class BaoVanHoaCrawler(BaseCrawler):
         result = {
             "content_url": "",        # link mp3/mp4 (audio)
             "author_url": "",         # tên tác giả / nghệ sĩ nếu có
-            "end_time_mp3_url": "",   # độ dài/timestamp nếu trang có expose
-            "datetime_url": ""        # thời gian đăng bài
+            "end_time_mp3": "",   # độ dài/timestamp nếu trang có expose
+            "publishedDate": ""        # thời gian đăng bài
         }
 
         article = soup.find("article", class_="detail-wrap")
@@ -544,8 +544,8 @@ class BaoVanHoaCrawler(BaseCrawler):
             return {
                 "content_url": "",
                 "author_url": "",
-                "end_time_mp3_url": "",
-                "datetime_url": ""
+                "end_time_mp3": "",
+                "publishedDate": ""
             }
         
         # 1) Tìm thẻ <audio> có src
@@ -570,10 +570,10 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         return {
             "audio_url": audio_url or "",
-            "content_url": content_url or "",
-            "author_url": author_url or "",
-            "end_time_mp3_url": end_time_mp3_url or "",
-            "datetime_url": datetime_url or ""
+            "description": content_url or "",
+            "author": author_url or "",
+            "end_time_mp3": end_time_mp3_url or "",
+            "publishedDate": datetime_url or ""
         }
     
 
@@ -613,20 +613,20 @@ class BaoVanHoaCrawler(BaseCrawler):
                 # Chuẩn hoá URL tuyệt đối
 
                 # 2) Thumbnail
-                thumb_elem = item.select_one("img")
+                thumb_elem = item.select_one("img.img-fluid")
                 thumbnail = ""
                 if thumb_elem:
-                    thumbnail = thumb_elem.get("src") or thumb_elem.get("data-src") or thumb_elem.get("data-mobile") or ""
+                    thumbnail = thumb_elem.get("data-src") or ""
                 # 3) Category (nếu không có trong item thì để rỗng)
                 cat_tag = soup.select_one("span.text-primary")
                 category = cat_tag.get_text(strip=True) if cat_tag else ""
 
                 meta = self.get_audio_from_article(url)
                 audio_url     = meta["audio_url"]
-                content_url   = meta["content_url"]
-                author_url    = meta["author_url"]
-                end_time_url  = meta["end_time_mp3_url"]
-                datetime_url  = meta["datetime_url"]
+                content_url   = meta["description"]
+                author_url    = meta["author"]
+                end_time_url  = meta["end_time_mp3"]
+                datetime_url  = meta["publishedDate"]
 
                 podcast = {
                     "title": title,
@@ -634,10 +634,10 @@ class BaoVanHoaCrawler(BaseCrawler):
                     "thumbnail": thumbnail,
                     "category": category,
                     "audio_url": audio_url,
-                    "author_url": author_url,
-                    "content_url": content_url,
-                    "end_time_mp3_url": end_time_url,
-                    "datetime_url": datetime_url,
+                    "author": author_url,
+                    "description": content_url,
+                    "end_time_mp3": end_time_url,
+                    "publishedDate": datetime_url,
                 }
                 send_podcast_to_kafka(podcast)
               # -> tìm nút Next và sang trang kế
