@@ -1,13 +1,13 @@
 {
-    "domain": "https://baovanhoa.vn",
-    "name": "baovanhoa",
-    "description": "",
-    "license": "422/GP-BTTTT, cấp ngày 19.8.2016",
-    "editorInChief": "NGUYỄN ANH VŨ",
-    "address": "Số 33 ngõ 294/2 Kim Mã, phường Ngọc Hà, TP Hà Nội",
-    "phone": "024.38220036",
-    "email": "baovanhoa@fpt.vn",
-    "inforCopyright": "© Bản quyền thuộc về Báo Văn Hóa. Không sao chép dưới mọi hình thức nếu chưa có sự chấp thuận bằng văn bản.",
-    "logo": "https://media.baovanhoa.vn/web/images/logo-bvh.png",
+    "domain": "https://thoibaotaichinhvietnam.vn",
+    "name": "thoibaotaichinhvietnam",
+    "description": "Ấn phẩm của Báo Tài chính - Đầu tư - Cơ quan chủ quản:",
+    "license": "số 289/GP-BTTTT ngày 14/08/2023 của Bộ Thông tin và Truyền thông",
+    "editorInChief": "Phạm Văn Hoành",
+    "address": "Số 34 phố Tuệ Tĩnh, phường Hai Bà Trưng, Thành phố Hà Nội",
+    "phone": "0362656889",
+    "email": "thoibaotaichinh@mof.gov.vn",
+    "inforCopyright": "Chỉ được phát hành lại thông tin từ website này khi có sự đồng ý bằng văn bản của Báo Tài chính - Đầu tư",
+    "logo": "https://thoibaotaichinhvietnam.vn/modules/frontend/themes/tbtc/images/logo.svg?v=2.620250426112924",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }

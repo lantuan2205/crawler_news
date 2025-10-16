@@ -9,7 +9,17 @@ import os
 from datetime import datetime, timedelta
 import paramiko
 from io import BytesIO
+from urllib.parse import urljoin, urlparse, parse_qs
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, WebDriverException
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
 if str(ROOT) not in sys.path:
@@ -18,7 +28,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -103,7 +113,142 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
         except Exception as e:
             self.logger.error(f"Error downloading image {image_url}: {e}")
             return None
-        
+
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        DOMAIN_URL= "https://thoibaotaichinhvietnam.vn"
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            container = soup.find("div", class_="logo-bar")
+            h1_tag = container.find("h1") if container else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            info["logo"] = DOMAIN_URL + logo_src
+            
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.footer-info"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("div", class_="footer-info")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                if "Giấy phép báo điện tử:" in text:
+                    license_line = [line for line in lines if "Giấy phép báo điện tử:" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Giấy phép báo điện tử:", "").strip()
+
+                # Tổng biên tập
+                # trong toàn trang (hoặc giới hạn vào footer nếu muốn)
+                name = ""
+                node = soup.find(string=lambda s: s and "tổng biên tập" in s.lower())
+                if node:
+                    strong = node.find_next("strong")
+                    name = strong.get_text(strip=True) if strong else ""
+
+                info["editor_in_chief"] = name
+
+                # Địa chỉ
+                if "Tòa soạn:" in text:
+                    addr_line = [line for line in lines if "Tòa soạn:" in line]
+                    if addr_line:
+                        info["address"] = addr_line[0].replace("Tòa soạn:", "").strip()
+
+                # Điện thoại
+                phone_line = footer_copyright.select("strong")[-1]
+                if phone_line:
+                    info["phone"] = phone_line.get_text(strip=True)
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
+
+                # Thông tin bản quyền
+                last_p = footer_copyright.select("b")[-1]
+                if last_p:
+                    info["infor_copyright"] = last_p.get_text(strip=True)
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+
+
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -146,8 +291,11 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
             images = content_div.find_all("img")
             content_images = [img['src'] for img in images if img.get('src')]
-
-            return title, description, content, publish_date, author, content_images
+            categories = ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -247,3 +395,132 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
             return list(urls)
         except Exception as e:
             return []
+        
+    def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+
+        html = driver.page_source
+        soup = BeautifulSoup(html, "html.parser")
+
+        audio_tag = soup.find("audio", src=True)
+        if audio_tag:
+            return audio_tag["src"]
+        return ""
+
+    def crawl_podcast_bs4(self, category_url: str):
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+
+        # Lấy domain gốc để join URL tuyệt đối
+        parsed = urlparse(category_url)
+        BASE_DOMAIN = f"{parsed.scheme}://{parsed.netloc}"
+
+        seen_urls = set()
+        offset = 0
+        page_size = None  # sẽ tự suy ra sau trang đầu
+
+        try:
+            while True:
+                # build URL phân trang: …&BRSR=<offset>
+                # nếu category_url đã có query thì nối bằng '&', ngược lại dùng '?'
+                sep = '&'
+                page_url = f"{category_url}{sep}BRSR={offset}"
+                try:
+                    resp = requests.get(page_url, headers=headers, timeout=15)
+                    resp.raise_for_status()
+                except requests.exceptions.RequestException as e:
+                    print(f"⚠️ Lỗi tải {page_url}: {e}")
+                    break
+
+                soup = BeautifulSoup(resp.text, "html.parser")
+
+                # Lấy item bài viết
+                items = soup.select("div.cat-content.clearfix article.article")
+                if not items:
+                    # Không còn dữ liệu => dừng
+                    print(f"✅ Hết bài ở {page_url}, dừng.")
+                    break
+
+                # Suy ra page_size ở lần đầu (để tăng offset)
+                if page_size is None:
+                    page_size = len(items)
+                    if page_size <= 0:
+                        page_size = 12  # fallback
+
+                new_count = 0
+
+                for item in items:
+                    # 1) Title + URL
+                    title_elem = item.select_one("a[title]")
+                    if not title_elem:
+                        continue
+
+                    title = title_elem.get("title", "").strip()
+                    url = title_elem.get("href", "") or ""
+
+                    # Chuẩn hoá URL tuyệt đối
+                    url = urljoin(BASE_DOMAIN, url)
+
+                    # Chống trùng
+                    if url in seen_urls:
+                        continue
+                    seen_urls.add(url)
+                    new_count += 1
+
+                    # 2) Thumbnail
+                    thumb_elem = item.select_one("img")
+                    thumbnail = ""
+                    if thumb_elem:
+                        thumbnail = thumb_elem.get("src") or thumb_elem.get("data-src") or thumb_elem.get("data-original") or ""
+
+                    # 3) Category (nếu không có trong item thì để rỗng)
+                    category = ""
+                    cat_tag = item.select_one("a.box-category-category")
+                    if cat_tag:
+                        category = cat_tag.get_text(strip=True)
+
+                    # 4) Audio URL
+                    audio_url=""
+                    audio_url = self.get_audio_from_article(url)
+
+                    podcast = {
+                        "title": title,
+                        "url": url,
+                        "thumbnail": thumbnail,
+                        "category": category,
+                        "audio_url": audio_url
+                    }
+                    send_podcast_to_kafka(podcast)
+
+                # Nếu trang này không có bài mới nào so với những gì đã thấy → dừng
+                if new_count == 0:
+                    break
+
+                # tăng offset cho trang kế tiếp
+                offset += page_size
+
+                # ngủ ngẫu nhiên tránh bị chặn
+                time.sleep(random.uniform(1, 2.5))
+
+        except Exception as e:
+            print("❌ Lỗi trong quá trình crawl:", e)
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "podcasts",
+        }
+
+        BASE_URL = "https://thoibaotaichinhvietnam.vn/"
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = BASE_URL + slug
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            self.crawl_podcast_bs4(category_url)
