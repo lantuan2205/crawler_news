@@ -1,13 +1,13 @@
 {
-    "domain": "https://cand.com.vn",
-    "name": "cand",
-    "description": "",
-    "license": "số 08/GP-BTTTT, cấp ngày: 05/01/2021 của Bộ thông tin & Truyền thông",
-    "editorInChief": "Thiếu tướng Phạm Khải",
-    "address": "Số 2A Đinh Lễ, phường Hoàn Kiếm, TP Hà Nội.",
-    "phone": "0243.8222157 (máy lẻ 701).",
-    "email": "candonline@gmail.com",
-    "inforCopyright": "©2004-2025. Bản quyền thuộc về Báo Công An Nhân Dân. ®Không sao chép dưới mọi hình thức khi chưa có sự đồng ý bằng văn bản của Báo Công An Nhân Dân.",
-    "logo": "https://img.cand.com.vn/Content/images/logo.png",
+    "domain": "https://thoibaotaichinhvietnam.vn",
+    "name": "thoibaotaichinhvietnam",
+    "description": "Ấn phẩm của Báo Tài chính - Đầu tư - Cơ quan chủ quản:",
+    "license": "số 289/GP-BTTTT ngày 14/08/2023 của Bộ Thông tin và Truyền thông",
+    "editorInChief": "Phạm Văn Hoành",
+    "address": "Số 34 phố Tuệ Tĩnh, phường Hai Bà Trưng, Thành phố Hà Nội",
+    "phone": "0362656889",
+    "email": "thoibaotaichinh@mof.gov.vn",
+    "inforCopyright": "Chỉ được phát hành lại thông tin từ website này khi có sự đồng ý bằng văn bản của Báo Tài chính - Đầu tư",
+    "logo": "https://thoibaotaichinhvietnam.vn/modules/frontend/themes/tbtc/images/logo.svg?v=2.620250426112924",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }
