@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import os
 from datetime import datetime
+import uuid 
 import paramiko
 import json
 from io import BytesIO
@@ -398,14 +399,9 @@ class BaoVanHoaCrawler(BaseCrawler):
             comments = []
 
             for item in soup.select("div.comment_item"):
-                # comment_id
                 comment_id =  ""
-                
-                # user_id
                 user_id = ""
                 user_url = ""
-
-                
                 username = ""      
                 avatar = ""
                 content = ""
@@ -531,23 +527,11 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         html = driver.page_source
         soup = BeautifulSoup(html, "html.parser")
-        result = {
-            "content_url": "",        # link mp3/mp4 (audio)
-            "author_url": "",         # tên tác giả / nghệ sĩ nếu có
-            "end_time_mp3_url": "",   # độ dài/timestamp nếu trang có expose
-            "datetime_url": ""        # thời gian đăng bài
-        }
 
         article = soup.find("article", class_="detail-wrap")
         if not article:
             print("⚠️ Không tìm thấy article trong trang:", url)
-            return {
-                "content_url": "",
-                "author_url": "",
-                "end_time_mp3_url": "",
-                "datetime_url": ""
-            }
-        
+            return 0
         # 1) Tìm thẻ <audio> có src
         audio_tag = soup.find(attrs={"data-audio-src": True})
         audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
@@ -561,19 +545,19 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         # 3 Thời gian đăng (div.detail__time)
         time_tag = article.select_one("div.detail__time time")
-        datetime_url = time_tag.get_text(strip=True) if time_tag else ""
-
+        time_text = time_tag.get_text(strip=True) if time_tag else ""
+        datetime_url = parse_vnexpress_time_ms(time_text)
         # 4 Thời lượng audio (data-audio-duration, nếu có)
 
         duration_tag = article.select_one("span.shk-time_duration")
         end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
 
         return {
-            "audio_url": audio_url or "",
-            "content_url": content_url or "",
-            "author_url": author_url or "",
-            "end_time_mp3_url": end_time_mp3_url or "",
-            "datetime_url": datetime_url or ""
+            "audio_url": audio_url,
+            "description": content_url,
+            "author": author_url,
+            "end_time_mp3": end_time_mp3_url,
+            "publishedDate": datetime_url
         }
     
 
@@ -600,46 +584,51 @@ class BaoVanHoaCrawler(BaseCrawler):
                 break
 
             for item in items:
-                # 1) Title + URL
-                title_elem = item.select_one("a[title]")
-                if not title_elem:
+                try:
+                    # 1) Title + URL
+                    title_elem = item.select_one("a[title]")
+                    if not title_elem:
+                        continue
+
+                    title = title_elem.get("title", "").strip()
+
+                    url = title_elem.get("href", "") or ""
+                    if url.startswith("/"):
+                        url = BASE_URL + url
+                    # Chuẩn hoá URL tuyệt đối
+
+                    # 2) Thumbnail
+                    thumb_elem = item.select_one("img.img-fluid")
+                    thumbnail = ""
+                    if thumb_elem:
+                        thumbnail = thumb_elem.get("data-src") or ""
+                    # 3) Category (nếu không có trong item thì để rỗng)
+                    cat_tag = soup.select_one("span.text-primary")
+                    category = cat_tag.get_text(strip=True) if cat_tag else ""
+
+                    meta = self.get_audio_from_article(url)
+                    audio_url     = meta["audio_url"]
+                    content_url   = meta["description"]
+                    author_url    = meta["author"]
+                    end_time_url  = meta["end_time_mp3"]
+                    datetime_url  = meta["publishedDate"]
+
+                    podcast = {
+                        "title": title,
+                        "url": url,
+                        "thumbnail": thumbnail,
+                        "category": category,
+                        "audio_url": audio_url,
+                        "author": author_url,
+                        "description": content_url,
+                        "end_time_mp3": end_time_url,
+                        "publishedDate": datetime_url,
+                        "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                    }
+                    send_podcast_to_kafka(podcast)
+                except Exception as e:
+                    print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                     continue
-
-                title = title_elem.get("title", "").strip()
-
-                url = title_elem.get("href", "") or ""
-                if url.startswith("/"):
-                    url = BASE_URL + url
-                # Chuẩn hoá URL tuyệt đối
-
-                # 2) Thumbnail
-                thumb_elem = item.select_one("img")
-                thumbnail = ""
-                if thumb_elem:
-                    thumbnail = thumb_elem.get("src") or thumb_elem.get("data-src") or thumb_elem.get("data-mobile") or ""
-                # 3) Category (nếu không có trong item thì để rỗng)
-                cat_tag = soup.select_one("span.text-primary")
-                category = cat_tag.get_text(strip=True) if cat_tag else ""
-
-                meta = self.get_audio_from_article(url)
-                audio_url     = meta["audio_url"]
-                content_url   = meta["content_url"]
-                author_url    = meta["author_url"]
-                end_time_url  = meta["end_time_mp3_url"]
-                datetime_url  = meta["datetime_url"]
-
-                podcast = {
-                    "title": title,
-                    "url": url,
-                    "thumbnail": thumbnail,
-                    "category": category,
-                    "audio_url": audio_url,
-                    "author_url": author_url,
-                    "content_url": content_url,
-                    "end_time_mp3_url": end_time_url,
-                    "datetime_url": datetime_url,
-                }
-                send_podcast_to_kafka(podcast)
               # -> tìm nút Next và sang trang kế
             next_a = soup.select_one('a#nextControl[href]')
             # dừng nếu không có next, hoặc class có 'disabled', hoặc thuộc tính disabled xuất hiện
