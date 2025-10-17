@@ -722,14 +722,13 @@ class VNExpressCrawler(BaseCrawler):
         except Exception as e:
             print("⚠️ Không lấy được end_time_mp3:", e)
             end_time_mp3 = ""
-
         driver.quit()
         
         return {
             "audio_url": audio_url,
             "description": description,
             "author": author,
-            "end_time_mp3": end_time_mp3,
+            "duration": end_time_mp3,
             "publishedDate": publishedDate,
         }
 
@@ -754,7 +753,6 @@ class VNExpressCrawler(BaseCrawler):
                     continue
                 title = title_elem.get("title", "").strip()
                 url = title_elem.get("href", "")
-                print("url", url)
 
                 # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
                 thumb_elem = item.select_one("img")
@@ -770,7 +768,7 @@ class VNExpressCrawler(BaseCrawler):
                 audio_url     = meta["audio_url"]
                 content_url   = meta["description"]
                 author_url    = meta["author"]
-                end_time_url  = meta["end_time_mp3"]
+                end_time_url  = meta["duration"]
                 datetime_url  = meta["publishedDate"]
 
                 podcast = {
