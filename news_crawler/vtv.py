@@ -491,6 +491,7 @@ class VtvCrawler(BaseCrawler):
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--remote-debugging-port=9222")
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
@@ -541,6 +542,8 @@ class VtvCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-dev-shm-usage")
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
@@ -617,7 +620,7 @@ class VtvCrawler(BaseCrawler):
                     "audio_url": audio_url,
                     "author": author_url,
                     "description": content_url,
-                    "end_time_mp3": end_time_url,
+                    "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
 

@@ -23,7 +23,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 from selenium.webdriver.common.by import By
-from typing import Optional  
+from typing import Optional
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]
@@ -34,7 +34,7 @@ from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
 from utils.beautifulSoup_utils import  extract_categories_from_soup
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -781,7 +781,7 @@ class VNExpressCrawler(BaseCrawler):
                     "audio_url": audio_url,
                     "author": author_url,
                     "description": content_url,
-                    "end_time_mp3": end_time_url,
+                    "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
                 }
@@ -789,6 +789,7 @@ class VNExpressCrawler(BaseCrawler):
             except Exception as e:
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
+
     def crawl_postcast(self):
         podcast_type_dict = {
             0: "toi-ke",

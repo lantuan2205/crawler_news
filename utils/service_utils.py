@@ -422,3 +422,7 @@ def parse_vnexpress_time_ms(time_str):
     if m: return int(datetime.strptime(f"{m[1]} {m[2]}", "%d/%m/%Y %H:%M").timestamp()*1000)      
     
     return None  # Không parse được
+
+def time_to_seconds(time_str):
+    minutes, seconds = map(int, time_str.split(":"))
+    return minutes * 60 + seconds

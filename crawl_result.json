@@ -1,13 +1,20 @@
 {
-    "domain": "https://thoibaotaichinhvietnam.vn",
-    "name": "thoibaotaichinhvietnam",
-    "description": "Ấn phẩm của Báo Tài chính - Đầu tư - Cơ quan chủ quản:",
-    "license": "số 289/GP-BTTTT ngày 14/08/2023 của Bộ Thông tin và Truyền thông",
-    "editorInChief": "Phạm Văn Hoành",
-    "address": "Số 34 phố Tuệ Tĩnh, phường Hai Bà Trưng, Thành phố Hà Nội",
-    "phone": "0362656889",
-    "email": "thoibaotaichinh@mof.gov.vn",
-    "inforCopyright": "Chỉ được phát hành lại thông tin từ website này khi có sự đồng ý bằng văn bản của Báo Tài chính - Đầu tư",
-    "logo": "https://thoibaotaichinhvietnam.vn/modules/frontend/themes/tbtc/images/logo.svg?v=2.620250426112924",
+    "dataSource": "https://vnexpress.net",
+    "title": "\nCấp tỉnh và xã hoạt động từ ngày 1/7 ",
+    "url": "https://vnexpress.net/cap-tinh-va-xa-hoat-dong-tu-ngay-1-7-4898635.html",
+    "author": "Vũ Tuân",
+    "authorId": "Vũ Tuân_439a383ba11b44cfad3d3c22024b7d64",
+    "publishedDate": 1749828360,
+    "description": "Tất cả cơ quan, đơn vị thuộc 34 tỉnh, thành phố và 3.321 xã, phường, đặc khu sẽ đồng loạt hoạt động từ ngày 1/7, Bộ Chính trị, Ban Bí thư yêu cầu.",
+    "content": "Ngày 13/6, Bộ Chính trị, Ban Bí thư ban hành kết luận 167, yêu cầu các cấp ủy hoàn thiện văn bản pháp luật, phương án bố trí nhân sự, trụ sở, phương tiện, cơ sở vật chất để sẵn sàng đưa bộ máy đi vào hoạt động.\nĐể đảm bảo tiến độ tất cả tỉnh thành, xã phường, đặc khu đi vào hoạt động từ 1/7, bí thư đảng ủy, bộ trưởng, thủ trưởng cơ quan ngang bộ, thường trực các tỉnh ủy, thành ủy không đi công tác nước ngoài từ nay đến hết tháng 7. Trường hợp đặc biệt phải báo cáo cấp có thẩm quyền quyết định.\nĐảng ủy Chính phủ được giao tổ chức hội nghị tập huấn cho địa phương về phân cấp, phân quyền, đảm bảo chính quyền địa phương hai cấp hoạt động thống nhất, thông suốt, không gián đoạn.\nĐồng thời, Chính phủ rà soát tình hình quản lý, xử lý trụ sở, tài sản, đất đai dôi dư sau sắp xếp đơn vị hành chính nhằm tránh lãng phí, ưu tiên phục vụ mục đích y tế, giáo dục, văn hóa. Ngân sách cần đảm bảo chi trả chế độ cho cán bộ, công chức, viên chức, người lao động chịu ảnh hưởng bởi sắp xếp.\nChức danh chủ tịch, phó chủ tịch UBND các tỉnh, thành mới sẽ đồng loạt được công bố ngày 30/6.\nĐảng ủy Quốc hội chỉ đạo Ủy ban Thường vụ Quốc hội chỉ định chủ tịch, phó chủ tịch HĐND; trưởng các ban của HĐND; trưởng đoàn, phó đoàn đại biểu Quốc hội 34 tỉnh, thành sau sáp nhập.\nĐảng ủy Mặt trận Tổ quốc Việt Nam sẽ công nhận ủy viên, chủ tịch, phó chủ tịch Mặt trận Tổ quốc các tỉnh, thành mới.\nTheo kết luận, trong trường hợp đặc biệt, có thể chỉ định nhân sự không phải đại biểu HĐND giữ các chức danh thường trực HĐND cấp tỉnh, xã, trong đó có HĐND lâm thời phường. Ban Tổ chức Trung ương chịu trách nhiệm hướng dẫn việc này, báo cáo Bộ Chính trị, Ban Bí thư xem xét trước 20/6.\nLễ công bố và trao các quyết định sáp nhập tỉnh thành; thành lập đảng bộ tỉnh thành mới; chỉ định nhân sự tỉnh thành sẽ được tổ chức đồng thời ngày 30/6 tại các địa phương.\nSáng 12/6, Quốc hội thông qua Nghị quyết về sắp xếp đơn vị hành chính cấp tỉnh năm 2025, giảm số tỉnh, thành phố từ 63 xuống còn 34. Cả nước còn 3.321 xã, phường, đặc khu.",
+    "contentImageUrls": [
+        "https://i1-vnexpress.vnecdn.net/2025/06/13/ha-nam-1749827703-3505-1749827829.jpg?w=680&h=0&q=100&dpr=1&fit=crop&s=btuFPQUZGKlFwX-MF3Kw7A"
+    ],
+    "photoInfos": {
+        "ha-nam-1749827703-3505-1749827829.jpg": "https://i1-vnexpress.vnecdn.net/2025/06/13/ha-nam-1749827703-3505-1749827829.jpg?w=680&h=0&q=100&dpr=1&fit=crop&s=btuFPQUZGKlFwX-MF3Kw7A"
+    },
+    "categories": "Thời sự, Chính trị",
+    "thumbnailUrl": "",
+    "location": "",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }

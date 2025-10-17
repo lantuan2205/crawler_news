@@ -179,9 +179,8 @@ def process_crawl(data: Dict[str, Any]):
         else:
             if "profile" in data_to_collect:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
-                return
             # Crawl toàn bộ domain
-            MAX_ARTICLES = 200
+            MAX_ARTICLES = 2
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
                 if total_articles_crawled >= MAX_ARTICLES:
@@ -427,8 +426,8 @@ if __name__ == "__main__":
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        pid = 1
-        os.kill(pid, signal.SIGTERM)
+        # pid = 1
+        # os.kill(pid, signal.SIGTERM)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
