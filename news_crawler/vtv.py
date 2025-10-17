@@ -615,6 +615,7 @@ class VtvCrawler(BaseCrawler):
                     "thumbnail": thumbnail,
                     "category": category,
                     "audio_url": audio_url,
+                    "author": author_url,
                     "description": content_url,
                     "end_time_mp3": end_time_url,
                     "publishedDate": datetime_url,
