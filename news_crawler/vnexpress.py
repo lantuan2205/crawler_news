@@ -785,7 +785,7 @@ class VNExpressCrawler(BaseCrawler):
                     "publishedDate": datetime_url,
                     "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
                 }
-                # send_podcast_to_kafka(podcast)
+                send_podcast_to_kafka(podcast)
             except Exception as e:
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
