@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import json
 import random
+import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from datetime import datetime, timedelta
@@ -483,25 +484,53 @@ class VtvCrawler(BaseCrawler):
         return all_articles
     
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
 
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
+            html = driver.page_source
+            soup = BeautifulSoup(html, "html.parser")
+            article = soup.find("div", class_="box-wrap-lsten")
+            if not article:
+                print("⚠️ Không tìm thấy article trong trang:", url)
+            audio_tag = soup.find("audio", src=True)
+            audio_url = audio_tag.get("src", "").strip() if audio_tag else ""
 
-        audio_tag = soup.find("audio", src=True)
-        if audio_tag:
-            return audio_tag["src"]
-        return ""
+            # 2 Tác giả k co
+            author_url = ""
+            #3 noi dung
+            summary_tag = soup.find("h2", class_="sapo")
+            content_url = summary_tag.get_text(strip=True) if summary_tag else ""
+
+            # 4 Thời lượng audio (data-audio-duration, nếu có)
+
+            duration_tag = article.select("div.audioPodcastPlayer-time")
+            end_time_mp3_url = duration_tag[-1].get_text(strip=True) if duration_tag else ""
+
+            return {
+                "audio_url": audio_url,
+                "description": content_url,
+                "author": author_url,
+                "end_time_mp3": end_time_mp3_url,
+            }
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            # trả dict rỗng để crawler vẫn tiếp tục
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "end_time_mp3": "",
+            }
 
     def crawl_podcast_bs4(self, category_url: str):
         chrome_options = Options()
@@ -569,25 +598,30 @@ class VtvCrawler(BaseCrawler):
                 category = cat_tag.get_text(strip=True) if cat_tag else ""
 
                 # 4. Audio URL 
-                audio_url = ""
-                audio_url = self.get_audio_from_article(url)
+
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["description"]
+                author_url    = meta["author"]
+                end_time_url  = meta["end_time_mp3"]
+                # 5 Thời gian đăng (div.detail__time)
+                time_tag = item.select_one("span.box-category-time span.time-ago")
+                time_text = time_tag.get_text(strip=True) if time_tag else ""
+                datetime_url = parse_vnexpress_time_ms(time_text) 
 
                 podcast = {
                     "title": title,
                     "url": url,
                     "thumbnail": thumbnail,
                     "category": category,
-                    "audio_url": audio_url
+                    "audio_url": audio_url,
+                    "description": content_url,
+                    "end_time_mp3": end_time_url,
+                    "publishedDate": datetime_url,
+                    "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+
                 }
                 send_podcast_to_kafka(podcast)
-                # podcasts.append({
-                #     "title": title,
-                #     "url": url,
-                #     "thumbnail": thumbnail,
-                #     "category": category,
-                #     "audio_url": audio_url
-                # })
-            # return podcasts
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)
             try:
