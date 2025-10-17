@@ -642,7 +642,6 @@ class VietNamNetCrawler(BaseCrawler):
         # Thumbnail
         thumb = soup.find("meta", property="og:image")
         thumbnail = thumb["content"] if thumb else ""
-        print("url",url)
         # Audio URL
         audio_url = ""
         audio_tag = soup.find("audio")
