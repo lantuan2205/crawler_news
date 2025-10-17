@@ -3,7 +3,9 @@ import requests
 import sys
 import time
 import random
+import re
 import os
+import uuid
 from pathlib import Path
 from datetime import datetime
 import paramiko
@@ -645,37 +647,92 @@ class VNExpressCrawler(BaseCrawler):
             return []
 
     def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
         headers = {
             "User-Agent": "Mozilla/5.0"
         }
         resp = requests.get(url, headers=headers)
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 1) Tìm thẻ <audio> có src
-        audio_tag = soup.find("audio", src=True)
-        if audio_tag:
-            return audio_tag["src"]
+        article = soup.select_one("div.section_podcast_detail_newver") or soup
 
-        # 2) Nếu không có trực tiếp, thì fallback sang cách parse JSON trong data-player
-        players = soup.find_all(attrs={"data-player": True})
-        for p in players:
-            raw = p.get("data-player", "")
-            if not raw:
-                continue
-            try:
-                data_clean = (raw
-                            .replace("&quot;", '"')
-                            .replace("&#34;", '"')
-                            .replace("'", '"')
-                            )
-                data_json = json.loads(data_clean)
-                playlist = data_json.get("playlist", [])
-                if playlist and "src" in playlist[0]:
-                    return playlist[0]["src"]
-            except:
-                pass
+        # 1 AUDIO
+        tag = article.find("audio", src=True) or article.find("source", src=True) or article.find("video", src=True)
+        if tag:
+            audio_url = (tag.get("src") or "").strip()
+        else:
+            players = article.find_all(attrs={"data-player": True})
+            for p in players:
+                raw = p.get("data-player", "")
+                if not raw:
+                    continue
+                try:
+                    data_clean = raw.replace("&quot;", '"').replace("&#34;", '"').replace("'", '"')
+                    data_json = json.loads(data_clean)
+                    playlist = data_json.get("playlist", [])
+                    if playlist:
+                        first = playlist[0]
+                        if not audio_url and "src" in first:
+                            audio_url = (first.get("src") or "").strip()
+                        dur = first.get("duration") or first.get("time") or ""
+                        if dur:
+                            end_time_mp3 = str(dur).strip()
+                        break
+                except Exception:
+                    pass
 
-        return ""
+        # 2 DESCRIPTION
+        s_tag = article.select_one("p.description")
+        description = s_tag.get_text(strip=True) if s_tag else ""
+
+        # 3PUBLISHED DATE
+        t_tag = article.select_one("span.date")
+        time_text = t_tag.get_text(strip=True) if t_tag else ""
+        publishedDate = parse_vnexpress_time_ms(time_text)
+
+        # 4AUTHOR
+        a_tag = article.select_one("span.author-in-player")
+        author = a_tag.get_text(strip=True) if a_tag else ""
+
+        # 5 END TIME (tổng thời lượng)
+        end_time_mp3 = ""
+        try:
+            # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
+            WebDriverWait(driver, 10).until(
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "span.afp-duration")) >= 2
+            )
+
+            spans = driver.find_elements(By.CSS_SELECTOR, "span.afp-duration")
+            if len(spans) >= 2:
+                # Đợi cho span thứ 2 khác 00:00
+                WebDriverWait(driver, 10).until(
+                    lambda d: spans[1].text.strip() != "00:00"
+                )
+                end_time_mp3 = spans[1].text.strip()
+        except Exception as e:
+            print("⚠️ Không lấy được end_time_mp3:", e)
+            end_time_mp3 = ""
+
+        driver.quit()
+        
+        return {
+            "audio_url": audio_url,
+            "description": description,
+            "author": author,
+            "end_time_mp3": end_time_mp3,
+            "publishedDate": publishedDate,
+        }
+
 
     def crawl_podcast_bs4(self, category_url: str):
         headers = {
@@ -690,44 +747,48 @@ class VNExpressCrawler(BaseCrawler):
         podcasts = []
 
         for item in items:
-            # 1. Title + URL
-            title_elem = item.select_one("a[title]")
-            if not title_elem:
+            try:
+                # 1. Title + URL
+                title_elem = item.select_one("a[title]")
+                if not title_elem:
+                    continue
+                title = title_elem.get("title", "").strip()
+                url = title_elem.get("href", "")
+                print("url", url)
+
+                # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+                thumb_elem = item.select_one("img")
+                thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
+
+                # 3. Category (nếu cần)
+                # Lấy category ở đầu trang
+                cat_tag = soup.select_one("h1.name-s")
+                category = cat_tag.get_text(strip=True) if cat_tag else ""
+
+
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["description"]
+                author_url    = meta["author"]
+                end_time_url  = meta["end_time_mp3"]
+                datetime_url  = meta["publishedDate"]
+
+                podcast = {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url,
+                    "author": author_url,
+                    "description": content_url,
+                    "end_time_mp3": end_time_url,
+                    "publishedDate": datetime_url,
+                    "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                }
+                # send_podcast_to_kafka(podcast)
+            except Exception as e:
+                print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
-            title = title_elem.get("title", "").strip()
-            url = title_elem.get("href", "")
-
-            # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
-            thumb_elem = item.select_one("img")
-            thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
-
-            # 3. Category (nếu cần)
-            # Lấy category ở đầu trang
-            cat_tag = soup.select_one("h1.name-s")
-            category = cat_tag.get_text(strip=True) if cat_tag else ""
-
-            # 4. Audio URL (trong data-player)
-            audio_url = ""
-            audio_url = self.get_audio_from_article(url)
-
-            podcast = {
-                "title": title,
-                "url": url,
-                "thumbnail": thumbnail,
-                "category": category,
-                "audio_url": audio_url
-            }
-            send_podcast_to_kafka(podcast)
-            # podcasts.append({
-            #     "title": title,
-            #     "url": url,
-            #     "thumbnail": thumbnail,
-            #     "category": category,
-            #     "audio_url": audio_url
-            # })
-
-        # return podcasts
-
     def crawl_postcast(self):
         podcast_type_dict = {
             0: "toi-ke",
