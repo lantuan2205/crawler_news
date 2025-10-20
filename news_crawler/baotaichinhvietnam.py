@@ -28,7 +28,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -397,31 +397,74 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
             return []
         
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
 
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
+            html = driver.page_source
+            soup = BeautifulSoup(html, "html.parser")
+            article = soup.select_one("div.podcast-detail")
 
-        audio_tag = soup.find("audio", src=True)
-        if audio_tag:
-            return audio_tag["src"]
-        return ""
+            audio_tag = soup.find("audio", src=True)
+            if audio_tag:
+                audio_url = audio_tag.get("src", "").strip()
+
+             #2 DESCRIPTION
+            s_tag = article.select_one("div.podcast-desc")
+            description = s_tag.get_text(strip=True) if s_tag else ""
+
+
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("span.podcast-publish-time")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
+
+            # 4AUTHOR
+            a_tag = article.select_one("div.podcast-author")
+            author = a_tag.get_text(strip=True) if a_tag else ""
+
+
+            duration_tag = article.select("span.pcast-duration.pcast-time")
+            if duration_tag:
+                end_time_mp3_url = duration_tag[-1].get_text(strip=True)
+
+            driver.quit()
+
+            return {
+                "audio_url": audio_url,
+                "description": description,
+                "author": author,
+                "duration": end_time_mp3_url,
+                "publishedDate": publishedDate,
+            }
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate":"",
+            }
+
 
     def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
         # Lấy domain gốc để join URL tuyệt đối
         parsed = urlparse(category_url)
+        domain = "thoibaotaichinhvietnam"
         BASE_DOMAIN = f"{parsed.scheme}://{parsed.netloc}"
 
         seen_urls = set()
@@ -489,15 +532,25 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
                         category = cat_tag.get_text(strip=True)
 
                     # 4) Audio URL
-                    audio_url=""
-                    audio_url = self.get_audio_from_article(url)
+                    meta = self.get_audio_from_article(url)
+                    audio_url     = meta["audio_url"]
+                    content_url   = meta["description"]
+                    author_url    = meta["author"]
+                    end_time_url  = meta["duration"]
+                    datetime_url  = meta["publishedDate"]
+                    domain_username = build_domain_username(domain, author_url) if author_url else ""
 
                     podcast = {
                         "title": title,
                         "url": url,
                         "thumbnail": thumbnail,
                         "category": category,
-                        "audio_url": audio_url
+                        "audio_url": audio_url,
+                        "author": author_url,
+                        "description": content_url,
+                        "duration": time_to_seconds(end_time_url),
+                        "publishedDate": datetime_url,
+                        "authorId": domain_username,
                     }
                     send_podcast_to_kafka(podcast)
 
