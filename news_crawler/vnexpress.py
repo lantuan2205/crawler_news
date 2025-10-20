@@ -735,6 +735,9 @@ class VNExpressCrawler(BaseCrawler):
 
 
     def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
+        base = "vnexpress"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
@@ -754,7 +757,6 @@ class VNExpressCrawler(BaseCrawler):
                     continue
                 title = title_elem.get("title", "").strip()
                 url = title_elem.get("href", "")
-                print("url", url)
 
                 # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
                 thumb_elem = item.select_one("img")
@@ -772,6 +774,7 @@ class VNExpressCrawler(BaseCrawler):
                 author_url    = meta["author"]
                 end_time_url  = meta["end_time_mp3"]
                 datetime_url  = meta["publishedDate"]
+                domain_username = build_domain_username(base, author_url) if author_url else ""
 
                 podcast = {
                     "title": title,
@@ -783,7 +786,7 @@ class VNExpressCrawler(BaseCrawler):
                     "description": content_url,
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
-                    "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                    "authorId": domain_username,
                 }
                 send_podcast_to_kafka(podcast)
             except Exception as e:
