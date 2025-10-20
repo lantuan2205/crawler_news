@@ -28,8 +28,7 @@ from urllib.parse import urljoin, urlparse, parse_qs
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -513,58 +512,70 @@ class BaoVanHoaCrawler(BaseCrawler):
 
         return all_articles
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
 
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
+            html = driver.page_source
+            soup = BeautifulSoup(html, "html.parser")
 
-        article = soup.find("article", class_="detail-wrap")
-        if not article:
-            print("⚠️ Không tìm thấy article trong trang:", url)
-            return 0
-        # 1) Tìm thẻ <audio> có src
-        audio_tag = soup.find(attrs={"data-audio-src": True})
-        audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
+            article = soup.find("article", class_="detail-wrap")
+            if not article:
+                print("⚠️ Không tìm thấy article trong trang:", url)
+                return 0
+            # 1) Tìm thẻ <audio> có src
+            audio_tag = soup.find(attrs={"data-audio-src": True})
+            audio_url = audio_tag["data-audio-src"].strip() if audio_tag else ""
 
-        # 2 Tác giả (trong span.detail__author)
-        author_tag = article.select_one("span.detail__author")
-        author_url = author_tag.get_text(strip=True) if author_tag else ""
+            # 2 Tác giả (trong span.detail__author)
+            author_tag = article.select_one("span.detail__author")
+            author_url = author_tag.get_text(strip=True) if author_tag else ""
 
-        summary_tag = soup.find("h2", class_="detail__summary")
-        content_url = summary_tag.get_text(strip=True) if summary_tag else ""
+            summary_tag = soup.find("h2", class_="detail__summary")
+            content_url = summary_tag.get_text(strip=True) if summary_tag else ""
 
-        # 3 Thời gian đăng (div.detail__time)
-        time_tag = article.select_one("div.detail__time time")
-        time_text = time_tag.get_text(strip=True) if time_tag else ""
-        datetime_url = parse_vnexpress_time_ms(time_text)
-        # 4 Thời lượng audio (data-audio-duration, nếu có)
+            # 3 Thời gian đăng (div.detail__time)
+            time_tag = article.select_one("div.detail__time time")
+            time_text = time_tag.get_text(strip=True) if time_tag else ""
+            datetime_url = parse_vnexpress_time_ms(time_text)
+            # 4 Thời lượng audio (data-audio-duration, nếu có)
 
-        duration_tag = article.select_one("span.shk-time_duration")
-        end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
+            duration_tag = article.select_one("span.shk-time_duration")
+            end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
 
-        return {
-            "audio_url": audio_url,
-            "description": content_url,
-            "author": author_url,
-            "end_time_mp3": end_time_mp3_url,
-            "publishedDate": datetime_url
-        }
-    
+            return {
+                "audio_url": audio_url,
+                "description": content_url,
+                "author": author_url,
+                "duration": end_time_mp3_url,
+                "publishedDate": datetime_url
+            }
+        except Exception as e:
+                print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+                return {
+                    "audio_url": "",
+                    "description": "",
+                    "author": "",
+                    "duration": "",
+                    "publishedDate":"",
+                }
 
     def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(category_url, headers=headers, timeout=15)
         response.raise_for_status()
+        domain = "baovanhoa"
         BASE_URL = "https://baovanhoa.vn"
         url_page = category_url
         seen_urls = set()
@@ -610,8 +621,9 @@ class BaoVanHoaCrawler(BaseCrawler):
                     audio_url     = meta["audio_url"]
                     content_url   = meta["description"]
                     author_url    = meta["author"]
-                    end_time_url  = meta["end_time_mp3"]
+                    end_time_url  = meta["duration"]
                     datetime_url  = meta["publishedDate"]
+                    domain_username = build_domain_username(domain, author_url) if author_url else ""
 
                     podcast = {
                         "title": title,
@@ -621,9 +633,9 @@ class BaoVanHoaCrawler(BaseCrawler):
                         "audio_url": audio_url,
                         "author": author_url,
                         "description": content_url,
-                        "end_time_mp3": end_time_url,
+                        "duration": time_to_seconds(end_time_url),
                         "publishedDate": datetime_url,
-                        "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                        "authorId": domain_username,
                     }
                     send_podcast_to_kafka(podcast)
                 except Exception as e:
