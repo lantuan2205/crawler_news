@@ -426,7 +426,7 @@ class VietNamNetCrawler(BaseCrawler):
                     "domain": normalize_url_to_root_https(url),
                     "url": url,
                     "userId": username,
-                    "commentId": f"{username}_{uuid.uuid4().hex}",
+                    "commentId": f"{username.replace(' ', '')}_{uuid.uuid4().hex}",
                     "username": username,
                     "content": content,
                     "userUrl": "",

@@ -522,7 +522,7 @@ class DanTriCrawler(BaseCrawler):
                 comments.append({
                     "domain": normalize_url_to_root_https(url),
                     "url": url,
-                    "commentId": f"{username}_{uuid.uuid4().hex}",
+                    "commentId": f"{username.replace(' ', '')}_{uuid.uuid4().hex}",
                     "userId": user_id,
                     "username": username,
                     "userUrl": user_url,
