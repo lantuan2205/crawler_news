@@ -556,7 +556,7 @@ class VovCrawler(BaseCrawler):
                 audio_url     = meta["audio_url"]
                 content_url   = meta["description"]
                 author_url    = meta["author"]
-                end_time_url  = meta["end_time_mp3"]
+                end_time_url  = meta["duration"]
                 datetime_url  = meta["publishedDate"]
                 domain_username = build_domain_username(domain, author_url) if author_url else ""
                 
