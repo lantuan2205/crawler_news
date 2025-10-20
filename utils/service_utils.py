@@ -418,9 +418,33 @@ def parse_vnexpress_time_ms(time_str):
     # Thứ , DD/MM/YYYY, HH:MM (GMT+7)
     m = re.search(r"(\d{1,2}/\d{1,2}/\d{4}).*?(\d{1,2}:\d{2})", s)
     if m: return int(datetime.strptime(f"{m[1]} {m[2]}", "%d/%m/%Y %H:%M").timestamp()*1000)      
-    
+        # Case: "Thứ Năm, 09:43, 29/05/2025" (giờ trước, ngày sau)
+    m = re.search(r"(\d{1,2}:\d{2}).*?(\d{1,2}/\d{1,2}/\d{4})", s)
+    if m: return int(datetime.strptime(f"{m[2]} {m[1]}", "%d/%m/%Y %H:%M").timestamp()*1000)
+
+
     return None  # Không parse được
 
-def time_to_seconds(time_str):
-    minutes, seconds = map(int, time_str.split(":"))
-    return minutes * 60 + seconds
+def time_to_seconds(time_str: str) -> int:
+    if not time_str:
+        return 0
+    s = str(time_str).strip().replace(" ", "")
+    parts = s.split(":")
+    # Chỉ giữ tối đa 3 phần (HH:MM:SS); nếu dài hơn thì lấy 3 phần cuối
+    parts = parts[-3:]
+    try:
+        nums = [int(p) for p in parts]
+    except ValueError:
+        return 0
+
+    if len(nums) == 1:
+        # "45" -> 45 giây
+        return nums[0]
+    elif len(nums) == 2:
+        # "09:48" -> 9*60 + 48
+        m, sec = nums
+        return m * 60 + sec
+    else:
+        # "1:02:03" -> 1*3600 + 2*60 + 3
+        h, m, sec = nums
+        return h * 3600 + m * 60 + sec

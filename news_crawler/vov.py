@@ -31,7 +31,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https,time_to_seconds
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -455,25 +455,65 @@ class VovCrawler(BaseCrawler):
         return all_articles
     
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   
-        chrome_options.add_argument("--headless=new")  # chạy ẩn
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
+            chrome_options.add_argument("--no-sandbox")   
+            chrome_options.add_argument("--headless=new")  # chạy ẩn
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-        html = driver.page_source
-        soup = BeautifulSoup(html, "html.parser")
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
+            html = driver.page_source
+            soup = BeautifulSoup(html,"html.parser")
+            article= soup.select_one("div.node-content-audio") or soup
 
-        audio_tag = soup.find("video", src=True)
-        if audio_tag:
-            return audio_tag["src"]
+            audio_tag = soup.find("video", src=True)
+            if audio_tag:
+                audio_url = audio_tag.get("src", "").strip()
+            
+            # 2 DESCRIPTION
+            s_tag = article.select_one("p")
+            if s_tag:
+                text = s_tag.get_text(strip=True)
+                description = text.split("-", 1)[1].strip() if "-" in text else text.strip()
 
-        driver.quit()
 
-        return ""
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("div.content span")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
+
+            # 4AUTHOR
+            a_tag = article.select_one("div.speed span a")
+            author = a_tag.get_text(strip=True) if a_tag else ""
+
+
+            duration_tag = article.select("span.duration")
+            if duration_tag:
+                end_time_mp3_url = duration_tag[-1].get_text(strip=True)
+            
+            driver.quit()
+
+            return {
+                "audio_url": audio_url,
+                "description": description,
+                "author": author,
+                "end_time_mp3": end_time_mp3_url,
+                "publishedDate": publishedDate,
+            }
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "end_time_mp3": "",
+                "publishedDate":"",
+            }
 
     def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
@@ -482,56 +522,59 @@ class VovCrawler(BaseCrawler):
 
         soup = BeautifulSoup(response.text, "html.parser")
         items = soup.select("div.col-12") 
+        domain = "vov"
         BASE_DOMAIN = "https://vov.vn"
         podcasts = []
+        try :
+            for item in items:
+                # 1. Title + URL
+                title_elem = item.select_one("div.article-media")
+                if not title_elem:
+                    continue
 
-        for item in items:
-            # 1. Title + URL
-            title_elem = item.select_one("div.article-media")
-            if not title_elem:
-                continue
+                # Lấy thẻ <h5> chứa tiêu đề
+                title_tag = title_elem.select_one("h5.media-title")
+                title = title_tag.get_text(strip=True) if title_tag else ""
 
-            # Lấy thẻ <h5> chứa tiêu đề
-            title_tag = title_elem.select_one("h5.media-title")
-            title = title_tag.get_text(strip=True) if title_tag else ""
+                # Lấy href của thẻ <a> chứa tiêu đề
+                a_tag = title_elem.select_one("div.media-body a.vovvn-title")
+                url = a_tag.get("href", "") if a_tag else ""
 
-            # Lấy href của thẻ <a> chứa tiêu đề
-            a_tag = title_elem.select_one("div.media-body a.vovvn-title")
-            url = a_tag.get("href", "") if a_tag else ""
+                if url.startswith("/"):
+                    url = BASE_DOMAIN + url
 
-            if url.startswith("/"):
-                url = BASE_DOMAIN + url
+                # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+                thumb_elem = title_elem.select_one("a.vovvn-title picture img")
+                thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
+                
+                # 3. Category (nếu cần)
+                cat_tag = soup.select_one("title")
+                category = cat_tag.get_text(strip=True).split("|")[0].strip() if cat_tag else ""
 
-
-            # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
-            thumb_elem = title_elem.select_one("a.vovvn-title picture img")
-            thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
-            # 3. Category (nếu cần)
-            # Lấy category ở đầu trang
-            cat_tag = soup.select_one("title")
-            category = cat_tag.get_text(strip=True).split("|")[0].strip() if cat_tag else ""
-
-            # 4. Audio URL (trong data-player)
-            audio_url = ""
-            audio_url = self.get_audio_from_article(url)
-
-            podcast = {
-                "title": title,
-                "url": url,
-                "thumbnail": thumbnail,
-                "category": category,
-                "audio_url": audio_url
-            }
-            send_podcast_to_kafka(podcast)
-            # podcasts.append({
-            #     "title": title,
-            #     "url": url,
-            #     "thumbnail": thumbnail,
-            #     "category": category,
-            #     "audio_url": audio_url
-            # })
-
-        # return podcasts
+                # 4. Audio URL (trong data-player)
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["description"]
+                author_url    = meta["author"]
+                end_time_url  = meta["end_time_mp3"]
+                datetime_url  = meta["publishedDate"]
+                domain_username = build_domain_username(domain, author_url) if author_url else ""
+                
+                podcast = {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url,
+                    "author": author_url,
+                    "description": content_url,
+                    "duration": time_to_seconds(end_time_url),
+                    "publishedDate": datetime_url,
+                    "authorId": domain_username,
+                }
+                send_podcast_to_kafka(podcast)
+        except Exception as e:
+            print("❌ Lỗi trong quá trình crawl:", e)
 
     def crawl_postcast(self):
         podcast_type_dict = {
