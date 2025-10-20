@@ -32,7 +32,7 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type,time_to_seconds, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -544,13 +544,14 @@ class VietNamNetCrawler(BaseCrawler):
         }
 
         all_urls = set()
+        base_url = url.rstrip("/")
         page = 0
 
         while True:
-            url = f"{url}/{category}-page{page}"
-            print(f"Đang crawl: {url}")
+            page_url = f"{base_url}/{category}-page{page}"
+            print(f"Đang crawl: {page_url}")
 
-            res = requests.get(url, headers=headers)
+            res = requests.get(page_url, headers=headers)
             if res.status_code != 200:
                 print(f"⛔ Trang không tồn tại hoặc lỗi HTTP ({res.status_code}), dừng!")
                 break
@@ -565,7 +566,9 @@ class VietNamNetCrawler(BaseCrawler):
                 break
 
             for a in posts:
-                link = a["href"]
+                link = a.get("href", "")
+                if not link:
+                    continue
                 if link.startswith("/"):
                     link = base + link
                 all_urls.add(link)
@@ -574,39 +577,73 @@ class VietNamNetCrawler(BaseCrawler):
         return all_urls
 
     def get_audio_from_article(self, url):
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        # 1) Tìm thẻ <audio> có src
-        audio_tag = soup.find("audio", src=True)
-        if audio_tag:
-            return audio_tag["src"]
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+            resp = requests.get(url, headers=headers)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-        # 2) Nếu không có trực tiếp, thì fallback sang cách parse JSON trong data-player
-        players = soup.find_all(attrs={"data-player": True})
-        for p in players:
-            raw = p.get("data-player", "")
-            if not raw:
-                continue
+            # 2 DESCRIPTION
+            s_tag = soup.select_one("h2.content-detail-sapo")
+            description = s_tag.get_text(strip=True) if s_tag else ""
+
+            # 3 PUBLISHED DATE
+            t_tag = soup.select_one("div.bread-crumb-detail__time")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
+
+            # 4 AUTHOR
+            a_tag = soup.select_one("span.name a, div.name a")
+            author = a_tag.get("title", "").strip() if a_tag else ""
+
+            # end_time
             try:
-                data_clean = (raw
-                            .replace("&quot;", '"')
-                            .replace("&#34;", '"')
-                            .replace("'", '"')
-                            )
-                data_json = json.loads(data_clean)
-                playlist = data_json.get("playlist", [])
-                if playlist and "src" in playlist[0]:
-                    return playlist[0]["src"]
-            except:
-                pass
+                dur_el = WebDriverWait(driver, 12).until(
+                    lambda d: d.find_element(By.CSS_SELECTOR, '[aria-label="Duration"]')
+                )
+                WebDriverWait(driver, 12).until(
+                    lambda d: (dur_el.text or "").strip() not in ("", "00:00")
+                )
 
-        return ""
+                end_time_mp3_url = dur_el.text.strip()
+            except Exception as e:
+                print("⚠️ Không lấy được end_time_mp3:")
+                end_time_mp3_url= ""
+            driver.quit()
+            return {
+                "description": description,
+                "author": author,
+                "duration": time_to_seconds(end_time_mp3_url),
+                "publishedDate": publishedDate
+            }         
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            # trả dict rỗng để crawler vẫn tiếp tục
+            return {
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate": "",
+            }
 
     def crawl_podcast_bs4(self, url: str, category: str):
+        def build_domain_username( domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
+        domain = "vietnamnet"
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
@@ -620,7 +657,6 @@ class VietNamNetCrawler(BaseCrawler):
         # Thumbnail
         thumb = soup.find("meta", property="og:image")
         thumbnail = thumb["content"] if thumb else ""
-
         # Audio URL
         audio_url = ""
         audio_tag = soup.find("audio")
@@ -634,13 +670,25 @@ class VietNamNetCrawler(BaseCrawler):
             if audio_tag.get("src"):
                 audio_url = audio_tag.get("src")
 
+        meta = self.get_audio_from_article(url)
+        content_url   = meta["description"]
+        author_url    = meta["author"]
+        end_time_url  = meta["duration"]
+        datetime_url  = meta["publishedDate"]
+        domain_username = build_domain_username(domain, author_url) if author_url else ""
+
         podcast = {
             "title": title,
             "url": url,
             "thumbnail": thumbnail,
             "category": category,
-            "audio_url": audio_url
-        }
+            "audio_url": audio_url,
+            "author": author_url,
+            "description": content_url,
+            "duration": end_time_url,
+            "publishedDate": datetime_url,
+            "authorId": domain_username,
+}
         send_podcast_to_kafka(podcast)
 
     def crawl_postcast(self):
