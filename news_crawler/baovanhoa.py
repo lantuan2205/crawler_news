@@ -28,8 +28,7 @@ from urllib.parse import urljoin, urlparse, parse_qs
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
@@ -562,9 +561,12 @@ class BaoVanHoaCrawler(BaseCrawler):
     
 
     def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         response = requests.get(category_url, headers=headers, timeout=15)
         response.raise_for_status()
+        domain = "baovanhoa"
         BASE_URL = "https://baovanhoa.vn"
         url_page = category_url
         seen_urls = set()
@@ -612,6 +614,7 @@ class BaoVanHoaCrawler(BaseCrawler):
                     author_url    = meta["author"]
                     end_time_url  = meta["end_time_mp3"]
                     datetime_url  = meta["publishedDate"]
+                    domain_username = build_domain_username(domain, author_url) if author_url else ""
 
                     podcast = {
                         "title": title,
@@ -621,9 +624,9 @@ class BaoVanHoaCrawler(BaseCrawler):
                         "audio_url": audio_url,
                         "author": author_url,
                         "description": content_url,
-                        "end_time_mp3": end_time_url,
+                        "end_time_mp3": time_to_seconds(end_time_url),
                         "publishedDate": datetime_url,
-                        "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                        "authorId": domain_username,
                     }
                     send_podcast_to_kafka(podcast)
                 except Exception as e:
