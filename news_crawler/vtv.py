@@ -294,20 +294,15 @@ class VtvCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str, has_video) -> tuple:
+    def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
         @return tuple: (title, description, content, publish_date, author, content_images)
         """
-        title = description = content = publish_date = author = None
-        content_images = []
-        categories = ""          # bạn có thể fill nếu cần
-        video_url = ""
-        thumbnail_url = ""
-        location = ""
         try:
-            response = requests.get(url, headers=headers, timeout=15)
+            response = requests.get(url, headers=headers)
+          
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
@@ -340,15 +335,23 @@ class VtvCrawler(BaseCrawler):
 
             # Lấy tất cả các ảnh trong phần tử này
             content_div = soup.find("div", class_="ta-justify")
-            if content_div:
-                images = content_div.find_all('img')
-                content_images = [
-                    img['src'] for img in images
-                    if img.get('src') and not img['src'].endswith("like-fanpage-vtv.jpg")
-                ]
-                paragraphs = content_div.find_all("p")
-                content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
-    
+            if not content_div:
+                return [], []
+
+            # Tìm tất cả ảnh
+            images = content_div.find_all('img')
+
+            # Bỏ ảnh cụ thể: like-fanpage-vtv.jpg
+            content_images = [
+                img['src'] for img in images
+                if img.get('src') and not img['src'].endswith("like-fanpage-vtv.jpg")
+            ]
+            
+            # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
+            content = content_div.get_text(separator="\n", strip=True)
+            paragraphs = content_div.find_all("p")
+            content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+
             # Trích xuất tác giả
             author = None
             author_tag = soup.find('p', class_='author')
@@ -361,107 +364,18 @@ class VtvCrawler(BaseCrawler):
 
                 # Sau đó lấy text còn lại (tên)
                 author = author_tag.get_text(strip=True)
-
-            categories_tag = soup.find('div', class_='list-cate')
-            categories = categories_tag.select_one("a.category-name_ac") if categories_tag else "" 
             video_url = ""
             thumbnail_url = ""
             location = ""
-
-            driver = None
-            try:
-                chrome_options = Options()
-                chrome_options.add_argument("--headless=new")
-                chrome_options.add_argument("--disable-gpu")
-                chrome_options.add_argument("--no-sandbox")
-                chrome_options.add_argument("--disable-extensions")
-                chrome_options.add_argument("--disable-popup-blocking")
-                chrome_options.add_argument("--disable-notifications")
-                chrome_options.add_argument("--window-size=1200,900")
-                chrome_options.add_argument("--log-level=3")
-
-                driver = webdriver.Chrome(options=chrome_options)
-                driver.get(url)
-
-                # Lấy video src (nếu có)
-                try:
-                    iframe_switched = False
-                    # nếu player nằm trong iframe thì thử switch
-                    for f in driver.find_elements(By.CSS_SELECTOR, "iframe"):
-                        driver.switch_to.frame(f)
-                        if driver.find_elements(By.CSS_SELECTOR, "video.vjs-tech, .video-js"):
-                            iframe_switched = True
-                            break
-                        driver.switch_to.default_content()
-                    if not iframe_switched:
-                        driver.switch_to.default_content()
-
-                    try:
-                        video_el = driver.find_element(By.CSS_SELECTOR, "video.vjs-tech")
-                        video_url = video_el.get_attribute("src") or ""
-                    except NoSuchElementException:
-                        video_url = ""
-                except Exception:
-                    video_url = ""
-
-                # Lấy FULL style của div.vjs-poster
-                # --- LẤY THUMBNAIL URL ---
-                try:
-                    driver.switch_to.default_content()
-
-                    # 1) Fast path: phần tử có thuộc tính data-thumb
-                    try:
-                        el = WebDriverWait(driver, 3).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "[data-thumb]"))
-                        )
-                        thumbnail_url = (el.get_attribute("data-thumb") or "").strip()
-                    except TimeoutException:
-                        thumbnail_url = ""
-
-                    # 2) Fallback: lấy từ div.vjs-poster (nếu chưa có)
-                    if not thumbnail_url:
-                        poster = WebDriverWait(driver, 2).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.vjs-poster"))
-                        )
-
-                        def _extract_url(s: str) -> str:
-                            m = re.search(r'url\((["\']?)(.*?)\1\)', s or "")
-                            return (m.group(2).strip() if m else "")
-
-                        style_attr = poster.get_attribute("style") or ""
-                        thumbnail_url = _extract_url(style_attr)
-
-                        if not thumbnail_url:
-                            # computed style fallback
-                            bg = driver.execute_script(
-                                "const el=arguments[0];"
-                                "const v=getComputedStyle(el).getPropertyValue('background-image');"
-                                "return v && v !== 'none' ? v : '';",
-                                poster
-                            )
-                            thumbnail_url = _extract_url(bg)
-
-                except TimeoutException:
-                    thumbnail_url = ""
-
-
-            except WebDriverException as e:
-                print("⚠️ Selenium error:", e)
-            finally:
-                try:
-                    if driver:
-                        driver.quit()
-                except:
-                    pass
-
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
+            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
+            return None, None, None, None, None, []
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-        return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
-
+            return None, None, None, None, None, []
+    
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
