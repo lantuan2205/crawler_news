@@ -294,7 +294,7 @@ class VtvCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -305,9 +305,8 @@ class VtvCrawler(BaseCrawler):
           
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-
             # Lấy title
-            title_tag = soup.find('h1', class_='title_detail')
+            title_tag = soup.find('h1', class_='title')
             title = title_tag.get_text(strip=True) if title_tag else None
 
             # Lấy description
@@ -319,11 +318,12 @@ class VtvCrawler(BaseCrawler):
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
                 description = None
+
             # Trích xuất ngày viết bài
             import re
 
             publish_date = None
-            date_tag = soup.find("span", class_="time")
+            date_tag = soup.find("p", class_="days")
 
             if date_tag:
                 text = date_tag.get_text(strip=True)
@@ -332,42 +332,48 @@ class VtvCrawler(BaseCrawler):
                 if match:
                     publish_date = match.group(0)
 
-
+            content_images = []
+            content = ""
             # Lấy tất cả các ảnh trong phần tử này
-            content_div = soup.find("div", class_="ta-justify")
-            if not content_div:
-                return [], []
+            content_div = soup.find("div", class_="detail-cmain")
+            if content_div:
+                content = "\n".join(
+                    txt for txt in (p.get_text(strip=True) for p in content_div.find_all("p"))
+                    if txt
+    )
+            if content_div:
+                for img in content_div.find_all("img"):
+                    # ưu tiên src, rồi tới các thuộc tính lazy phổ biến
+                    url = (img.get("src") or img.get("data-src") or
+                        img.get("data-original") or img.get("data-lazy-src") or "").strip()
+                    if not url:
+                        continue
+                    # chuẩn hoá về absolute URL (nếu cần)
+                    content_images.append(url)
 
-            # Tìm tất cả ảnh
-            images = content_div.find_all('img')
-
-            # Bỏ ảnh cụ thể: like-fanpage-vtv.jpg
-            content_images = [
-                img['src'] for img in images
-                if img.get('src') and not img['src'].endswith("like-fanpage-vtv.jpg")
-            ]
-            
-            # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
-            content = content_div.get_text(separator="\n", strip=True)
-            paragraphs = content_div.find_all("p")
-            content = "\n".join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+                # khử trùng lặp, giữ nguyên thứ tự
+                seen = set()
+                content_images = [u for u in content_images if not (u in seen or seen.add(u))]
+            else:
+                content_images = []
 
             # Trích xuất tác giả
-            author = None
-            author_tag = soup.find('p', class_='author')
-
-            if author_tag:
-                # Xóa thẻ <span class="time"> nếu có
-                span_time = author_tag.find('span', class_='time')
-                if span_time:
-                    span_time.extract()  # loại bỏ khỏi cây DOM
-
-                # Sau đó lấy text còn lại (tên)
-                author = author_tag.get_text(strip=True)
+            author = ""
+            author_div = soup.find('div', class_='flex-author')
+            author_tag = author_div.select_one("span.name") if author_div else None
+            author = author_tag.get_text(strip=True) if author_tag else ""
+            
+            categories_tag = soup.find("div", class_="list-cate")
+            a = categories_tag.select_one("a.item-cate") if categories_tag else None
+            categories = a.get_text(strip=True) if a else ""
+            location = ""
             video_url = ""
             thumbnail_url = ""
-            location = ""
-            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
+            box = soup.select_one("div.VCSortableInPreviewMode")
+            video_url = box.get('data-vid').strip() if box else ''
+            thumbnail_url = box.get('data-thumb').strip() if box else ''
+
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
