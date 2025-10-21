@@ -404,9 +404,73 @@ class DanTriCrawler(BaseCrawler):
                 for a in soup.select("ul.dt-text-c808080.dt-text-base.dt-leading-5.dt-p-0.dt-list-none li a")
             ]
             categories = ", ".join(categories)
-            video_url = ""
-            thumbnail_url = ""
+
             location = ""
+            thumbnail_url = ""
+            video_url = ""
+            driver = None
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--window-size=1200,900")
+                chrome_options.add_argument("--log-level=3")
+
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+
+                # Lấy video src (nếu có)
+                try:
+                    iframe_switched = False
+                    # nếu player nằm trong iframe thì thử switch
+                    for f in driver.find_elements(By.CSS_SELECTOR, "iframe"):
+                        driver.switch_to.frame(f)
+                        if driver.find_elements(By.CSS_SELECTOR, "video.vjs-tech, .video-js"):
+                            iframe_switched = True
+                            break
+                        driver.switch_to.default_content()
+                    if not iframe_switched:
+                        driver.switch_to.default_content()
+
+                    try:
+                        video_el = driver.find_element(By.CSS_SELECTOR, "video.vjs-tech")
+                        video_url = video_el.get_attribute("src") or ""
+                    except NoSuchElementException:
+                        video_url = ""
+                except Exception:
+                    video_url = ""
+
+                # Lấy FULL style của div.vjs-poster
+                try:
+                    # đảm bảo ở đúng context
+                    driver.switch_to.default_content()
+                    poster = WebDriverWait(driver, 2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.vjs-poster"))
+                    )
+
+                    def _extract_url(s: str) -> str:
+                        m = re.search(r'url\((["\']?)(.*?)\1\)', s or "")
+                        return (m.group(2).strip() if m else "")
+
+                    # ưu tiên inline style
+                    style_attr = poster.get_attribute("style") or ""
+                    thumbnail_url = _extract_url(style_attr)
+
+                except TimeoutException:
+                    thumbnail_url = ""
+
+            except WebDriverException as e:
+                print("⚠️ Selenium error:", e)
+            finally:
+                try:
+                    if driver:
+                        driver.quit()
+                except:
+                    pass
 
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
