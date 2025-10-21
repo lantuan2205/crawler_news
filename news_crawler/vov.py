@@ -498,7 +498,7 @@ class VovCrawler(BaseCrawler):
                 "audio_url": audio_url,
                 "description": description,
                 "author": author,
-                "end_time_mp3": end_time_mp3_url,
+                "duration": end_time_mp3_url,
                 "publishedDate": publishedDate,
             }
         except Exception as e:
@@ -507,7 +507,7 @@ class VovCrawler(BaseCrawler):
                 "audio_url": "",
                 "description": "",
                 "author": "",
-                "end_time_mp3": "",
+                "duration": "",
                 "publishedDate":"",
             }
 
