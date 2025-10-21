@@ -309,6 +309,7 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
         "categories": categories,
         "thumbnailUrl": thumbnail_url,
         "location": location,
+        "videoUrl": video_url,
     }
 
     if has_video:
