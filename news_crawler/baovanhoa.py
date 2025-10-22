@@ -1,5 +1,6 @@
 import requests
 import sys
+import re
 from pathlib import Path
 import time
 import random
@@ -309,7 +310,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -323,26 +324,92 @@ class BaoVanHoaCrawler(BaseCrawler):
             # Trích xuất tiêu đề
             title = soup.find('h1', class_='detail__title').text.strip()
 
-            description = soup.find('h2', class_='detail__summary').text.strip()
-
-            content = soup.find('div', class_='detail__content').text.strip()
-
+            el = soup.select_one("h2.detail__summary, div.detail__summary")
+            description = el.get_text(strip=True) if el else ""
             # Trích xuất ngày viết bài
             time_tag = soup.find('time')
-            publish_date = time_tag.text.strip() if time_tag else None
-
+            publish_date = time_tag.text.strip() if time_tag else ""
             # Lấy tất cả các ảnh trong phần tử này
             div = soup.find('div', class_='detail__content')
-            content = div.get_text(separator="\n").strip() if div else ""
-            images = content.find_all('img')
-            content_images = [img['src'] for img in images if img.get('src')]
 
-            # Trích xuất tác giả
-            author = soup.find('span', class_='detail__author').text.strip()
-            categories = ""
+            content_images = []
+            content = ""
+
+            if div:
+                # Lấy ảnh trực tiếp từ thẻ div (không dùng content là chuỗi)
+                imgs = div.find_all('img') or []
+                content_images = [
+                    (img.get('src') or img.get('data-src') or img.get('data-original') or "").strip()
+                    for img in imgs
+                    if (img.get('src') or img.get('data-src') or img.get('data-original'))
+                ]
+
+                # Lấy nội dung text (ưu tiên ghép các <p>)
+                ps = div.find_all('p') or []
+                content = "\n".join(p.get_text(strip=True) for p in ps if p.get_text(strip=True)) \
+                        or div.get_text(separator="\n", strip=True)
+            else:
+                content_images = []
+                content = ""
+            author_tag = soup.find('span', class_='detail__author')
+            author = author_tag.get_text(strip=True) if author_tag else ""
+
+            spans = soup.select('h3.sub.sub-detail a[itemprop="item"] span[itemprop="name"]')
+            names = [s.get_text(strip=True) for s in spans if s.get_text(strip=True)]
+            categories = names[-1] if names else ""
+            
+            location = ""
             video_url = ""
             thumbnail_url = ""
-            location = ""
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--window-size=1200,900")
+                chrome_options.add_argument("--log-level=3")
+
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+
+                # Lấy video src (nếu có)
+
+                try:
+                    video_el = driver.find_element(By.CSS_SELECTOR, "video.jw-video.jw-reset")
+                    video_url = video_el.get_attribute("src") or ""
+                except NoSuchElementException:
+                    video_url = ""
+
+                # Lấy FULL style của div.vjs-poster
+                try:
+                    # đảm bảo ở đúng context
+                    driver.switch_to.default_content()
+                    poster = WebDriverWait(driver, 2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.jw-preview.jw-reset"))
+                    )
+
+                    def _extract_url(s: str) -> str:
+                        m = re.search(r'url\((["\']?)(.*?)\1\)', s or "")
+                        return (m.group(2).strip() if m else "")
+
+                    # ưu tiên inline style
+                    style_attr = poster.get_attribute("style") or ""
+                    thumbnail_url = _extract_url(style_attr)
+
+                except TimeoutException:
+                    thumbnail_url = ""
+
+            except WebDriverException as e:
+                print("⚠️ Selenium error:", e)
+            finally:
+                try:
+                    if driver:
+                        driver.quit()
+                except:
+                    pass
             return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
