@@ -320,7 +320,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
             info.get("logo", "")
         )
     
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -361,10 +361,84 @@ class CongAnNhanDanCrawler(BaseCrawler):
             author_box = soup.find('div', class_='box-author')
             author_tag = author_box.find('strong')
             author = author_tag.get_text(strip=True).rstrip('-').strip() if author_tag else None
-            categories = ""
-            video_url = ""
-            thumbnail_url = ""
             location = ""
+            categories = ""
+            ul = soup.find("ul", class_="uk-breadcrumb")
+            if ul:
+                items = ul.find_all("li", class_="bc-item", limit=2)
+                names = [i.get_text(strip=True) for i in items if i]
+                categories = " > ".join(names)
+
+            video_url = ""
+            box = soup.find("div", class_="videoEmbed")
+            if box:
+                # <video src> hoặc <video><source src>
+                v = box.find("video")
+                if v:
+                    video_url = (v.get("src")
+                                or (v.find("source") and v.find("source").get("src"))
+                                or "")
+                else:
+                    # <iframe src> hoặc data-vid
+                    iframe = box.find("iframe")
+                    video_url = (iframe.get("src") if iframe else (box.get("data-vid") or "")).strip()
+            # thumb
+
+            thumbnail_url = ""
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--window-size=1200,900")
+                chrome_options.add_argument("--log-level=3")
+
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+
+                try:
+                    driver.switch_to.default_content()
+
+                    # 1) tìm đúng iframe YouTube rồi switch vào
+                    yt_iframe = WebDriverWait(driver, 8).until(
+                        EC.presence_of_element_located((
+                            By.CSS_SELECTOR,
+                            'iframe[src*="youtube.com"], iframe[src*="youtube-nocookie.com"]'
+                        ))
+                    )
+                    driver.switch_to.frame(yt_iframe)
+
+                    # 2) lấy background-image của div ytp-cued-thumbnail-overlay-image
+                    poster = WebDriverWait(driver, 8).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.ytp-cued-thumbnail-overlay-image"))
+                    )
+                    style_attr = poster.get_attribute("style") or ""
+                    m = re.search(r'url\((["\']?)(.*?)\1\)', style_attr)
+                    if m:
+                        thumbnail_url = m.group(2).strip()
+                    else:
+                        # computed style fallback
+                        bg = driver.execute_script(
+                            "return getComputedStyle(arguments[0]).getPropertyValue('background-image');", poster
+                        ) or ""
+                        m2 = re.search(r'url\((["\']?)(.*?)\1\)', bg)
+                        thumbnail_url = m2.group(2).strip() if m2 else ""
+
+                    driver.switch_to.default_content()
+                except TimeoutException:
+                    thumbnail_url = ""
+
+            except WebDriverException as e:
+                print("⚠️ Selenium error:", e)
+            finally:
+                try:
+                    if driver:
+                        driver.quit()
+                except:
+                    pass
+
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:

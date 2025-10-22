@@ -249,7 +249,7 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
         )
 
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -291,7 +291,8 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
             images = content_div.find_all("img")
             content_images = [img['src'] for img in images if img.get('src')]
-            categories = ""
+            a = soup.select_one("div.catname a")
+            categories = a.get_text(strip=True) if a else ""
             video_url = ""
             thumbnail_url = ""
             location = ""
