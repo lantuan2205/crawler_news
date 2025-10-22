@@ -3,6 +3,8 @@ import requests
 import sys
 from pathlib import Path
 import re
+import uuid 
+
 import json
 import random
 from bs4 import BeautifulSoup
@@ -108,7 +110,7 @@ class VovCrawler(BaseCrawler):
             62: "du-lich/checkin",
         }
 
-
+    print('init')
     def download_image(self, image_url, article_title, category, publish_date):
         """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
         try:
@@ -188,7 +190,7 @@ class VovCrawler(BaseCrawler):
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             container = soup.find("div", class_="logo--image")
-            h1_tag = container.find("h1") if container else None
+            h1_tag = container.find("a", class_="branding") if container else None
             logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
             info["logo"] = logo_src
         except Exception as e:
@@ -298,7 +300,7 @@ class VovCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -306,14 +308,12 @@ class VovCrawler(BaseCrawler):
         """
         try:
             response = requests.get(url, headers=headers)
-          
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
             title_tag = soup.find('h1', class_='article-title')
             title = title_tag.get_text(strip=True) if title_tag else None
-
             # Lấy description
             desc_tag = soup.select_one("div.article-summary div.col h2 div")
             description = desc_tag.get_text(strip=True) if desc_tag else None
@@ -336,18 +336,72 @@ class VovCrawler(BaseCrawler):
                         if src:
                             content_images.append(src)
             # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
-            content = content_div.get_text(separator="\n", strip=True)
-            images = content_div.find_all("img")
-            content_images = [img.get("src") for img in images if img.get("src")]
+            if not content_div:
+                content = ""
+                content_images = []
+            else:
+                content = content_div.get_text(separator="\n", strip=True)
+                images = content_div.find_all("img") or []
+                content_images = [img.get("src") for img in images if img.get("src")]
+
 
             # Trích xuất tác giả
+            author = ""
             author_box = soup.find('div', class_='article-author')
-            author_tag = author_box.find('a')
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            if author_box:
+                author_tag = author_box.find('a')
+                if author_tag:
+                    author = author_tag.get_text(strip=True).split('/')[0].strip()
+            # categories = "XÃ HỘI"
+            a = soup.select_one("li.breadcrumb-item-first a")
+            categories = a.get_text(strip=True) if a else ""
+            location = ""
+            h1 = soup.select_one("h1.article-title")
+            if h1:
+                txt = h1.get_text(" ", strip=True)
+                m = re.match(r'^\s*([^:：]+)\s*[:：]\s*', txt)
+                if m:
+                    location = m.group(1).strip()
             video_url = ""
             thumbnail_url = ""
-            location = ""
-            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--window-size=1200,900")
+
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+                try:
+                    el = WebDriverWait(driver, 6).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.gallery-embed.video_file.videojs-player"))
+                    )
+                    video_url = (el.get_attribute("data-url") or "").strip()
+                except TimeoutException:
+                    print("⚠️ Không tìm thấy video_url")
+                    video_url = ""
+
+                try:
+                    el_thumb = driver.find_element(By.CSS_SELECTOR, "div.gallery-embed.video_file.videojs-player")
+                    thumbnail_url = (el_thumb.get_attribute("data-thumb") or "").strip()
+                except NoSuchElementException:
+                    print("⚠️ Không tìm thấy thumbnail_url")
+                    thumbnail_url = ""
+
+            except WebDriverException as e:
+                print(f"❌ Lỗi Selenium: {e}")
+            finally:
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
+
+            
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -355,7 +409,8 @@ class VovCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
-    
+    print('extract content')
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -388,6 +443,7 @@ class VovCrawler(BaseCrawler):
         }
 
         return article_data
+    print('write_content')
 
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
