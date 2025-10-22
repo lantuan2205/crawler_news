@@ -11,6 +11,8 @@ import paramiko
 from io import BytesIO
 from selenium.webdriver.common.by import By
 import re
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, ElementNotInteractableException
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -305,7 +307,7 @@ class VTCNewsCrawler(BaseCrawler):
             info.get("logo", "")
         )
        
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -337,10 +339,121 @@ class VTCNewsCrawler(BaseCrawler):
             # Trích xuất tác giả
             author = soup.select_one('.author-make span')
             author = author.get_text(strip=True) if author else ''
+
+            categories_tag = soup.select_one('a.mt-category')
+            categories = categories_tag.get_text(strip=True) if categories_tag else ''
+            location = ""
+
             video_url = ""
             thumbnail_url = ""
-            location = ""
-            return title, description, content, publish_date, author, content_images, video_url, thumbnail_url, location
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--window-size=1200,900")
+                chrome_options.add_argument("--log-level=3")
+
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+                driver.switch_to.default_content()
+                wait = WebDriverWait(driver, 10, poll_frequency=0.2)
+
+                # Lấy video src (nếu có)
+
+                try:
+                    # 1) Lấy container JWPlayer và <video>
+                    root = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.jwplayer")))
+                    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", root)
+                    video_el = wait.until(lambda d: root.find_element(By.CSS_SELECTOR, "video.jw-video"))
+
+                    # 2) Thử click THUMB (overlay) hoặc nút Play của JW
+                    clicked = False
+                    for sel in (".jw-preview", ".jw-display-icon-container", ".jw-display .jw-icon",
+                                "button[aria-label='Play']", ".jw-icon-play"):
+                        els = root.find_elements(By.CSS_SELECTOR, sel)
+                        if not els:
+                            continue
+                        try:
+                            driver.execute_script("arguments[0].click();", els[0])  # click JS tránh intercept
+                            clicked = True
+                            break
+                        except Exception:
+                            pass
+
+                    # 3) Nếu chưa được → click giữa player theo tọa độ (bypass overlay lạ)
+                    if not clicked:
+                        rect = driver.execute_script("""
+                            const r = arguments[0].getBoundingClientRect();
+                            return {x: Math.floor(r.left + r.width/2), y: Math.floor(r.top + r.height/2)};
+                        """, root)
+                        actions = ActionChains(driver)
+                        actions.move_by_offset(rect["x"], rect["y"]).click().perform()
+                        # trả chuột về (tránh offset tích lũy)
+                        actions.move_by_offset(-rect["x"], -rect["y"]).perform()
+                        clicked = True
+
+                    # 4) Nếu vẫn chưa chạy → dùng JWPlayer API
+                    if clicked:
+                        container_id = root.get_attribute("id") or driver.execute_script(
+                            "return arguments[0].closest('[id]')?.id || '';", root
+                        )
+                        if container_id:
+                            driver.execute_script("""
+                                try {
+                                if (window.jwplayer) {
+                                    const p = jwplayer(arguments[0]);
+                                    p.setMute(true);
+                                    p.play(true);  // autoplay không cần gesture
+                                }
+                                } catch(e) {}
+                            """, container_id)
+
+                    # 5) Đợi nguồn được gán rồi lấy currentSrc/src/<source>
+                    wait.until(lambda d: (d.execute_script(
+                        "const v=arguments[0]; return v.currentSrc || v.src || (v.querySelector('source')?.src||'');",
+                        video_el
+                    ) or "").strip() != "")
+
+                    video_url = (driver.execute_script(
+                        "const v=arguments[0]; return v.currentSrc || v.src || (v.querySelector('source')?.src||'');",
+                        video_el
+                    ) or "").strip()
+
+                except TimeoutException:
+                    video_url = ""
+                # Lấy FULL style của div.vjs-poster
+                try:
+                    # đảm bảo ở đúng context
+                    driver.switch_to.default_content()
+                    poster = WebDriverWait(driver, 2).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.jw-preview.jw-reset"))
+                    )
+                    print("thum",poster)
+                    def _extract_url(s: str) -> str:
+                        m = re.search(r'url\((["\']?)(.*?)\1\)', s or "")
+                        return (m.group(2).strip() if m else "")
+
+                    # ưu tiên inline style
+                    style_attr = poster.get_attribute("style") or ""
+                    thumbnail_url = _extract_url(style_attr)
+
+                except TimeoutException:
+                    thumbnail_url = ""
+
+            except WebDriverException as e:
+                print("⚠️ Selenium error:", e)
+            finally:
+                try:
+                    if driver:
+                        driver.quit()
+                except:
+                    pass
+
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
