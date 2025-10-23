@@ -17,14 +17,12 @@ import signal
 import sys
 import uuid
 
-
 try:
     from app.server import start_background_server
     start_background_server(port=8111)
     print("[INFO] Stop/Health API started on port 8111")
 except Exception as e:
     print(f"[WARN] Không thể khởi động stop server: {e}")
-
 
 def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
     """Thiết lập session với proxy"""
@@ -114,14 +112,18 @@ def process_crawl(data: Dict[str, Any]):
     except (json.JSONDecodeError, TypeError):
         raise ValueError("Invalid JSON format")
 
+    body = parsed_data.get("body") or {}
+
     source = parsed_data.get("source")
     action = parsed_data.get("action")
-    input_data = parsed_data.get("body", {}).get("inputData")
-    jobId = parsed_data.get("body", {}).get("jobId")
-    crawlId = parsed_data.get("body", {}).get("crawlId")
+    input_data = body.get("inputData")
+    jobId = body.get("jobId")
+    crawlId = body.get("crawlId")
     proxy_config = parsed_data.get("proxy")
-    data_to_collect = parsed_data.get("body", {}).get("dataToCollect", [])
-
+    data_to_collect = body.get("dataToCollect", [])
+    number_post = body.get("numberPost") or 0
+    number_audio = body.get("numberAudio") or 0
+    number_video = body.get("numberVideo") or 0
     has_video = "video" in data_to_collect
 
 
@@ -182,16 +184,13 @@ def process_crawl(data: Dict[str, Any]):
         else:
             if "profile" in data_to_collect:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+
             # Crawl toàn bộ domain
-            MAX_ARTICLES = 10
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
-                # if total_articles_crawled >= MAX_ARTICLES:
-                #     break
-
                 urls = crawler.get_all_articles(category)
                 for article_url in urls:
-                    if total_articles_crawled >= MAX_ARTICLES:
+                    if number_post and total_articles_crawled >= number_post:
                         break
 
                     if article_url:
@@ -199,10 +198,10 @@ def process_crawl(data: Dict[str, Any]):
                         if "comment" in data_to_collect:
                             get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
+
             if "podcast" in data_to_collect:
                 data = crawler.crawl_postcast()
                 return
-            # return {"status": "ok", "url": url, "message": f"Đã crawl {total_articles_crawled} bài viết. Dữ liệu đang được lưu."}
 
     # Nếu inputData là một keyword
     else:
@@ -270,15 +269,13 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
     # Inject proxy session vào crawler nếu có
     if proxy_session:
         print(f"[INFO] Áp dụng proxy cho crawler: {url}")
-        # Lưu proxy session vào crawler để sử dụng
+
         crawler.proxy_session = proxy_session
 
-        # Nếu crawler có thuộc tính session, cập nhật nó
         if hasattr(crawler, 'session'):
             crawler.session = proxy_session
             print(f"[INFO] Đã cập nhật session của crawler với proxy")
 
-        # Nếu crawler có thuộc tính proxies, cập nhật nó
         if hasattr(crawler, 'proxies'):
             crawler.proxies = proxy_session.proxies
             print(f"[INFO] Đã cập nhật proxies của crawler")
@@ -317,16 +314,14 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
 
     if has_video:
         article_data["videoUrl"] = video_url
-    
-    # Thêm jobId nếu có (cần truyền từ process_crawl)
+
     if jobId:
         article_data['jobId'] = jobId
 
     if crawlId:
         article_data['crawlId'] = crawlId
-    
+
     save_to_json(article_data)
-    #send_json_to_api()
     send_clean_article_to_kafka(article_data)
     time.sleep(0.2)
     if link:
@@ -398,8 +393,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         "inforCopyright": infor_copyright,
         "logo": logo,
     }
-    
-    # Thêm jobId nếu có (cần truyền từ process_crawl)
+
     if jobId:
         profile_info['jobId'] = jobId
 
@@ -407,7 +401,6 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         profile_info['crawlId'] = crawlId
     
     save_to_json(profile_info)
-    #send_json_to_api()
     send_profile_to_kafka(profile_info)
     time.sleep(0.5)
     if link:
@@ -430,9 +423,8 @@ if __name__ == "__main__":
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
-        # pid = 1
-        # os.kill(pid, signal.SIGTERM)
+        pid = 1
+        os.kill(pid, signal.SIGTERM)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
         exit(1)
-
