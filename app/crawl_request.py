@@ -183,22 +183,22 @@ def process_crawl(data: Dict[str, Any]):
             if "profile" in data_to_collect:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
             # Crawl toàn bộ domain
-            # MAX_ARTICLES = 10
-            # total_articles_crawled = 0
-            # for category in crawler.article_type_dict.values():
-            #     # if total_articles_crawled >= MAX_ARTICLES:
-            #     #     break
+            MAX_ARTICLES = 10
+            total_articles_crawled = 0
+            for category in crawler.article_type_dict.values():
+                # if total_articles_crawled >= MAX_ARTICLES:
+                #     break
 
-            #     urls = crawler.get_all_articles(category)
-            #     for article_url in urls:
-            #         if total_articles_crawled >= MAX_ARTICLES:
-            #             break
+                urls = crawler.get_all_articles(category)
+                for article_url in urls:
+                    if total_articles_crawled >= MAX_ARTICLES:
+                        break
 
-            #         if article_url:
-            #             get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
-            #             if "comment" in data_to_collect:
-            #                 get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
-            #             total_articles_crawled += 1
+                    if article_url:
+                        get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
+                        if "comment" in data_to_collect:
+                            get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
+                        total_articles_crawled += 1
             if "podcast" in data_to_collect:
                 data = crawler.crawl_postcast()
                 return
