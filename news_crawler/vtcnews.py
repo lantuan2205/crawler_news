@@ -97,65 +97,6 @@ class VTCNewsCrawler(BaseCrawler):
                                                                                                 
         }   
         
-    def download_image(self, image_url, article_title, category, published_date):
-        """Tải và lưu ảnh, trả về đường dẫn local và metadata"""
-        try:
-            # === CẤU HÌNH SSH đến máy B ===
-            ssh_host = "192.168.161.230"
-            ssh_user = "htsc"
-            ssh_password = "Htsc@123"
-            remote_base_dir = "/mnt/data/news"
-            # Tạo cấu trúc thư mục: vtcnews/category/date
-            newspaper_name = "vtcnews"
-            date_parts = clean_date(published_date).split(',')[0].strip()
-            day, month, year = date_parts.split('/')
-            date_folder = f"{day}-{month}-{year}"
-
-            # Tạo đường dẫn thư mục đầy đủ
-            remote_dir = Path(remote_base_dir) / newspaper_name / category / date_folder
-
-            clean_url = image_url.split('?')[0]
-            image_filename = Path(clean_url).name
-            remote_path = remote_dir / image_filename
-
-            # Tải ảnh
-            response = requests.get(image_url, headers=headers, timeout=10)
-            response.raise_for_status()
-            image_data = BytesIO(response.content)
-
-            # Kết nối SSH/SFTP
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(ssh_host, username=ssh_user, password=ssh_password)
-            sftp = ssh.open_sftp()
-
-            # Xử lý URL ảnh
-            # Tạo thư mục nếu chưa có (đệ quy)
-            path_parts = str(remote_dir).split('/')
-            current = ''
-            for part in path_parts:
-                if not part:
-                    continue
-                current += f'/{part}'
-                try:
-                    sftp.stat(current)
-                except IOError:
-                    sftp.mkdir(current)
-
-            # Lưu ảnh
-            with sftp.file(str(remote_path), 'wb') as f:
-                f.write(image_data.getvalue())
-
-            # Đóng kết nối
-            sftp.close()
-            ssh.close()
-
-            return str(remote_path)
-            
-        except Exception as e:
-            self.logger.error(f"Error downloading image {image_url}: {e}")
-            return None
-
     def extract_profile_domain(self, url: str):
         job_id = 1
         base_url = "https://vtcnews.vn"
@@ -586,15 +527,7 @@ class VTCNewsCrawler(BaseCrawler):
         title, description, content, publish_date, author, content_images = self.extract_content(url)
         if not title:
             return None
-            
-        # Tải và lưu ảnh nội dung
-        '''content_image_paths = []
-        for img_url in content_images:
-            if img_url:
-                img_path = self.download_image(img_url, title, article_type, publish_date)
-                if img_path:
-                    content_image_paths.append(img_path)'''
-                    
+
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
