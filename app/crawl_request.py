@@ -165,8 +165,11 @@ def process_crawl(data: Dict[str, Any]):
             re.search(r'/[^/]+-\d+\.htm[l]?$', input_data),
             re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', input_data),
             re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
-            re.search(r'-i\d+/?$', input_data)
+            re.search(r'-i\d+/?$', input_data),
+            re.search(r'-post\d+\.vov($|\?)', input_data),
+            re.search(r'-\d+\.vov($|\?)', input_data),
         ])
+
         url = re.sub(r"/+$", "", input_data)
         if is_article:
             article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
