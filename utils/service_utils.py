@@ -407,8 +407,15 @@ def parse_vnexpress_time_ms(time_str):
 
     # Case: 'DD/MM/YYYY HH:MM'
     s = time_str.replace("\u200b", "").replace("\xa0", " ").strip()
-
     for fmt in ("%d/%m/%Y %H:%M", "%d/%m/%Y, %H:%M"):
+        try:
+            dt = datetime.strptime(s, fmt)
+            return int(dt.timestamp() * 1000)
+        except ValueError:
+            pass
+        
+    # Case: 'DD-MM-YYYY HH:MM' hoặc 'DD-MM-YYYY, HH:MM'
+    for fmt in ("%d-%m-%Y %H:%M", "%d-%m-%Y, %H:%M"):
         try:
             dt = datetime.strptime(s, fmt)
             return int(dt.timestamp() * 1000)

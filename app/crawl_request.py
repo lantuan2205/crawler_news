@@ -171,7 +171,7 @@ def process_crawl(data: Dict[str, Any]):
             re.search(r'-post\d+\.vov($|\?)', input_data),
             re.search(r'-\d+\.vov($|\?)', input_data),
             re.search(r'/[^/]+\.htm[l]?$', input_data),
-
+            re.search(r'-(?!page-)\d+(?:/|$|\?)', input_data),  
         ])
 
         url = re.sub(r"/+$", "", input_data)
