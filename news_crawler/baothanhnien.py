@@ -384,7 +384,91 @@ class BaoThanhNienCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
-    
+    def extract_comment(self, url: str):
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
+                    )
+                    # Cuộn tới nút
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    # Click bằng JS (bypass quảng cáo che)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
+                    time.sleep(0.5)  # chờ comment load
+                except (TimeoutException, NoSuchElementException):
+                    break  # hết nút để click
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            for item in soup.select("div.comment_item"):
+                comment_id =  ""
+                user_id = ""
+                user_url = ""
+                username = ""      
+                avatar = ""
+                content = ""
+                time_comment = ""
+                reaction_map = {
+                    "Thích": "Like",
+                    "Yêu thích": "Love",
+                    "Haha": "Haha",
+                    "Wow": "Wow",
+                    "Buồn": "Sad",
+                    "Phẫn nộ": "Angry",
+                }
+
+                reactions = {}
+                reply_count = 0
+                
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "commentId": comment_id,
+                    "userId": user_id,
+                    "username": username,
+                    "userUrl": user_url,
+                    "avatar": avatar,
+                    "content": content,
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": reply_count
+                })
+            return comments
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+                
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
