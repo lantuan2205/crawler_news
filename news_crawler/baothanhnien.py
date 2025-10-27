@@ -2,7 +2,7 @@ import os
 import requests
 import sys
 from pathlib import Path
-import re
+import re, json
 
 import random
 from bs4 import BeautifulSoup
@@ -15,6 +15,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
+from selenium.common.exceptions import TimeoutException, WebDriverException
 
 import time
 from selenium.common.exceptions import NoSuchElementException
@@ -31,8 +32,8 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type
-
+from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
+ 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
@@ -161,8 +162,139 @@ class BaoThanhNienCrawler(BaseCrawler):
             99: "tieu-dung-thong-minh/o-dau-re",
             100: "tieu-dung-thong-minh/goc-nguoi-tieu-dung",
         }
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
 
-    def extract_content(self, url: str) -> tuple:
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            container = soup.find("div", class_="header__top-flex")
+            h1_tag = container.find("h1") if container else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div.footer__bottom"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer_copyright = soup.find("div", class_="footer__bottom")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                info["description"] = ""
+
+                # License
+                if "Giấy phép" in text:
+                    license_line = [line for line in lines if "Giấy phép" in line]
+                    if license_line:
+                        info["license"] = license_line[0].replace("Giấy phép", "").strip()
+
+                # Tổng biên tập
+                if "Tổng biên tập:" in text:
+                    editor_line = [line for line in lines if "Tổng biên tập:" in line]
+                    if editor_line:
+                        info["editor_in_chief"] = editor_line[0].replace("Tổng biên tập:", "").strip()
+
+                # Địa chỉ
+                info["address"] = ""
+
+                # Điện thoại
+                vals = footer_copyright.select("div.footer__contact p.value")
+                phones = [v.get_text(strip=True) for v in vals if v.get_text(strip=True)]
+
+                # nếu muốn chỉ 2 số đầu:
+                phones = phones[:2]
+
+                info["phone"] = ", ".join(phones) if phones else ""
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
+                else: 
+                    info["email"] = ""
+                # Thông tin bản quyền
+                box = footer_copyright.select_one("div.copy-right")
+                infor_copyright = ""
+                if box:
+                    txt = (box.get_text(" ", strip=True) or "").replace("\xa0", " ")
+                    i = txt.lower().find("bản quyền")
+                    if i != -1:
+                        infor_copyright = txt[i:].strip(' "“”')
+                info["infor_copyright"] = infor_copyright
+
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -223,7 +355,28 @@ class BaoThanhNienCrawler(BaseCrawler):
             author_box = soup.find('a', class_="name")
             author = author_box.get_text(strip=True).rstrip('-').strip() if author_box else None
 
-            return title, description, content, publish_date, author, content_images
+            a = soup.select_one("div.detail-cate a[data-role='cate-name'], div.detail-cate a.category-page_name")
+            categories = a.get_text(strip=True) if a else ""
+            
+            location = ""
+            pairs = []
+            video_url = []
+            thumbnail_url = []
+
+            for box in soup.select('div.VCSortableInPreviewMode'):
+                v  = (box.get("data-vid") or "").strip()
+                th = (box.get("data-thumb") or "").strip()
+                if v:
+                    v = urljoin(url, v)
+                    video_url.append(v)
+                if th:
+                    th = urljoin(url, th)
+                    thumbnail_url.append(th)
+
+                if v or th:
+                    pairs.append((v, th))
+
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -231,7 +384,91 @@ class BaoThanhNienCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
-    
+    def extract_comment(self, url: str):
+        # Sử dụng session từ base class (có thể là proxy session)
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(60)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+            # --- Click "Xem thêm ý kiến" để load thêm comment ---
+            while True:
+                try:
+                    show_more_btn = WebDriverWait(driver, 5).until(
+                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
+                    )
+                    # Cuộn tới nút
+                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
+                    time.sleep(0.2)
+                    # Click bằng JS (bypass quảng cáo che)
+                    driver.execute_script("arguments[0].click();", show_more_btn)
+                    time.sleep(0.5)  # chờ comment load
+                except (TimeoutException, NoSuchElementException):
+                    break  # hết nút để click
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            comments = []
+
+            for item in soup.select("div.comment_item"):
+                comment_id =  ""
+                user_id = ""
+                user_url = ""
+                username = ""      
+                avatar = ""
+                content = ""
+                time_comment = ""
+                reaction_map = {
+                    "Thích": "Like",
+                    "Yêu thích": "Love",
+                    "Haha": "Haha",
+                    "Wow": "Wow",
+                    "Buồn": "Sad",
+                    "Phẫn nộ": "Angry",
+                }
+
+                reactions = {}
+                reply_count = 0
+                
+                comments.append({
+                    "domain": normalize_url_to_root_https(url),
+                    "url": url,
+                    "commentId": comment_id,
+                    "userId": user_id,
+                    "username": username,
+                    "userUrl": user_url,
+                    "avatar": avatar,
+                    "content": content,
+                    "time": time_comment,
+                    "reactions": reactions,
+                    "replyCount": reply_count
+                })
+            return comments
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+                
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -350,3 +587,162 @@ class BaoThanhNienCrawler(BaseCrawler):
         all_articles.extend(urls)
 
         return all_articles
+    
+    def get_audio_from_article(self, url):
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        driver.get(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
+        resp = requests.get(url, headers=headers)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        article = soup.select_one("div.detail__video-section") or soup
+        # 1 AUDIO
+        audio_url = ""
+        try:
+            # đợi có thẻ audio xuất hiện
+            audio_el = WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "audio"))
+            )
+            # 1) audio có src trực tiếp
+            audio_url = (audio_el.get_attribute("src") or "").strip()
+            # 2) fallback: audio > source[src]
+            if not audio_url:
+                try:
+                    src_el = audio_el.find_element(By.CSS_SELECTOR, "source[src]")
+                    audio_url = (src_el.get_attribute("src") or "").strip()
+                except Exception:
+                    pass
+        except Exception:
+            audio_url = ""
+ 
+        # 2 DESCRIPTION
+        s_tag = article.select_one("h2.detail-sapo")
+        description = s_tag.get_text(strip=True) if s_tag else ""
+
+        # 3PUBLISHED DATE
+        t_tag = article.select_one("div.detail-time div")
+        time_text = t_tag.get_text(strip=True) if t_tag else ""
+        publishedDate = parse_vnexpress_time_ms(time_text)
+
+        # 4AUTHOR
+        author = ""
+        # CATEGORY
+        category = [a.get("title", "").strip() for a in soup.select("div.detail-cate a[title]")]
+
+        # 5 END TIME (tổng thời lượng)
+        end_time_mp3 = ""
+        try:
+            # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
+            WebDriverWait(driver, 10).until(
+                lambda d: len(d.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")) >= 2
+            )
+
+            spans = driver.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")
+            if len(spans) >= 2:
+                # Đợi cho span thứ 2 khác 00:00
+                WebDriverWait(driver, 10).until(
+                    lambda d: spans[1].text.strip() != "00:00"
+                )
+                end_time_mp3 = spans[1].text.strip()
+        except Exception as e:
+            end_time_mp3 = ""
+        driver.quit()
+
+        return {
+            "audio_url": audio_url,
+            "description": description,
+            "author": author,
+            "duration": end_time_mp3,
+            "publishedDate": publishedDate,
+            "category" : category
+        }
+
+    def crawl_podcast_bs4(self, category_url: str):
+        def build_domain_username(domain, author_url):
+            return f"{domain}_{author_url.replace(' ', '')}"
+        base = "thanhnien"
+        BASE_DOMAIN = "https://thanhnien.vn/"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
+        response = requests.get(category_url, headers=headers, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+        items = soup.select("div.box-category-item")  # hoặc "article.item-ev" nếu muốn chính xác hơn
+
+        podcasts = []
+
+        for item in items:
+            try:
+                # 1. Title + URL
+                title_elem = item.select_one("a[title]")
+                if not title_elem:
+                    continue
+                title = title_elem.get("title", "").strip()
+                url = title_elem.get("href", "")
+                if url.startswith("/"):
+                    url = BASE_DOMAIN + url
+                # 2. Thumbnail (từ <img> hoặc <source data-srcset>)
+                thumb_elem = item.select_one("img")
+                thumbnail = thumb_elem.get("src", "") if thumb_elem else ""
+
+                # 3. Category (nếu cần)
+                # Lấy category ở đầu trang
+                print("u------rl",url)
+
+
+                meta = self.get_audio_from_article(url)
+                audio_url     = meta["audio_url"]
+                content_url   = meta["description"]
+                author_url    = meta["author"]
+                end_time_url  = meta["duration"]
+                datetime_url  = meta["publishedDate"]
+                category = meta["category"]
+                domain_username = build_domain_username(base, author_url) if author_url else ""
+
+                podcast = {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": thumbnail,
+                    "category": category,
+                    "audio_url": audio_url,
+                    "author": author_url,
+                    "description": content_url,
+                    "duration": time_to_seconds(end_time_url),
+                    "publishedDate": datetime_url,
+                    "authorId": domain_username,
+                }
+                send_podcast_to_kafka(podcast)
+            except Exception as e:
+                print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
+                continue
+
+    def crawl_postcast(self):
+        podcast_type_dict = {
+            0: "genz.htm",
+            1: "showbiz.htm",
+        }
+
+        BASE_URL = "https://thanhnien.vn/podcast.htm"
+
+        # bỏ .htm / .html ở BASE_URL + chuẩn hoá dấu /
+        base = re.sub(r'\.html?$', '', BASE_URL.strip())
+        base = base.rstrip('/')
+
+        for idx, slug in podcast_type_dict.items():
+            category_url = f"{base}/{slug.lstrip('/')}"
+            print(f"🔎 Crawl category {slug} => {category_url}")
+            self.crawl_podcast_bs4(category_url)

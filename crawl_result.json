@@ -1,21 +1,13 @@
 {
-    "dataSource": "https://qdnd.vn",
-    "title": "TP Hồ Chí Minh: Giải cứu 165 người mắc kẹt do mưa lớn, ngập sâu",
-    "url": "https://www.qdnd.vn/xa-hoi/tin-tuc/tp-ho-chi-minh-giai-cuu-165-nguoi-mac-ket-do-mua-lon-ngap-sau-899628",
-    "author": "TTXVN",
-    "authorId": "qdnd_TTXVN",
-    "publishedDate": 1761193140,
-    "description": "Rạng sáng 23-10, mưa lớn kéo dài gây ngập sâu, nước chảy xiết tại khu phố Cầu Đôi và khu phố Long Hưng (phường Bến Cát, TP Hồ Chí Minh), nhiều hộ dân bị cô lập, không thể di chuyển ra ngoài.",
-    "content": "Nhận tin báo lúc 1 giờ 8 phút, Trung tâm thông tin chỉ huy Phòng Cảnh sátphòng cháy chữa cháyvà cứu nạn cứu hộ (Công an Thành phố Hồ Chí Minh) đã huy động 2 xe phương tiện, 2 xe chữa cháy cùng 29 cán bộ, chiến sĩ tham gia cứu hộ. Công an phường Bến Cát, Ban CHQS phường và lực lượng an ninh cơ sở huy động 45 người phối hợp ứng cứu.\nNhiều khu vực bị ngập sâu 1-2m, dòng nước chảy xiết, khiến việc tiếp cận gặp nhiều khó khăn. Lực lượng cứu hộ phải sử dụng áo phao, phao cứu sinh, dây và các phương tiện chuyên dụng để đưa từng người ra khỏi khu vực nguy hiểm.\nCông tác cứu nạn, cứu hộ kết thúc lúc gần 4 giờ sáng cùng ngày, tổng cộng 165 người dân đã được cứu ra khỏi khu vực ngập lụt.\nToàn bộ lực lượng, phương tiện bảo đảm tuyệt đối an toàn.\nTTXVN\n* Mời bạn đọc vào chuyên mụcXã hộixem các tin, bài liên quan.",
-    "contentImageUrls": [
-        "https://file3.qdnd.vn/data/images/0/2025/10/23/upload_2126/1 2.jpg?dpi=150&quality=100&w=870"
-    ],
-    "photoInfos": {
-        "1 2.jpg": "https://file3.qdnd.vn/data/images/0/2025/10/23/upload_2126/1 2.jpg?dpi=150&quality=100&w=870"
-    },
-    "categories": "Xã hội - Tin tức",
-    "thumbnailUrl": "",
-    "location": "TP Hồ Chí Minh",
-    "videoUrl": "",
+    "domain": "https://thanhnien.vn",
+    "name": "thanhnien",
+    "description": "",
+    "license": "xuất bản số 110/GP - BTTTT cấp ngày 24.3.2020",
+    "editorInChief": "Nguyễn Ngọc Toàn",
+    "address": "",
+    "phone": "0906 645 777, 0908 780 404",
+    "email": "",
+    "inforCopyright": "Bản quyền thuộc về Báo Thanh Niên. Cấm sao chép dưới mọi hình thức nếu không có sự chấp\n                    thuận bằng văn bản.",
+    "logo": "https://static.thanhnien.com.vn/thanhnien.vn/image/logo.svg",
     "jobId": "5d72df7d-9e5f-4f45-abf0-9905adeba500"
 }

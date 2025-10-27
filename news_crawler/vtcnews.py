@@ -134,7 +134,6 @@ class VTCNewsCrawler(BaseCrawler):
                     src = real_src
 
             info["logo"] = urljoin(url, src) if src else ""
-
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
 
@@ -182,8 +181,6 @@ class VTCNewsCrawler(BaseCrawler):
             soup = BeautifulSoup(driver.page_source, "html.parser")
             footer_copyright = soup.find("div", class_="zone-menus")
             if footer_copyright:
-                text = footer_copyright.get_text("\n", strip=True)
-                lines = text.split("\n")
 
                 # Description = 2 dòng đầu tiên
                 ul = soup.select_one("ul.mb20.font13.gray-31.clearfix")
@@ -201,7 +198,6 @@ class VTCNewsCrawler(BaseCrawler):
                 # Tổng biên tập
                 li = next((x for x in soup.select("ul.mb20.font13.gray-31.clearfix li")
                         if "phó tổng biên tập phụ trách" in x.get_text(" ", strip=True).lower()), None)
-
                 info["editor_in_chief"] =  li.select_one("span").get_text(strip=True) if li else ""
 
                 # Địa chỉ
@@ -227,7 +223,7 @@ class VTCNewsCrawler(BaseCrawler):
                     info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
 
                 # Thông tin bản quyền
-                last_p = footer_copyright.select("p")[-2]
+                last_p = footer_copyright.select("p")[-1]
                 if last_p:
                     info["infor_copyright"] = last_p.get_text(strip=True)
 
