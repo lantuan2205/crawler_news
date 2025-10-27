@@ -9,6 +9,7 @@ import os
 from datetime import datetime, timedelta
 import paramiko
 from io import BytesIO
+from selenium.common.exceptions import NoSuchElementException,TimeoutException,WebDriverException
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -38,10 +39,17 @@ class BaoThanhTraCrawler(BaseCrawler):
             4: "xa-hoi-C5ACF42DB",
             5: "phap-luat-B2DDDF86E",
             6: "nha-dat-57A4B2310",
-            7: "du-lich-E19590D86",                                                                       
+            7: "du-lich-E19590D86",  
+            8: "kinh-doanh-A08BE54D6",
+            9: "thu-vien-nganh-thanh-tra-64CE7D2A7",
+            10: "doc-bao-giay-truc-tuyen-0E1418CB4",
+            11: "dan-toc-ton-giao-8C92B9185",
+            12: "giai-cau-long-toan-quoc-bao-thanh-tra-lan-thu-xix-38C2B9107",                                         
+            13: "80-nam-ngay-truyen-thong-thanh-tra-viet-nam-C626D54BD",    
+            14: "thong-tin-doanh-nghiep-49F64E63D",   
         }   
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -103,14 +111,28 @@ class BaoThanhTraCrawler(BaseCrawler):
             content_images = list(set(content_images))
             # Lấy nội dung của bài viết (text content)
             content = " ".join(content_paragraphs)
-            return title, description, content, publish_date, author, content_images
+
+            block = soup.select_one('div.mb-4.font-semibold.flex.flex-wrap.items-center.w-full')
+            categories = " - ".join(a.get_text(strip=True) for a in block.select('h2 a, h1 a')) if block else ""
+
+            thumbnail_url = ""
+            video_url = ""
+            title_tag = soup.find("h1", class_="text-black text-[32px] leading-tight font-bold mb-4")
+            location = ""
+
+            if title_tag:
+                text = title_tag.get_text(strip=True)
+                if ":" in text:
+                    location = text.split(":", 1)[0].strip()
+
+            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
