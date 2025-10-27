@@ -188,18 +188,18 @@ def process_crawl(data: Dict[str, Any]):
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
 
             # Crawl toàn bộ domain
-            # total_articles_crawled = 0
-            # for category in crawler.article_type_dict.values():
-            #     urls = crawler.get_all_articles(category)
-            #     for article_url in urls:
-            #         if number_post and total_articles_crawled >= number_post:
-            #             break
+            total_articles_crawled = 0
+            for category in crawler.article_type_dict.values():
+                urls = crawler.get_all_articles(category)
+                for article_url in urls:
+                    if number_post and total_articles_crawled >= number_post:
+                        break
 
-            #         if article_url:
-            #             get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
-            #             if "comment" in data_to_collect:
-            #                 get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
-            #             total_articles_crawled += 1
+                    if article_url:
+                        get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
+                        if "comment" in data_to_collect:
+                            get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
+                        total_articles_crawled += 1
 
             if "podcast" in data_to_collect:
                 data = crawler.crawl_postcast()
