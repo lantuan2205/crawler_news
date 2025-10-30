@@ -681,6 +681,7 @@ class CongLyCrawler(BaseCrawler):
                 domain_username = build_domain_username(base, author_url) if author_url else ""
 
                 podcast = {
+                    "domain": normalize_url_to_root_https(url),
                     "title": title,
                     "url": url,
                     "thumbnail": thumb,

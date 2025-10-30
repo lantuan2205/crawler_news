@@ -477,6 +477,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
 
 
                     podcast = {
+                        "domain": normalize_url_to_root_https(url),
                         "title": title,
                         "url": url,
                         "thumbnail": thumbnail,

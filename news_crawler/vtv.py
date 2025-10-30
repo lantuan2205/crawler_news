@@ -553,6 +553,7 @@ class VtvCrawler(BaseCrawler):
                 datetime_url = parse_vnexpress_time_ms(time_text) 
 
                 podcast = {
+                    "domain": normalize_url_to_root_https(url),
                     "title": title,
                     "url": url,
                     "thumbnail": thumbnail,
