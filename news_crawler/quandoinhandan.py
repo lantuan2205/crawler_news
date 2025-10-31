@@ -54,6 +54,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
             12: "the-thao",
             13: "quoc-te"
         }   
+    
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -368,61 +369,77 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
             return []
         
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        driver = None
+        try:   
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+            resp = requests.get(url, headers=headers)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-        article = soup.select_one("div.uk-padding") or soup
+            article = soup.select_one("div.uk-padding") or soup
 
-        # 1 AUDIO
-        audio_url = ""
-        box = article.select_one('div.media-thumb.mediaurl[data-src]')
-        if box:
-            audio_url = box.get('data-src', '').strip()
-        else:
+            # 1 AUDIO
             audio_url = ""
+            box = article.select_one('div.media-thumb.mediaurl[data-src]')
+            if box:
+                audio_url = box.get('data-src', '').strip()
+            else:
+                audio_url = ""
 
-        # 2 DESCRIPTION
-        s_tag = article.select_one("div.media-des")
-        description = s_tag.get_text(strip=True) if s_tag else ""
+            # 2 DESCRIPTION
+            s_tag = article.select_one("div.media-des")
+            description = s_tag.get_text(strip=True) if s_tag else ""
 
-        # 3PUBLISHED DATE
-        t_tag = article.select_one("time.media-time")
-        time_text = t_tag.get_text(strip=True) if t_tag else ""
-        publishedDate = parse_vnexpress_time_ms(time_text)
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("time.media-time")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
 
-        # 4AUTHOR
-        author = ""
+            # 4AUTHOR
+            author = ""
 
-        # 5 END TIME (tổng thời lượng)
-        try:
-            end_time_elem = WebDriverWait(driver, 10).until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, "span.player__duration"))
-            )
-            # Lấy text thật sau khi JS render xong
-            end_time_mp3 = end_time_elem.text.strip()
-        except Exception:
-            end_time_mp3 = ""
+            # 5 END TIME (tổng thời lượng)
+            try:
+                end_time_elem = WebDriverWait(driver, 10).until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, "span.player__duration"))
+                )
+                # Lấy text thật sau khi JS render xong
+                end_time_mp3 = end_time_elem.text.strip()
+            except Exception:
+                end_time_mp3 = ""
+
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate":"",
+            }
+
+        finally:
+            if driver:
+                driver.quit()
 
         return {
             "audio_url": audio_url,
-            "description": description,
-            "author": author,
-            "duration": end_time_mp3,
-            "publishedDate": publishedDate,
+            "description": content_url,
+            "author": author_url,
+            "duration": end_time_mp3_url,
+            "publishedDate": datetime_url
         }
 
     def crawl_podcast_bs4(self, category_url: str):

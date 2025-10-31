@@ -424,6 +424,7 @@ class VtvCrawler(BaseCrawler):
         return all_articles
     
     def get_audio_from_article(self, url):
+        driver = None
         try:
             chrome_options = Options()
             chrome_options.add_argument("--headless=new")
@@ -457,12 +458,6 @@ class VtvCrawler(BaseCrawler):
             duration_tag = article.select("div.audioPodcastPlayer-time")
             end_time_mp3_url = duration_tag[-1].get_text(strip=True) if duration_tag else ""
 
-            return {
-                "audio_url": audio_url,
-                "description": content_url,
-                "author": author_url,
-                "end_time_mp3": end_time_mp3_url,
-            }
         except Exception as e:
             print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
             # trả dict rỗng để crawler vẫn tiếp tục
@@ -472,6 +467,18 @@ class VtvCrawler(BaseCrawler):
                 "author": "",
                 "end_time_mp3": "",
             }
+
+        finally:
+            if driver:
+                driver.quit()()
+        
+        return {
+            "audio_url": audio_url,
+            "description": content_url,
+            "author": author_url,
+            "end_time_mp3": end_time_mp3_url,
+        }
+
 
     def crawl_podcast_bs4(self, category_url: str):
         chrome_options = Options()

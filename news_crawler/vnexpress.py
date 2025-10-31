@@ -581,72 +581,75 @@ class VNExpressCrawler(BaseCrawler):
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
         driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
-
-        article = soup.select_one("div.section_podcast_detail_newver") or soup
-
-        # 1 AUDIO
-        tag = article.find("audio", src=True) or article.find("source", src=True) or article.find("video", src=True)
-        if tag:
-            audio_url = (tag.get("src") or "").strip()
-        else:
-            players = article.find_all(attrs={"data-player": True})
-            for p in players:
-                raw = p.get("data-player", "")
-                if not raw:
-                    continue
-                try:
-                    data_clean = raw.replace("&quot;", '"').replace("&#34;", '"').replace("'", '"')
-                    data_json = json.loads(data_clean)
-                    playlist = data_json.get("playlist", [])
-                    if playlist:
-                        first = playlist[0]
-                        if not audio_url and "src" in first:
-                            audio_url = (first.get("src") or "").strip()
-                        dur = first.get("duration") or first.get("time") or ""
-                        if dur:
-                            end_time_mp3 = str(dur).strip()
-                        break
-                except Exception:
-                    pass
-
-        # 2 DESCRIPTION
-        s_tag = article.select_one("p.description")
-        description = s_tag.get_text(strip=True) if s_tag else ""
-
-        # 3PUBLISHED DATE
-        t_tag = article.select_one("span.date")
-        time_text = t_tag.get_text(strip=True) if t_tag else ""
-        publishedDate = parse_vnexpress_time_ms(time_text)
-
-        # 4AUTHOR
-        a_tag = article.select_one("span.author-in-player")
-        author = a_tag.get_text(strip=True) if a_tag else ""
-
-        # 5 END TIME (tổng thời lượng)
-        end_time_mp3 = ""
         try:
-            # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
-            WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, "span.afp-duration")) >= 2
-            )
+            driver.get(url)
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+            resp = requests.get(url, headers=headers)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-            spans = driver.find_elements(By.CSS_SELECTOR, "span.afp-duration")
-            if len(spans) >= 2:
-                # Đợi cho span thứ 2 khác 00:00
-                WebDriverWait(driver, 10).until(
-                    lambda d: spans[1].text.strip() != "00:00"
-                )
-                end_time_mp3 = spans[1].text.strip()
-        except Exception as e:
-            print("⚠️ Không lấy được end_time_mp3:", e)
+            article = soup.select_one("div.section_podcast_detail_newver") or soup
+
+            # 1 AUDIO
+            tag = article.find("audio", src=True) or article.find("source", src=True) or article.find("video", src=True)
+            if tag:
+                audio_url = (tag.get("src") or "").strip()
+            else:
+                players = article.find_all(attrs={"data-player": True})
+                for p in players:
+                    raw = p.get("data-player", "")
+                    if not raw:
+                        continue
+                    try:
+                        data_clean = raw.replace("&quot;", '"').replace("&#34;", '"').replace("'", '"')
+                        data_json = json.loads(data_clean)
+                        playlist = data_json.get("playlist", [])
+                        if playlist:
+                            first = playlist[0]
+                            if not audio_url and "src" in first:
+                                audio_url = (first.get("src") or "").strip()
+                            dur = first.get("duration") or first.get("time") or ""
+                            if dur:
+                                end_time_mp3 = str(dur).strip()
+                            break
+                    except Exception:
+                        pass
+
+            # 2 DESCRIPTION
+            s_tag = article.select_one("p.description")
+            description = s_tag.get_text(strip=True) if s_tag else ""
+
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("span.date")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
+
+            # 4AUTHOR
+            a_tag = article.select_one("span.author-in-player")
+            author = a_tag.get_text(strip=True) if a_tag else ""
+
+            # 5 END TIME (tổng thời lượng)
             end_time_mp3 = ""
-        driver.quit()
+            try:
+                # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
+                WebDriverWait(driver, 10).until(
+                    lambda d: len(d.find_elements(By.CSS_SELECTOR, "span.afp-duration")) >= 2
+                )
+
+                spans = driver.find_elements(By.CSS_SELECTOR, "span.afp-duration")
+                if len(spans) >= 2:
+                    # Đợi cho span thứ 2 khác 00:00
+                    WebDriverWait(driver, 10).until(
+                        lambda d: spans[1].text.strip() != "00:00"
+                    )
+                    end_time_mp3 = spans[1].text.strip()
+            except Exception as e:
+                print("⚠️ Không lấy được end_time_mp3:", e)
+                end_time_mp3 = ""
+        finally:
+            if driver:
+                driver.quit()
         
         return {
             "audio_url": audio_url,

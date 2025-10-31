@@ -95,6 +95,7 @@ class CongLyCrawler(BaseCrawler):
             36: "cai-chinh",
             37: "video"
         }
+    
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -253,6 +254,7 @@ class CongLyCrawler(BaseCrawler):
             info.get("infor_copyright", ""),
             info.get("logo", "")
         )    
+    
     def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -481,119 +483,131 @@ class CongLyCrawler(BaseCrawler):
         return all_articles
     
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        driver = None
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
-
-        article = soup.select_one("div.section_podcast_detail_newver") or soup
-
-        # 1 AUDIO
-        tag = article.find("audio", src=True) or article.find("src", src=True) or article.find("video", src=True)
-        if tag:
-            audio_url = (tag.get("src") or "").strip()
-        else:
-            audio_url = ""
-        # 2 DESCRIPTION
-        s_tag = article.select_one("div.b-grid__desc a")
-        description = s_tag.get_text(strip=True) if s_tag else ""
-
-        # 3PUBLISHED DATE
-        t_tag = article.select_one("span.b-grid__time")
-        time_text = t_tag.get_text(strip=True) if t_tag else ""
-        publishedDate = parse_vnexpress_time_ms(time_text)
-
-        # 4AUTHOR
-        a_tag = article.select_one("div.b-grid__author")
-        author = a_tag.get_text(strip=True) if a_tag else ""
-
-        # 5 END TIME (tổng thời lượng)
-        def fmt(sec):
-            if not sec: return ""
-            sec = int(sec)
-            m, s = divmod(sec, 60)
-            h, m = divmod(m, 60)
-            return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
-
-        opts = webdriver.ChromeOptions()
-        opts.add_argument("--headless=new")
-        opts.add_argument("--mute-audio")
-        opts.add_argument("--no-sandbox")
-        opts.add_argument("--disable-gpu")
-
-        driver = webdriver.Chrome(options=opts)
-        driver.get(url)
-
-        wait = WebDriverWait(driver, 12)
-
-        # 1) chờ có thẻ audio (hoặc đổi selector theo site của bạn)
-        audio = wait.until(EC.presence_of_element_located((By.TAG_NAME, "audio")))
-
-        # 2) tắt âm tuyệt đối cho mọi media trên trang
-        driver.execute_script("""
-        document.querySelectorAll('audio,video').forEach(m => {
-            try { m.muted = true; m.volume = 0.0; } catch(e){}
-        });
-        """)
-
-        # 3) cố lấy duration chỉ với metadata (không play)
-        duration_secs = driver.execute_async_script("""
-        const done = arguments[0];
-        const a = document.querySelector('audio');
-        if (!a) { done(0); return; }
-
-        function finish(){ done(Math.floor(a.duration || 0)); }
-
-        if ((a.readyState >= 1 && a.duration) || !isNaN(a.duration)) { finish(); }
-        else {
-            a.addEventListener('loadedmetadata', () => finish(), {once:true});
-            try { a.load(); } catch(e){}
-            // một số site chặn metadata khi chưa tương tác => fallback play rất ngắn (muted)
-            setTimeout(() => {
-            if (!a.duration || isNaN(a.duration)) {
-                a.play().catch(()=>{});                 // đã muted ở trên nên không nghe thấy
-                setTimeout(() => { try{ a.pause(); }catch(e){} finish(); }, 200);
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
+            headers = {
+                "User-Agent": "Mozilla/5.0"
             }
-            }, 800);
-        }
-        """)
+            resp = requests.get(url, headers=headers)
+            soup = BeautifulSoup(resp.text, "html.parser")
 
-        end_time_mp3 = fmt(duration_secs)
+            article = soup.select_one("div.section_podcast_detail_newver") or soup
 
-        # (tuỳ chọn) nếu bạn vẫn muốn đọc từ ô hiển thị của site:
-        if not end_time_mp3:
-            try:
-                play_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".c-podcast-player__control, .jw-icon-play, .vjs-play-control")))
-                driver.execute_script("arguments[0].click();", play_btn)
-                t = wait.until(lambda d: (d.find_element(By.CSS_SELECTOR, ".c-podcast-player__bar__end, .player__duration, .media-time-count").text.strip()))
-                end_time_mp3 = t.strip()
-                # dừng phát
-                driver.execute_script("document.querySelectorAll('audio,video').forEach(m=>{try{m.pause();}catch(e){}})")
-            except Exception:
-                pass
-        driver.quit()
+            # 1 AUDIO
+            tag = article.find("audio", src=True) or article.find("src", src=True) or article.find("video", src=True)
+            if tag:
+                audio_url = (tag.get("src") or "").strip()
+            else:
+                audio_url = ""
+            # 2 DESCRIPTION
+            s_tag = article.select_one("div.b-grid__desc a")
+            description = s_tag.get_text(strip=True) if s_tag else ""
 
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("span.b-grid__time")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
 
-        
+            # 4AUTHOR
+            a_tag = article.select_one("div.b-grid__author")
+            author = a_tag.get_text(strip=True) if a_tag else ""
+
+            # 5 END TIME (tổng thời lượng)
+            def fmt(sec):
+                if not sec: return ""
+                sec = int(sec)
+                m, s = divmod(sec, 60)
+                h, m = divmod(m, 60)
+                return f"{h:02d}:{m:02d}:{s:02d}" if h else f"{m:02d}:{s:02d}"
+
+            opts = webdriver.ChromeOptions()
+            opts.add_argument("--headless=new")
+            opts.add_argument("--mute-audio")
+            opts.add_argument("--no-sandbox")
+            opts.add_argument("--disable-gpu")
+
+            driver = webdriver.Chrome(options=opts)
+            driver.get(url)
+
+            wait = WebDriverWait(driver, 12)
+
+            # 1) chờ có thẻ audio (hoặc đổi selector theo site của bạn)
+            audio = wait.until(EC.presence_of_element_located((By.TAG_NAME, "audio")))
+
+            # 2) tắt âm tuyệt đối cho mọi media trên trang
+            driver.execute_script("""
+            document.querySelectorAll('audio,video').forEach(m => {
+                try { m.muted = true; m.volume = 0.0; } catch(e){}
+            });
+            """)
+
+            # 3) cố lấy duration chỉ với metadata (không play)
+            duration_secs = driver.execute_async_script("""
+            const done = arguments[0];
+            const a = document.querySelector('audio');
+            if (!a) { done(0); return; }
+
+            function finish(){ done(Math.floor(a.duration || 0)); }
+
+            if ((a.readyState >= 1 && a.duration) || !isNaN(a.duration)) { finish(); }
+            else {
+                a.addEventListener('loadedmetadata', () => finish(), {once:true});
+                try { a.load(); } catch(e){}
+                // một số site chặn metadata khi chưa tương tác => fallback play rất ngắn (muted)
+                setTimeout(() => {
+                if (!a.duration || isNaN(a.duration)) {
+                    a.play().catch(()=>{});                 // đã muted ở trên nên không nghe thấy
+                    setTimeout(() => { try{ a.pause(); }catch(e){} finish(); }, 200);
+                }
+                }, 800);
+            }
+            """)
+
+            end_time_mp3 = fmt(duration_secs)
+
+            # (tuỳ chọn) nếu bạn vẫn muốn đọc từ ô hiển thị của site:
+            if not end_time_mp3:
+                try:
+                    play_btn = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, ".c-podcast-player__control, .jw-icon-play, .vjs-play-control")))
+                    driver.execute_script("arguments[0].click();", play_btn)
+                    t = wait.until(lambda d: (d.find_element(By.CSS_SELECTOR, ".c-podcast-player__bar__end, .player__duration, .media-time-count").text.strip()))
+                    end_time_mp3 = t.strip()
+                    # dừng phát
+                    driver.execute_script("document.querySelectorAll('audio,video').forEach(m=>{try{m.pause();}catch(e){}})")
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate":"",
+            }
+        finally:
+            if driver:
+                driver.quit()
+
         return {
             "audio_url": audio_url,
-            "description": description,
-            "author": author,
-            "duration": end_time_mp3,
-            "publishedDate": publishedDate,
+            "description": content_url,
+            "author": author_url,
+            "duration": end_time_mp3_url,
+            "publishedDate": datetime_url
         }
+
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

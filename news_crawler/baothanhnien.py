@@ -162,6 +162,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             99: "tieu-dung-thong-minh/o-dau-re",
             100: "tieu-dung-thong-minh/goc-nguoi-tieu-dung",
         }
+    
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -294,6 +295,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             info.get("infor_copyright", ""),
             info.get("logo", "")
         )
+    
     def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -384,6 +386,7 @@ class BaoThanhNienCrawler(BaseCrawler):
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, []
+    
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
         # --- Phase 2: lấy footer bằng Selenium ---
@@ -589,83 +592,97 @@ class BaoThanhNienCrawler(BaseCrawler):
         return all_articles
     
     def get_audio_from_article(self, url):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-
-        driver = webdriver.Chrome(options=chrome_options)
-        driver.get(url)
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
-        resp = requests.get(url, headers=headers)
-        soup = BeautifulSoup(resp.text, "html.parser")
-
-        article = soup.select_one("div.detail__video-section") or soup
-        # 1 AUDIO
-        audio_url = ""
+        driver = None
         try:
-            # đợi có thẻ audio xuất hiện
-            audio_el = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "audio"))
-            )
-            # 1) audio có src trực tiếp
-            audio_url = (audio_el.get_attribute("src") or "").strip()
-            # 2) fallback: audio > source[src]
-            if not audio_url:
-                try:
-                    src_el = audio_el.find_element(By.CSS_SELECTOR, "source[src]")
-                    audio_url = (src_el.get_attribute("src") or "").strip()
-                except Exception:
-                    pass
-        except Exception:
+
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.get(url)
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+            resp = requests.get(url, headers=headers)
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            article = soup.select_one("div.detail__video-section") or soup
+            # 1 AUDIO
             audio_url = ""
- 
-        # 2 DESCRIPTION
-        s_tag = article.select_one("h2.detail-sapo")
-        description = s_tag.get_text(strip=True) if s_tag else ""
-
-        # 3PUBLISHED DATE
-        t_tag = article.select_one("div.detail-time div")
-        time_text = t_tag.get_text(strip=True) if t_tag else ""
-        publishedDate = parse_vnexpress_time_ms(time_text)
-
-        # 4AUTHOR
-        author = ""
-        # CATEGORY
-        category = [a.get("title", "").strip() for a in soup.select("div.detail-cate a[title]")]
-
-        # 5 END TIME (tổng thời lượng)
-        end_time_mp3 = ""
-        try:
-            # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
-            WebDriverWait(driver, 10).until(
-                lambda d: len(d.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")) >= 2
-            )
-
-            spans = driver.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")
-            if len(spans) >= 2:
-                # Đợi cho span thứ 2 khác 00:00
-                WebDriverWait(driver, 10).until(
-                    lambda d: spans[1].text.strip() != "00:00"
+            try:
+                # đợi có thẻ audio xuất hiện
+                audio_el = WebDriverWait(driver, 15).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "audio"))
                 )
-                end_time_mp3 = spans[1].text.strip()
-        except Exception as e:
+                # 1) audio có src trực tiếp
+                audio_url = (audio_el.get_attribute("src") or "").strip()
+                # 2) fallback: audio > source[src]
+                if not audio_url:
+                    try:
+                        src_el = audio_el.find_element(By.CSS_SELECTOR, "source[src]")
+                        audio_url = (src_el.get_attribute("src") or "").strip()
+                    except Exception:
+                        pass
+            except Exception:
+                audio_url = ""
+    
+            # 2 DESCRIPTION
+            s_tag = article.select_one("h2.detail-sapo")
+            description = s_tag.get_text(strip=True) if s_tag else ""
+
+            # 3PUBLISHED DATE
+            t_tag = article.select_one("div.detail-time div")
+            time_text = t_tag.get_text(strip=True) if t_tag else ""
+            publishedDate = parse_vnexpress_time_ms(time_text)
+
+            # 4AUTHOR
+            author = ""
+            # CATEGORY
+            category = [a.get("title", "").strip() for a in soup.select("div.detail-cate a[title]")]
+
+            # 5 END TIME (tổng thời lượng)
             end_time_mp3 = ""
-        driver.quit()
+            try:
+                # Đợi có ít nhất 2 thẻ span.afp-duration xuất hiện
+                WebDriverWait(driver, 10).until(
+                    lambda d: len(d.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")) >= 2
+                )
+
+                spans = driver.find_elements(By.CSS_SELECTOR, "div.audioPodcastPlayer-time ")
+                if len(spans) >= 2:
+                    # Đợi cho span thứ 2 khác 00:00
+                    WebDriverWait(driver, 10).until(
+                        lambda d: spans[1].text.strip() != "00:00"
+                    )
+                    end_time_mp3 = spans[1].text.strip()
+            except Exception as e:
+                end_time_mp3 = ""
+        except Exception as e:
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate":"",
+            }
+
+        finally:
+            if driver:
+                driver.quit()
 
         return {
             "audio_url": audio_url,
-            "description": description,
-            "author": author,
-            "duration": end_time_mp3,
-            "publishedDate": publishedDate,
-            "category" : category
+            "description": content_url,
+            "author": author_url,
+            "duration": end_time_mp3_url,
+            "publishedDate": datetime_url
         }
 
     def crawl_podcast_bs4(self, category_url: str):

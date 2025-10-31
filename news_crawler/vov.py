@@ -478,16 +478,7 @@ class VovCrawler(BaseCrawler):
             duration_tag = article.select("span.duration")
             if duration_tag:
                 end_time_mp3_url = duration_tag[-1].get_text(strip=True)
-            
-            driver.quit()
 
-            return {
-                "audio_url": audio_url,
-                "description": description,
-                "author": author,
-                "duration": end_time_mp3_url,
-                "publishedDate": publishedDate,
-            }
         except Exception as e:
             print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
             return {
@@ -497,6 +488,19 @@ class VovCrawler(BaseCrawler):
                 "duration": "",
                 "publishedDate":"",
             }
+
+        finally:
+            if driver:
+                driver.quit()
+
+        return {
+            "audio_url": audio_url,
+            "description": description,
+            "author": author,
+            "duration": end_time_mp3_url,
+            "publishedDate": publishedDate,
+        }
+
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

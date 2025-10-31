@@ -513,6 +513,7 @@ class BaoVanHoaCrawler(BaseCrawler):
         return all_articles
 
     def get_audio_from_article(self, url):
+        driver = None
         try:
             chrome_options = Options()
             chrome_options.add_argument("--headless=new")
@@ -552,23 +553,27 @@ class BaoVanHoaCrawler(BaseCrawler):
 
             duration_tag = article.select_one("span.shk-time_duration")
             end_time_mp3_url = duration_tag.get_text(strip=True) if duration_tag else ""
-
-            return {
-                "audio_url": audio_url,
-                "description": content_url,
-                "author": author_url,
-                "duration": end_time_mp3_url,
-                "publishedDate": datetime_url
-            }
         except Exception as e:
-                print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
-                return {
-                    "audio_url": "",
-                    "description": "",
-                    "author": "",
-                    "duration": "",
-                    "publishedDate":"",
-                }
+            print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
+            return {
+                "audio_url": "",
+                "description": "",
+                "author": "",
+                "duration": "",
+                "publishedDate":"",
+            }
+
+        finally:
+            if driver:
+                driver.quit()
+
+        return {
+            "audio_url": audio_url,
+            "description": content_url,
+            "author": author_url,
+            "duration": end_time_mp3_url,
+            "publishedDate": datetime_url
+        }
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

@@ -152,8 +152,25 @@ def process_crawl(data: Dict[str, Any]):
     if input_data.startswith("http://") or input_data.startswith("https://"):
         domain = extract_main_domain(input_data)
         crawler = _create_crawler(domain)
+
         if not crawler:
-            raise ValueError(f"Không hỗ trợ crawler cho domain: {domain}")
+            print(f"[INFO] Không có crawler cho {domain}, thử nhận diện CMS...")
+            cms_info = detect_cms(input_data)
+            cms = cms_info.get("cms")
+            print(f"[INFO] CMS detect: {cms}")
+
+            if cms == "WordPress":
+                from news_crawler.cms.wordpress import WordPressCrawler
+                crawler = WordPressCrawler(input_data, proxy_session)
+            elif cms == "Blogger":
+                from news_crawler.cms.blogger import BloggerCrawler
+                crawler = BloggerCrawler(input_data, proxy_session)
+            elif cms == "Joomla":
+                from news_crawler.cms.joomla import JoomlaCrawler
+                crawler = JoomlaCrawler(input_data, proxy_session)
+            else:
+                raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
+
 
         response = {
             "status": "success",
@@ -259,6 +276,57 @@ def process_crawl(data: Dict[str, Any]):
                 continue
 
         return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
+
+def detect_cms(url):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+
+    try:
+        r = requests.get(url, headers=headers, timeout=10)
+        html = r.text.lower()
+    except Exception as e:
+        return {"url": url, "cms": None, "error": str(e)}
+
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    # --- Lấy tất cả meta name="generator" (không phân biệt hoa/thường) ---
+    generators = [
+        tag.get("content", "").lower()
+        for tag in soup.find_all("meta")
+        if tag.get("name", "").lower() == "generator"
+    ]
+    generator_text = " ".join(generators)
+
+    # --- Heuristic nhận diện CMS ---
+    if "wp-content" in html or "/wp-json" in html or "wordpress" in generator_text:
+        return {"url": url, "cms": "WordPress"}
+    if "joomla" in html or "joomla" in generator_text:
+        return {"url": url, "cms": "Joomla"}
+    if "drupal" in html or "drupal" in generator_text:
+        return {"url": url, "cms": "Drupal"}
+    if "ghost" in html or "ghost" in generator_text:
+        return {"url": url, "cms": "Ghost"}
+    if "blogger" in html or "blogspot" in r.url:
+        return {"url": url, "cms": "Blogger"}
+
+    # --- Kiểm tra endpoint đặc trưng ---
+    from urllib.parse import urljoin
+    for candidate, cms in [
+        ("/wp-json/", "WordPress"),
+        ("/administrator/", "Joomla"),
+        ("/ghost/api/content/posts/", "Ghost"),
+        ("/sites/default/files/", "Drupal")
+    ]:
+        test_url = urljoin(url, candidate)
+        try:
+            resp = requests.head(test_url, headers=headers, timeout=5)
+            if resp.status_code in (200, 403):
+                return {"url": url, "cms": cms}
+        except Exception:
+            pass
+
+    return {"url": url, "cms": None}
 
 def build_search_url(domain, keyword):
     if domain in SEARCH_URL_BUILDERS:

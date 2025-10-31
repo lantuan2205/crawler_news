@@ -465,6 +465,7 @@ class DaiDoanKetCrawler(BaseCrawler):
 
         return all_articles
     def get_audio_from_article(self, url):
+        driver = None
         try:
             chrome_options = Options()
             chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
@@ -501,16 +502,6 @@ class DaiDoanKetCrawler(BaseCrawler):
             if duration_tag:
                 end_time_mp3_url = duration_tag[-1].get_text(strip=True)
 
-            driver.quit()
-
-            return {
-                "title" : title,
-                "audio_url": audio_url,
-                "description": description,
-                "author": author,
-                "duration": end_time_mp3_url,
-                "publishedDate": publishedDate,
-            }
         except Exception as e:
             print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
             return {
@@ -520,6 +511,18 @@ class DaiDoanKetCrawler(BaseCrawler):
                 "duration": "",
                 "publishedDate":"",
             }
+
+        finally:
+            if driver:
+                driver.quit()
+
+        return {
+            "audio_url": audio_url,
+            "description": content_url,
+            "author": author_url,
+            "duration": end_time_mp3_url,
+            "publishedDate": datetime_url
+        }
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

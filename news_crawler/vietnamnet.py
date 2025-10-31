@@ -564,6 +564,7 @@ class VietNamNetCrawler(BaseCrawler):
         return all_urls
 
     def get_audio_from_article(self, url):
+        driver = None
         try:
             chrome_options = Options()
             chrome_options.add_argument("--headless=new")
@@ -609,13 +610,6 @@ class VietNamNetCrawler(BaseCrawler):
             except Exception as e:
                 print("⚠️ Không lấy được end_time_mp3:")
                 end_time_mp3_url= ""
-            driver.quit()
-            return {
-                "description": description,
-                "author": author,
-                "duration": time_to_seconds(end_time_mp3_url),
-                "publishedDate": publishedDate
-            }         
         except Exception as e:
             print(f"❌ Lỗi trong quá trình crawl {url}: {e}")
             # trả dict rỗng để crawler vẫn tiếp tục
@@ -625,6 +619,18 @@ class VietNamNetCrawler(BaseCrawler):
                 "duration": "",
                 "publishedDate": "",
             }
+
+        finally:
+            if driver:
+                driver.quit()
+
+        return {
+            "description": description,
+            "author": author,
+            "duration": time_to_seconds(end_time_mp3_url),
+            "publishedDate": publishedDate
+        }         
+
 
     def crawl_podcast_bs4(self, url: str, category: str):
         def build_domain_username( domain, author_url):

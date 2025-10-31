@@ -11,8 +11,10 @@ uvicorn
 #pika
 pytz
 python-multipart
-selenium
-webdriver-manager
+selenium>=4.23.0,<5.0.0
+webdriver-manager>=4.0.0,<5.0.0
+#selenium
+#webdriver-manager
 PyYAML>=5.4
 paramiko
 kafka-python
