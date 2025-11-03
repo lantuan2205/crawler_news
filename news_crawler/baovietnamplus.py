@@ -120,7 +120,7 @@ class BaoVietnamPlusCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1',class_='article__title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("div", class_="article__sapo")
@@ -128,14 +128,14 @@ class BaoVietnamPlusCrawler(BaseCrawler):
                 soup.find("div", class_="article__sapo") or 
                 soup.find('p', class_='t1')
             )
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
 
 
 
             # Trích xuất ngày viết bài
             publish_date = None
             date_tag = soup.find("time", class_='time')
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else ""
 
             content_div = soup.find("div", class_="article__body")
             images = content_div.find_all('img')

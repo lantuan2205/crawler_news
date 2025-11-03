@@ -366,7 +366,7 @@ class VtvCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         last_size = 0
-        max_pages = 2
+        max_pages = 20
         page_count = 0
         wait = WebDriverWait(driver, 10)
 

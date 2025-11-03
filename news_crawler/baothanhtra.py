@@ -58,21 +58,21 @@ class BaoThanhTraCrawler(BaseCrawler):
             # Lấy tên tác giả
             author_div = soup.find("div", class_="flex-shrink-0 font-semibold text-base mr-4")
             # Tìm tác giả từ thẻ <a> (nếu có)
-            author_tag_a = author_div.find("a", title=True) if author_div else None
-            author = author_tag_a.get_text(strip=True) if author_tag_a else None
+            author_tag_a = author_div.find("a", title=True) if author_div else ""
+            author = author_tag_a.get_text(strip=True) if author_tag_a else ""
 
             # Nếu không tìm thấy tác giả từ <a>, thử lấy từ thẻ <p>
             if not author:
-                author_tag_p = author_div.find("p") if author_div else None
-                author = author_tag_p.get_text(strip=True) if author_tag_p else None
+                author_tag_p = author_div.find("p") if author_div else ""
+                author = author_tag_p.get_text(strip=True) if author_tag_p else ""
 
             # Lấy description
             desc_tag = soup.find("p", class_="text-lg text-justify font-semibold mb-4")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
 
             # Trích xuất ngày viết bài
             date_tag = soup.find("p", class_="text-[#707070] text-sm")
-            publish_date = date_tag.get_text(strip=True) if date_tag else None
+            publish_date = date_tag.get_text(strip=True) if date_tag else ""
 
             div_mb4 = soup.find("div", class_="mb-4")
             content_images = []
