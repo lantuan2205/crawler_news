@@ -130,7 +130,7 @@ class DienTuToQuocCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
             container = soup.find("div", class_="header")
             h1_tag = container.find("a.item center") if container else None
-            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else ""
             info["logo"] = logo_src if logo_src else ""
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
@@ -253,7 +253,7 @@ class DienTuToQuocCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1',class_='entry-title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
             # Lấy description
             desc_tag = soup.find("h2", class_="sapo")
             if desc_tag:
@@ -303,7 +303,7 @@ class DienTuToQuocCrawler(BaseCrawler):
                 publish_span = soup.find("span", class_="publishdate")
                 if publish_span:
                     inner_span = publish_span.find("span")
-                    author = inner_span.get_text(strip=True) if inner_span else None
+                    author = inner_span.get_text(strip=True) if inner_span else ""
                 else:
                     author = None
             cate_tag = soup.select_one('a.cat')
@@ -352,7 +352,7 @@ class DienTuToQuocCrawler(BaseCrawler):
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
-            "publishedDate": clean_date(publish_date) if publish_date else None,
+            "publishedDate": clean_date(publish_date) if publish_date else "",
             "author": author,
             "title": title,
             "description": description,
@@ -362,27 +362,32 @@ class DienTuToQuocCrawler(BaseCrawler):
         }
 
         return article_data
+
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--log-level=3")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://toquoc.vn/{article_type}.htm"
         driver.get(page_url)
-        time.sleep(2)
 
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
         wait = WebDriverWait(driver, 10)
-
+        page_count = 0
+        max_pages = 20
         try:
-            while True:
+            while page_count < max_pages:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                time.sleep(2)
+                time.sleep(1)
 
                 # Tìm tất cả bài viết hiện có
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.stream-list ul li.qitem")
@@ -419,7 +424,7 @@ class DienTuToQuocCrawler(BaseCrawler):
                     time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Click nút 'Xem thêm'")
-                    time.sleep(2)
+                    page_count  += 1
                 except Exception:
                     print("✅ Không còn nút 'Xem thêm'. Kết thúc.")
                     break

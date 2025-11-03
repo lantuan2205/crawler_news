@@ -284,9 +284,9 @@ class CongLyCrawler(BaseCrawler):
                 desc_tag = soup.find("div", class_="c-video-detail__desc")
                 description = desc_tag.get_text(strip=True) if desc_tag else ""
             # Trích xuất ngày viết bài
-            publish_date = None
+            publish_date = ""
             date_tag = soup.select_one("span.sc-longform-header-date.block-sc-publish-time") or soup.find("div", class_="c-video-detail__time")
-            publish_date = date_tag.get_text(strip=True) if date_tag else None
+            publish_date = date_tag.get_text(strip=True) if date_tag else ""
 
             for date_tag in soup.find_all("div", class_="c-video-detail__time"):
                 text = date_tag.get_text(strip=True)
@@ -439,18 +439,24 @@ class CongLyCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://congly.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading")
+        max_pages = 20
+        page_count = 0
         try:
-            while True:
+            while page_count < max_pages:
                 # Lấy các bài viết hiện tại
                 articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.b-grid__title a")
                 for article in articles:
@@ -462,7 +468,8 @@ class CongLyCrawler(BaseCrawler):
                     if load_more_button.is_displayed():
                         load_more_button.click()
                         print("🔄 Đã click 'Xem thêm'")
-                        time.sleep(3)
+                        time.sleep(1)
+                        page_count += 1
                     else:
                         break
                 except Exception:
@@ -607,7 +614,6 @@ class CongLyCrawler(BaseCrawler):
             "duration": end_time_mp3_url,
             "publishedDate": datetime_url
         }
-
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

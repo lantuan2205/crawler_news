@@ -113,7 +113,7 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
 
             logo_src = a_tag.get("href").strip() if a_tag and a_tag.has_attr("href") else None
             # (tuỳ chọn) chuyển sang URL tuyệt đối
-            logo_src = urljoin(url, logo_src) if logo_src else None
+            logo_src = urljoin(url, logo_src) if logo_src else ""
 
             info["logo"] = logo_src or ""
         except Exception as e:
@@ -246,7 +246,7 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1',class_='article__title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("h2", class_="article__sapo")
@@ -454,7 +454,7 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://giaoducthoidai.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         last_size = 0  
         wait = WebDriverWait(driver, 10)
@@ -482,15 +482,15 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
                 try:
                     # Kéo xuống một nửa trang
                     driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                    time.sleep(2)
+                    time.sleep(1)
 
                     try:
                         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "button.load-more")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(2)
+                        time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
+                        time.sleep(1)
 
                     except Exception:
                             print("✅ Không còn nút Trang sau. Dừng lại.")

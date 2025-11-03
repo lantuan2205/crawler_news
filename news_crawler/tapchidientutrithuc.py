@@ -194,7 +194,7 @@ class TapChiDienTuTriThucCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://znews.vn/{article_type}.html"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
 
@@ -205,7 +205,7 @@ class TapChiDienTuTriThucCrawler(BaseCrawler):
             while True:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                time.sleep(3)
+                time.sleep(1)
 
                 # Tìm tất cả bài viết hiện có div.px-3.px-sm-0.article-news.mr-lg-0.mr-xl-0.px-xl-0
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.article-list.listing-layout.responsive.infinite-load article.article-item")

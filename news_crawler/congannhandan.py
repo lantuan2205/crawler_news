@@ -105,14 +105,14 @@ class CongAnNhanDanCrawler(BaseCrawler):
         info = {
             "name": url,
             "description": "",
-            "license": None,
-            "editor_in_chief": None,
-            "address": None,
-            "phone": None,
-            "email": None,
-            "infor_copyright": None,
+            "license": "",
+            "editor_in_chief": "",
+            "address": "",
+            "phone": "",
+            "email": "",
+            "infor_copyright": "",
             "jobId": job_id or str(uuid.uuid4()),
-            "logo": None,
+            "logo": "",
         }
 
         # --- Phase 1: lấy logo bằng requests ---
@@ -122,7 +122,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
             container = soup.find("div", class_="logo")
             p_tag = container.find("p") if container else None
-            logo_src = p_tag.find("img")["src"] if p_tag and p_tag.find("img") else None
+            logo_src = p_tag.find("img")["src"] if p_tag and p_tag.find("img") else ""
             info["logo"] = logo_src
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
@@ -277,16 +277,16 @@ class CongAnNhanDanCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1', class_='box-title-detail')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.select_one("div.box-des-detail p")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
 
             # Trích xuất ngày viết bài
-            publish_date = None
+            publish_date = ""
             date_tag = soup.find("div", class_='box-date')
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else ""
 
             # Lấy tất cả các ảnh trong phần tử này
             content_div = soup.find("div", class_="detail-content-body")
@@ -303,7 +303,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_box = soup.find('div', class_='box-author')
             author_tag = author_box.find('strong')
-            author = author_tag.get_text(strip=True).rstrip('-').strip() if author_tag else None
+            author = author_tag.get_text(strip=True).rstrip('-').strip() if author_tag else ""
             location = ""
             categories = ""
             ul = soup.find("ul", class_="uk-breadcrumb")
@@ -533,14 +533,18 @@ class CongAnNhanDanCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://cand.com.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         last_size = 0
         ul_element = driver.find_element(By.CSS_SELECTOR, "div.box-widget-loaded")
@@ -581,7 +585,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
                         next_button.click()
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
+                        time.sleep(1)
 
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")

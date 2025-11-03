@@ -230,6 +230,7 @@ class BaoVePhapLuatCrawler(BaseCrawler):
             info.get("infor_copyright", ""),
             info.get("logo", "")
         )
+
     def extract_content(self, url: str,has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
@@ -243,14 +244,14 @@ class BaoVePhapLuatCrawler(BaseCrawler):
 
             # Trích xuất tiêu đề
             title_tag = soup.find('h1', class_='post-title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Trích xuất ngày viết bài
             date_tag = soup.find('div', class_='lbPublishedDate')
-            publish_date = date_tag.get_text(strip=True) if date_tag else None
+            publish_date = date_tag.get_text(strip=True) if date_tag else ""
 
             desc_tag = soup.find('div', class_='post-summary')
-            description = desc_tag.h2.get_text(strip=True) if desc_tag and desc_tag.h2 else None
+            description = desc_tag.h2.get_text(strip=True) if desc_tag and desc_tag.h2 else ""
 
             content_tag = soup.find('div', class_='noidung')
             content = ''
@@ -269,7 +270,7 @@ class BaoVePhapLuatCrawler(BaseCrawler):
 
             # Lấy tác giả (nằm trong div class="tacgia")
             author_tag = soup.find('div', class_='tacgia')
-            author = author_tag.get_text(strip=True) if author_tag else None
+            author = author_tag.get_text(strip=True) if author_tag else ""
             categories = ""
             box = soup.select_one("div.v3home-block-title span.head")
             if box:

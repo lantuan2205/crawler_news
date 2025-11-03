@@ -185,7 +185,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
             container = soup.find("div", class_="header__top-flex")
             h1_tag = container.find("h1") if container else None
-            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else None
+            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else ""
             info["logo"] = logo_src
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
@@ -309,25 +309,25 @@ class BaoThanhNienCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
 
             # Lấy title
-            title = None
+            title = ""
             title_wrapper = soup.find("h1", class_="detail-title")
             if title_wrapper:
                 span_tag = title_wrapper.find("span", attrs={"data-role": "title"})
                 if span_tag:
-                    title = span_tag.get_text(strip=True) if span_tag else None
+                    title = span_tag.get_text(strip=True) if span_tag else ""
 
             # Lấy description
             desc_tag = soup.find("h2", class_="detail-sapo")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
             
             
             date_tag = soup.select_one("div.detail-time div[data-role='publishdate']")
             if date_tag:
                 raw_text = date_tag.get_text(strip=True)
                 match = re.search(r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}", raw_text)
-                publish_date = match.group(0) if match else None
+                publish_date = match.group(0) if match else ""
             else:
-                publish_date = None
+                publish_date = ""
             # Lấy tất cả các ảnh trong phần tử này
             content_images = []
             content_div = soup.find("div", class_="detail-content afcbc-body")
@@ -355,7 +355,7 @@ class BaoThanhNienCrawler(BaseCrawler):
 
             # Trích xuất tác giả
             author_box = soup.find('a', class_="name")
-            author = author_box.get_text(strip=True).rstrip('-').strip() if author_box else None
+            author = author_box.get_text(strip=True).rstrip('-').strip() if author_box else ""
 
             a = soup.select_one("div.detail-cate a[data-role='cate-name'], div.detail-cate a.category-page_name")
             categories = a.get_text(strip=True) if a else ""
@@ -514,21 +514,27 @@ class BaoThanhNienCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://thanhnien.vn/{article_type}.htm"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         last_size = 0
+        max_pages = 20
+        page_count = 0
         wait = WebDriverWait(driver, 10)
         seen_article_ids = set()  # set theo object id hoặc nội dung text
 
         try:
-            while True:
+            while page_count < max_pages:
                 previous_count = len(seen_links)
 
                 # Scroll 4 lần
@@ -565,11 +571,10 @@ class BaoThanhNienCrawler(BaseCrawler):
                 try:
                     next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.list__viewmore")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(2)
+                    time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click nút 'Trang sau'")
-                    time.sleep(3)
-
+                    page_count += 1
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break

@@ -212,7 +212,7 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
         
         page_url = f"https://doanhnghieptiepthi.vn/{article_type}.htm"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
 
         seen_links = set()
         wait = WebDriverWait(driver, 10)
@@ -225,7 +225,7 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
                 # Scroll 4 lần
                 for i in range(4):
                     driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                    time.sleep(2)
+                    time.sleep(1)
 
                 # Thu thập link bài viết mới
                 articles = driver.find_elements(By.CSS_SELECTOR, "div#loadListData div.box__item-row")
@@ -253,7 +253,7 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
                 try:
                     next_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "a.box__viewmore")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(3)
+                    time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
                     time.sleep(4)
@@ -263,7 +263,7 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
 
                 for i in range(4):
                     driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                    time.sleep(2)
+                    time.sleep(1)
 
         finally:
             driver.quit()

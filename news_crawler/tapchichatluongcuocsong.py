@@ -187,7 +187,7 @@ class TapChiChatLuongCuocSongCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://chatluongvacuocsong.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
 
@@ -198,7 +198,7 @@ class TapChiChatLuongCuocSongCrawler(BaseCrawler):
             while True:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                time.sleep(3)
+                time.sleep(1)
 
                 # Tìm tất cả bài viết hiện có div.px-3.px-sm-0.article-news.mr-lg-0.mr-xl-0.px-xl-0
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.pt-xl-3.mt-2.border-md-top.border-0.border-secondary.pr-lg-4.pr-xl-0.list-body-cat-tp div.article-news")

@@ -57,7 +57,7 @@ def save_articles(articles, seen_links, file_path="articles.txt"):
 def crawl_category(driver, url):
     print(f"🔗 Đang xử lý chuyên mục: {url}")
     driver.get(url)
-    time.sleep(2)
+    time.sleep(1)
 
     seen_links = set()
     ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading")
@@ -73,7 +73,7 @@ def crawl_category(driver, url):
             if load_more_button.is_displayed():
                 load_more_button.click()
                 print("🔄 Đã click 'Xem thêm'")
-                time.sleep(3)
+                time.sleep(1)
             else:
                 break
         except Exception:

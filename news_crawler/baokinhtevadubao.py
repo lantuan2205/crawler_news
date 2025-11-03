@@ -76,11 +76,11 @@ class KinhTeVaDuBaoCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1',class_='post-title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("div", class_="post-desc")
-            description = desc_tag.get_text(strip=True) if desc_tag else None
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
 
             # Trích xuất ngày viết bài
             time_tag = soup.find("span", class_='article-publish-time')
@@ -103,7 +103,7 @@ class KinhTeVaDuBaoCrawler(BaseCrawler):
 
             # Trích xuất tác giả
             author_tag = soup.find("div", class_="post-author")
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else ""
 
             return title, description, content, publish_date, author, content_images
 
@@ -155,7 +155,7 @@ class KinhTeVaDuBaoCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://kinhtevadubao.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         last_size = 0  
         wait = WebDriverWait(driver, 10)
@@ -188,10 +188,10 @@ class KinhTeVaDuBaoCrawler(BaseCrawler):
                 try:
                     next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span.btn-viewmore")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(2)
+                    time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click nút 'Trang sau'")
-                    time.sleep(3)
+                    time.sleep(1)
 
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")

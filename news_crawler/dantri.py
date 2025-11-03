@@ -338,7 +338,7 @@ class DanTriCrawler(BaseCrawler):
                         content_images.append(img["data-src"])
 
             author_tag = soup.find("div", class_="author-name")
-            author = author_tag.get_text(strip=True) if author_tag else None
+            author = author_tag.get_text(strip=True) if author_tag else ""
 
             categories = [
                 a.get_text(strip=True)

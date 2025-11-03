@@ -217,7 +217,7 @@ class TapChiDoanhNghiepVaHoiNhapCrawler(BaseCrawler):
         page_url = f"https://doanhnghiephoinhap.vn/{article_type}&s_cond=&BRSR={page_number}"
         try:
             response = requests.get(page_url, headers=headers, timeout=10)
-            time.sleep(3)
+            time.sleep(1)
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             self.logger.error(f"❌ Lỗi khi tải {page_url}: {e}")

@@ -391,15 +391,14 @@ class VovCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://vov.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         last_size = 0
         page_count = 0
-        max_pages = 5 
+        max_pages = 20
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page_count < max_pages:
 
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.views-content div.taxonomy-content")
 
@@ -418,8 +417,6 @@ class VovCrawler(BaseCrawler):
                     print("✅ Không còn bài mới. Dừng lại.")
                     break
                 last_size = len(seen_links)
-                if page_count >= max_pages:
-                    break
                 try:
                     next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn--read-more")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
@@ -427,7 +424,6 @@ class VovCrawler(BaseCrawler):
                     driver.execute_script("arguments[0].click();", next_button)
                     page_count += 1
                     print("➡️ Đã click nút 'Trang sau'")
-                    time.sleep(1)
 
                 except Exception:
                     print("✅ Không còn nút Trang sau. Dừng lại.")
@@ -508,7 +504,6 @@ class VovCrawler(BaseCrawler):
             "duration": end_time_mp3_url,
             "publishedDate": publishedDate,
         }
-
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):

@@ -249,7 +249,7 @@ class VtvCrawler(BaseCrawler):
             soup = BeautifulSoup(response.content, "html.parser")
             # Lấy title
             title_tag = soup.find('h1', class_='title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("h2", class_="sapo")
@@ -259,12 +259,12 @@ class VtvCrawler(BaseCrawler):
                 split_parts = raw_description.split("-", 1)
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
-                description = None
+                description = ""
 
             # Trích xuất ngày viết bài
             import re
 
-            publish_date = None
+            publish_date = ""
             date_tag = soup.find("p", class_="days")
 
             if date_tag:
@@ -352,46 +352,44 @@ class VtvCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://vtv.vn/{article_type}.htm"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         last_size = 0
+        max_pages = 2
+        page_count = 0
         wait = WebDriverWait(driver, 10)
 
         try:
-            while True:
+            while page_count < max_pages:
                 # Lưu số lượng link trước khi quét
                 previous_count = len(seen_links)
+                articles = driver.find_elements(By.CSS_SELECTOR, "div.box-category-item")
 
-                # Scroll 4 lần
-                # for i in range(4):
-                #     driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                #     time.sleep(1.5)
-
-                # Thu thập link bài viết mới
-                articles = driver.find_elements(By.CSS_SELECTOR, "div.list_news ul li.tlitem")
                 for article in articles:
                     try:
-                        a_tag = article.find_element(By.CSS_SELECTOR, "a")
+                        a_tag = article.find_element(By.CSS_SELECTOR, "a.box-category-link-with-avatar")
                         href = a_tag.get_attribute("href")
                         if href:
                             if href.startswith("/"):
-                                href = urljoin("https://vtv.vn", href)
-                            if href not in seen_links:
-                                seen_links.add(href)
+                                href = urljoin(base_url, href)
+                            seen_links.add(href)
                     except Exception:
                         continue
 
-                # So sánh số lượng link sau khi quét
-                current_count = len(seen_links)
-                new_links_found = current_count - previous_count
-                # Nếu không có link mới → dừng
+                new_links_found = len(seen_links) - previous_count
+
+                # Nếu không còn link mới → dừng
                 if new_links_found == 0:
                     print("✅ Không còn link mới. Kết thúc.")
                     break
@@ -403,11 +401,10 @@ class VtvCrawler(BaseCrawler):
                     time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
-                    time.sleep(2)
                 except Exception as e:
                     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
                     break
-
+                page_count += 1
         finally:
             driver.quit()
 
@@ -478,7 +475,6 @@ class VtvCrawler(BaseCrawler):
             "author": author_url,
             "end_time_mp3": end_time_mp3_url,
         }
-
 
     def crawl_podcast_bs4(self, category_url: str):
         chrome_options = Options()

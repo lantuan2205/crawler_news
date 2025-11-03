@@ -161,7 +161,7 @@ class TapChiThanhTraCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://thanhtravietnam.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         last_size = 0  
         wait = WebDriverWait(driver, 10)
@@ -189,7 +189,7 @@ class TapChiThanhTraCrawler(BaseCrawler):
                 try:
                     # Kéo xuống một nửa trang
                     driver.execute_script("window.scrollBy(0, document.body.scrollHeight/2);")
-                    time.sleep(2)
+                    time.sleep(1)
 
                     # Thử tìm nút "Xem thêm"
                     for attempt in range(2):
@@ -201,13 +201,13 @@ class TapChiThanhTraCrawler(BaseCrawler):
                             time.sleep(1)
                             driver.execute_script("arguments[0].click();", xem_them)
                             print("➡️ Đã click nút 'Xem thêm'")
-                            time.sleep(3)
+                            time.sleep(1)
                             break  # Thành công thì ra khỏi vòng lặp
                         except Exception as e:
                             if attempt == 0:
                                 print("⏬ Không thấy nút sau lần kéo đầu, kéo tiếp...")
                                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight/2);")
-                                time.sleep(2)
+                                time.sleep(1)
                             else:
                                 print("✅ Không còn nút Trang sau hoặc DOM không thay đổi.")
                                 break

@@ -191,7 +191,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
 
         page_url = f"https://thoidai.com.vn/{article_type}&s_cond=&BRSR={page_number}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         last_size = 0
         first_time = True
@@ -242,7 +242,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
                     time.sleep(0.5)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click nút Trang sau")
-                    time.sleep(2)
+                    time.sleep(1)
 
                 except Exception:
                     print("✅ Không còn nút Trang sau. Dừng lại.")

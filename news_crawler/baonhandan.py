@@ -104,7 +104,7 @@ class BaoNhanDanCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1', class_='article__title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             # desc_tag = soup.select_one("div.mota h2")
@@ -115,10 +115,10 @@ class BaoNhanDanCrawler(BaseCrawler):
                 split_parts = raw_description.split("-", 1)
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
-                description = None
+                description = ""
 
             # Trích xuất ngày viết bài
-            publish_date = None
+            publish_date = ""
             date_tag = soup.select_one("div.article__meta time.time")
             if date_tag:
                 raw_text = date_tag.get_text(strip=True)  # VD: "Thứ Ba, ngày 14/01/2025 - 06:01"
@@ -157,7 +157,7 @@ class BaoNhanDanCrawler(BaseCrawler):
 
             # Trích xuất tác giả
             author_box = soup.find('p', class_='name')
-            author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else None
+            author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else ""
 
             return title, description, content, publish_date, author, content_images
 
@@ -203,14 +203,19 @@ class BaoNhanDanCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://nhandan.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         last_size = 0
         seen_article_ids = set()  # set theo object id hoặc nội dung text
@@ -249,7 +254,7 @@ class BaoNhanDanCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
+                        time.sleep(1)
 
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")

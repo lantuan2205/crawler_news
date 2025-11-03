@@ -159,18 +159,18 @@ class BaoDanTocMienNuiCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://dantocmiennui.baotintuc.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
-
+        page_count = 0
+        max_pages = 20
         last_size = 0  
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page_count < max_pages:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                time.sleep(2)
+                time.sleep(1)
 
                 # Tìm tất cả bài viết hiện có
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.content-list article.story")
@@ -206,7 +206,7 @@ class BaoDanTocMienNuiCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
+                        page_count += 1
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break

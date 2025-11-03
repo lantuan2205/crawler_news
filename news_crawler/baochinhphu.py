@@ -82,7 +82,7 @@ class BaoChinhPhuCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1', class_='detail-title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("h2", class_="detail-sapo")
@@ -188,15 +188,18 @@ class BaoChinhPhuCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
-        driver = webdriver.Chrome(options=chrome_options)
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         
         page_url = f"https://baochinhphu.vn/{article_type}.htm"
         driver.get(page_url)
-        time.sleep(2)
 
         seen_links = set()
         wait = WebDriverWait(driver, 10)
@@ -240,7 +243,7 @@ class BaoChinhPhuCrawler(BaseCrawler):
                     time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
-                    time.sleep(2)
+                    time.sleep(1)
                 except Exception as e:
                     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
                     break

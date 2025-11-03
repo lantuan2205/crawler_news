@@ -77,7 +77,7 @@ class BaoDauThauCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1',class_='article__title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("div", class_="article__sapo")
@@ -93,13 +93,13 @@ class BaoDauThauCrawler(BaseCrawler):
                 split_parts = raw_description.split("-", 1)
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
-                description = None
+                description = ""
 
 
             # Trích xuất ngày viết bài
-            publish_date = None
+            publish_date = ""
             date_tag = soup.find("time", class_='time')
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else ""
 
             content_div = soup.find("div", class_="article__body")
             images = content_div.find_all('img')
@@ -127,7 +127,7 @@ class BaoDauThauCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_tag = soup.find(["a","span"], class_=["name","cms-author"])
             # author_tag = soup.find("span", class_="cms-author")
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else ""
 
             return title, description, content, publish_date, author, content_images
 
@@ -160,7 +160,7 @@ class BaoDauThauCrawler(BaseCrawler):
         article_data = {
             "dataSource": "/".join(url.split("/")[:3]),
             "url": url,
-            "publishedDate": clean_date(publish_date) if publish_date else None,
+            "publishedDate": clean_date(publish_date) if publish_date else "",
             "author": author,
             "title": title,
             "description": description,
@@ -179,7 +179,7 @@ class BaoDauThauCrawler(BaseCrawler):
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://baodauthau.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
 
@@ -190,7 +190,7 @@ class BaoDauThauCrawler(BaseCrawler):
             while True:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
-                time.sleep(2)
+                time.sleep(1)
 
                 # Tìm tất cả bài viết hiện có
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.content-list article.story")
@@ -226,7 +226,6 @@ class BaoDauThauCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(3)
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break

@@ -154,7 +154,7 @@ class BaoDienTuDanVietCrawler(BaseCrawler):
 
             # Lấy title
             title_tag = soup.find('h1', class_='detail-title')
-            title = title_tag.get_text(strip=True) if title_tag else None
+            title = title_tag.get_text(strip=True) if title_tag else ""
 
             # Lấy description
             desc_tag = soup.find("div", attrs={"data-role": "sapo"})
@@ -209,7 +209,7 @@ class BaoDienTuDanVietCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_tag = soup.find("span", class_="anots")
             # author_tag = soup.find("span", class_="cms-author")
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
+            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else ""
 
             return title, description, content, publish_date, author, content_images
 
@@ -269,7 +269,7 @@ class BaoDienTuDanVietCrawler(BaseCrawler):
         
         page_url = f"https://danviet.vn/{article_type}"
         driver.get(page_url)
-        time.sleep(2)
+        time.sleep(1)
 
         seen_links = set()
         wait = WebDriverWait(driver, 10)
@@ -305,10 +305,10 @@ class BaoDienTuDanVietCrawler(BaseCrawler):
                 try:
                     next_button = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.readmore")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(2)
+                    time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
-                    time.sleep(3)
+                    time.sleep(1)
                 except Exception as e:
                     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
                     break
