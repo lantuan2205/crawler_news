@@ -212,7 +212,7 @@ class BaoThanhNienCrawler(BaseCrawler):
 
         driver = None
         try:
-                    driver = webdriver.Chrome(options=chrome_options)
+            driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(100)
 
             try:
@@ -407,7 +407,7 @@ class BaoThanhNienCrawler(BaseCrawler):
         chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = None
         try:
-                    driver = webdriver.Chrome(options=chrome_options)
+            driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(60)
 
             try:
@@ -604,7 +604,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--blink-settings=imagesEnabled=false")
 
-                    driver = webdriver.Chrome(options=chrome_options)
+            driver = webdriver.Chrome(options=chrome_options)
             driver.get(url)
             headers = {
                 "User-Agent": "Mozilla/5.0"

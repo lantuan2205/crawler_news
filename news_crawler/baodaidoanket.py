@@ -171,7 +171,7 @@ class DaiDoanKetCrawler(BaseCrawler):
 
         driver = None
         try:
-                    driver = webdriver.Chrome(options=chrome_options)
+            driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(100)
 
             try:

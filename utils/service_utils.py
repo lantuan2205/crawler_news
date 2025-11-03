@@ -20,7 +20,7 @@ import pytz
 from urllib.parse import urlparse
 
 # Cấu hình Kafka
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:9092")
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:29092")
 KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
 KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
 KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
