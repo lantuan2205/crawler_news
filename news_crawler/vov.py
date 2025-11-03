@@ -384,7 +384,6 @@ class VovCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-images")
-        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
@@ -395,6 +394,8 @@ class VovCrawler(BaseCrawler):
         time.sleep(2)
         seen_links = set()
         last_size = 0
+        page_count = 0
+        max_pages = 5 
         try:
             wait = WebDriverWait(driver, 10)
 
@@ -406,7 +407,6 @@ class VovCrawler(BaseCrawler):
                     try:
                         title_link = article.find_element(By.CSS_SELECTOR, "div.article-media > a.vovvn-title.position-relative")
                         href = title_link.get_attribute("href")
-                        # print("🧪 Found link:", href)  # ✅ In ra để debug
                         if href:
                             if href.startswith("/"):
                                 href = urljoin("https://vov.vn", href)
@@ -418,18 +418,20 @@ class VovCrawler(BaseCrawler):
                     print("✅ Không còn bài mới. Dừng lại.")
                     break
                 last_size = len(seen_links)
-
+                if page_count >= max_pages:
+                    break
                 try:
-                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn--read-more")))
-                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
-                        driver.execute_script("arguments[0].click();", next_button)
-                        print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(4)
+                    next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.btn--read-more")))
+                    driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                    time.sleep(1)
+                    driver.execute_script("arguments[0].click();", next_button)
+                    page_count += 1
+                    print("➡️ Đã click nút 'Trang sau'")
+                    time.sleep(1)
 
                 except Exception:
-                        print("✅ Không còn nút Trang sau. Dừng lại.")
-                        break
+                    print("✅ Không còn nút Trang sau. Dừng lại.")
+                    break
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
