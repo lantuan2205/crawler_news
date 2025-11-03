@@ -438,7 +438,6 @@ class DaiDoanKetCrawler(BaseCrawler):
         page_url = f"https://daidoanket.vn/{article_type}"
         driver.get(page_url)
         seen_links = set()
-        ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading")
         max_pages = 20
         page_count = 0
         try:
