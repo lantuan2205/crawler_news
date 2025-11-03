@@ -171,7 +171,7 @@ class DaiDoanKetCrawler(BaseCrawler):
 
         driver = None
         try:
-            driver = webdriver.Chrome(options=chrome_options)
+                    driver = webdriver.Chrome(options=chrome_options)
             driver.set_page_load_timeout(100)
 
             try:
@@ -427,7 +427,7 @@ class DaiDoanKetCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://daidoanket.vn/{article_type}"
         driver.get(page_url)
         time.sleep(2)

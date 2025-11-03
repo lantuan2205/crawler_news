@@ -186,7 +186,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--window-size=1920,1080")
 
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver = webdriver.Chrome(options=chrome_options)
         page_number = (page_number - 1) * 16
 
         page_url = f"https://thoidai.com.vn/{article_type}&s_cond=&BRSR={page_number}"

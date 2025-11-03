@@ -165,7 +165,7 @@ class TapChiLaoDongCongDoanCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
         chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
         chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+        driver = webdriver.Chrome(options=chrome_options)
         page_number = (page_number - 1) * 14
 
         page_url = f"https://laodongcongdoan.vn/{article_type}&s_cond=&BRSR={page_number}"
