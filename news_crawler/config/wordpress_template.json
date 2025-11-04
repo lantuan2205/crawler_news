@@ -1,0 +1,55 @@
+{
+    "profile": {
+      "name":  ["h1"],
+      "description":  ["div.descriptionwrapper p.description span","p.description span"],
+      "license":  ["div.art-footer-default p"],
+      "editor_in_chief":  ["div.widget.Attribution div.widget-content a", "div.widget-content a[href*='theme']"],
+      "address":  [],
+      "phone":  [],
+      "email":  ["a[href^='mailto']"],
+      "infor_copyright":  ["div#Attribution1 div.widget-content", "div.widget-content div.addthis_toolbox", "div#credit div.left", "footer div.left","footer.art-footer div.art-footer-default p"],
+      "jobId": [],
+      "logo":  ["div#header-inner img","a#Header1_headerimg img","div.Header img", "div#header-inner","div.Header-inner","div.widget.Profile img.profile-img"]
+    },
+    "article_data": {
+      "dataSource": [],
+      "title": ["h3.post-title","h2.post-title", "h2.art-postheader", "h1.entry-title"],
+      "url": [],
+      "author": ["span b span","b span", "span span span","a b span span span b", "b i span", "b i a", "strong font"],
+      "authorId": [],
+      "publishedDate": ["h2.date-header", "time.published", "p.MsoNoSpacing span", "abbr.published", "div.postmeta-primary span.meta_date"],
+      "description": [],
+      "content": ["div.post-body"],
+      "contentImageUrls": [],
+      "categories": ["a[rel='tag']", "div.post-labels a"],
+      "thumbnailUrl": [],
+      "location": [],
+      "videoUrl": []
+    },
+    "article_list": {
+      "articleUrl": [
+        "h3.post-title a",
+        "h2.post-title a",
+        "h1.post-title a",
+        "article h2 a",
+        "article header a",
+        "div.post h3 a",
+        "div.post-title a",
+        "div.entry-title a",
+        "div.blog-posts h3 a",
+        "div.post-body a[href*='blogspot.com/20']",
+        "div.post-body a[href*='/20']",
+        "div.post-body a[href*='wordpress.com/20']",
+        "div.content a[href*='/20']",
+        "div.main-content a[href*='/20']"
+      ],
+      "nextPage": [
+        "a.blog-pager-older-link",
+        "a.older-link",
+        "a.next",
+        "a.nextpostslink",
+        "a[rel='next']"
+      ]
+    }
+  }
+  

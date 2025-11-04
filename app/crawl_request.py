@@ -16,6 +16,8 @@ import os
 import signal
 import sys
 import uuid
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
 
 try:
     from app.server import start_background_server
@@ -162,12 +164,15 @@ def process_crawl(data: Dict[str, Any]):
             if cms == "WordPress":
                 from news_crawler.cms.wordpress import WordPressCrawler
                 crawler = WordPressCrawler(input_data, proxy_session)
+                return
             elif cms == "Blogger":
                 from news_crawler.cms.blogger import BloggerCrawler
                 crawler = BloggerCrawler(input_data, proxy_session)
+                return
             elif cms == "Joomla":
                 from news_crawler.cms.joomla import JoomlaCrawler
                 crawler = JoomlaCrawler(input_data, proxy_session)
+                return
             else:
                 raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
 
@@ -278,55 +283,118 @@ def process_crawl(data: Dict[str, Any]):
         return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
 
 def detect_cms(url):
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        )
     }
 
+    url = url.strip()
+    if not re.match(r"^https?://", url):
+        url = "https://" + url
+
+    parsed = urlparse(url)
+    if not parsed.netloc:
+        return {"url": url, "cms": None, "error": "Invalid URL"}
+
+    hostname = parsed.netloc.lower()
+
+    if ".wordpress.com" in hostname:
+        return {"url": url, "cms": "WordPress", "error": None}
+    if ".blogspot." in hostname:
+        return {"url": url, "cms": "Blogger", "error": None}
+
+    html = None
+    error_msg = None
+
     try:
-        r = requests.get(url, headers=headers, timeout=10)
-        html = r.text.lower()
+        r = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+        html = r.text
     except Exception as e:
-        return {"url": url, "cms": None, "error": str(e)}
+        error_msg = f"Requests error: {e}"
 
-    soup = BeautifulSoup(r.text, "html.parser")
-
-    # --- Lấy tất cả meta name="generator" (không phân biệt hoa/thường) ---
-    generators = [
-        tag.get("content", "").lower()
-        for tag in soup.find_all("meta")
-        if tag.get("name", "").lower() == "generator"
-    ]
-    generator_text = " ".join(generators)
-
-    # --- Heuristic nhận diện CMS ---
-    if "wp-content" in html or "/wp-json" in html or "wordpress" in generator_text:
-        return {"url": url, "cms": "WordPress"}
-    if "joomla" in html or "joomla" in generator_text:
-        return {"url": url, "cms": "Joomla"}
-    if "drupal" in html or "drupal" in generator_text:
-        return {"url": url, "cms": "Drupal"}
-    if "ghost" in html or "ghost" in generator_text:
-        return {"url": url, "cms": "Ghost"}
-    if "blogger" in html or "blogspot" in r.url:
-        return {"url": url, "cms": "Blogger"}
-
-    # --- Kiểm tra endpoint đặc trưng ---
-    from urllib.parse import urljoin
-    for candidate, cms in [
-        ("/wp-json/", "WordPress"),
-        ("/administrator/", "Joomla"),
-        ("/ghost/api/content/posts/", "Ghost"),
-        ("/sites/default/files/", "Drupal")
-    ]:
-        test_url = urljoin(url, candidate)
+    created_driver = False
+    if not html:
         try:
-            resp = requests.head(test_url, headers=headers, timeout=5)
-            if resp.status_code in (200, 403):
-                return {"url": url, "cms": cms}
-        except Exception:
-            pass
+            chrome_options = Options()
+            chrome_options.add_argument("--headless=new")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-images")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--disable-popup-blocking")
+            chrome_options.add_argument("--disable-notifications")
+            chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+            chrome_options.add_experimental_option(
+                "prefs",
+                {
+                    "profile.managed_default_content_settings.images": 2,
+                    "profile.managed_default_content_settings.javascript": 1,
+                }
+            )
+            chrome_options.set_capability("pageLoadStrategy", "eager")
+            driver = webdriver.Chrome(options=chrome_options)
+            created_driver = True
 
-    return {"url": url, "cms": None}
+            driver.get(url)
+            html = driver.page_source
+        except Exception as e:
+            if created_driver:
+                driver.quit()
+            return {"url": url, "cms": None, "error": f"Selenium error: {e}"}
+        finally:
+            if created_driver:
+                driver.quit()
+
+    if not html:
+        return {"url": url, "cms": None, "error": error_msg or "No HTML fetched"}
+
+    html_lower = html.lower()
+    soup = BeautifulSoup(html, "html.parser")
+
+    generator_text = " ".join(
+        tag.get("content", "").lower()
+        for tag in soup.find_all("meta", attrs={"name": "generator"})
+    )
+
+    if any(x in html_lower or x in generator_text for x in ["wp-content", "wordpress", "/wp-json"]):
+        return {"url": url, "cms": "WordPress", "error": None}
+    if "blogger" in html_lower or "blogger" in generator_text:
+        return {"url": url, "cms": "Blogger", "error": None}
+    if "joomla" in html_lower or "joomla" in generator_text:
+        return {"url": url, "cms": "Joomla", "error": None}
+    if "drupal" in html_lower or "data-drupal-selector" in html_lower:
+        return {"url": url, "cms": "Drupal", "error": None}
+    if "ghost" in html_lower or "ghost" in generator_text:
+        return {"url": url, "cms": "Ghost", "error": None}
+    if "cdn.shopify.com" in html_lower:
+        return {"url": url, "cms": "Shopify", "error": None}
+    if "wixstatic.com" in html_lower:
+        return {"url": url, "cms": "Wix", "error": None}
+    if "squarespace.com" in html_lower:
+        return {"url": url, "cms": "Squarespace", "error": None}
+
+    cms_endpoints = {
+        "WordPress": "/wp-json/",
+        "Joomla": "/administrator/",
+        "Ghost": "/ghost/api/content/posts/",
+        "Drupal": "/sites/default/files/",
+    }
+
+    for cms, path in cms_endpoints.items():
+        try:
+            resp = requests.head(urljoin(url, path), headers=headers, timeout=5, allow_redirects=True)
+            if resp.status_code in (200, 403):
+                return {"url": url, "cms": cms, "error": None}
+        except Exception:
+            continue
+
+    return {"url": url, "cms": None, "error": None}
 
 def build_search_url(domain, keyword):
     if domain in SEARCH_URL_BUILDERS:

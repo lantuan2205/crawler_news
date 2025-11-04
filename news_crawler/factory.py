@@ -186,7 +186,7 @@ def get_crawler(webname, **kwargs):
     print(f"📦 Danh sách key hợp lệ: {list(WEBNAMES.keys())}")
 
     if webname not in WEBNAMES:
-        raise KeyError(f"❌ Không tìm thấy key '{webname}' trong WEBNAMES.")
+        return None
 
     # Kiểm tra và xử lý proxy session
     proxy_session = kwargs.get('proxy_session')
