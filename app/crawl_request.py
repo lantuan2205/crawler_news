@@ -432,13 +432,18 @@ def get_article_details(crawler, url: str, link, has_video, proxy_session=None, 
         clean_url = url_image.split('?')[0]
         filename = Path(clean_url).name
         photoInfos[filename] = url_image
-
+    author_clean = (author or "").strip().replace(" ", "")
+    if author_clean:
+        author_id = f"{extract_main_domain(url)}_{author_clean}"
+    else:
+        author_id = ""
+    
     article_data = {
         "dataSource": normalize_url_to_root_https(url),
         "title": title,
         "url": url,
         "author": author,
-        "authorId": f"{extract_main_domain(url)}_{author.replace(' ', '')}",
+        "authorId": author_clean,
         "publishedDate": clean_date(published_date),
         "description": description,
         "content": content,
