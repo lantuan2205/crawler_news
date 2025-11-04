@@ -488,16 +488,18 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
             crawler.proxies = proxy_session.proxies
             print(f"[INFO] Đã cập nhật proxies của crawler")
 
-    try:
-        comments = crawler.extract_comment(url)
-    except Exception as e:
-        print(f"Lỗi khi lấy nội dung bài báo: {e}")
-        return None
-    for comment in comments:
-        send_comment_article_to_kafka(comment)
-        time.sleep(0.2)
-    if link:
-        return comments
+    if hasattr(crawler, "extract_comment"):
+        try:
+            comments = crawler.extract_comment(url)
+        except Exception as e:
+            print(f"Lỗi khi lấy nội dung bài báo: {e}")
+            return None
+
+        for comment in comments:
+            send_comment_article_to_kafka(comment)
+            time.sleep(0.2)
+        if link:
+            return comments
 
 def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
