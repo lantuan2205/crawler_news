@@ -1,4 +1,5 @@
 import requests, re
+import logging
 import sys
 from pathlib import Path
 import time
@@ -435,50 +436,61 @@ class DaiDoanKetCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--window-size=1920,1080")
         driver = webdriver.Chrome(options=chrome_options)
-        page_url = f"https://daidoanket.vn/{article_type}"
+        page_url = f"{self.base_url}{article_type}.html"
         driver.get(page_url)
         seen_links = set()
         max_pages = 20
         page_count = 0
         try:
             while page_count < max_pages:
-                # 1️⃣ Chờ danh sách bài viết
                 try:
-                    container = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "#latest-articles"))
-                    )
-                except Exception:
-                    print("❌ Không tìm thấy danh sách bài viết (#latest-articles).")
-                    break
+                    logging.debug("⏳ Đang đợi phần tử #latest-articles xuất hiện...")
+                    wait = WebDriverWait(driver, 15)
+                    wait.until(EC.presence_of_element_located((By.ID, "latest-articles")))
+                    logging.debug("✅ Phần tử #latest-articles đã xuất hiện.")
+                except Exception as e:
+                    logging.error(f"❌ Lỗi khi chờ load trang: {e}")
+                    driver.quit()
+                    return []
 
+                try:
+                    logging.debug("🔍 Đang tìm tất cả thẻ <a> trong #latest-articles...")
+                    articles = driver.find_elements(By.CSS_SELECTOR, "#latest-articles article h2 a")
+                    logging.info(f"📄 Tìm thấy {len(articles)} bài viết.")
+                except Exception as e:
+                    logging.error(f"❌ Lỗi khi tìm thẻ a: {e}")
+                    driver.quit()
                 # 2️⃣ Lấy link các bài trong danh sách
-                articles = container.find_elements(By.CSS_SELECTOR, "article h2 a")
+                # articles = driver.find_elements(By.CSS_SELECTOR, "#latest-articles article h2 a")
                 before_count = len(seen_links)
 
                 for a_tag in articles:
                     href = a_tag.get_attribute("href")
-                    if href and not href.startswith("http"):
-                        href = "https://daidoanket.vn" + href
-                    seen_links.add(href)
+                    if href:
+                        if not href.startswith("http"):
+                            href = "https://daidoanket.vn" + href
+                        seen_links.add(href)
 
-                print(f"📄 Trang {page_count+1}: tổng {len(seen_links)} link")
+                print(f"📄 Trang {page_count + 1}: tổng {len(seen_links)} link")
 
-                # 3️⃣ Tìm nút "Xem thêm"
+                # 3️⃣ Tìm và click nút "Xem thêm"
                 try:
-                    load_more_btn = driver.find_element(
-                        By.XPATH,
-                        "//button[contains(text(), 'Xem thêm') or @onclick='loadMoreArticles()']"
+                    load_more_btn = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located((
+                            By.XPATH,
+                            "//button[contains(text(), 'Xem thêm') or @onclick='loadMoreArticles()']"
+                        ))
                     )
 
                     if load_more_btn.is_displayed():
                         driver.execute_script("arguments[0].scrollIntoView(true);", load_more_btn)
                         driver.execute_script("arguments[0].click();", load_more_btn)
-                        print(f"🔄 Đã click 'Xem thêm' lần {page_count+1}")
+                        print(f"🔄 Đã click 'Xem thêm' lần {page_count + 1}")
 
-                        # Chờ thêm bài mới (vì JS loadMoreArticles() là async)
+                        # Chờ thêm bài mới (JS async)
                         time.sleep(3)
 
-                        # Nếu không thấy thêm bài mới thì dừng
+                        # Kiểm tra nếu không có thêm bài mới thì dừng
                         if len(seen_links) == before_count:
                             print("⚠️ Không có bài mới được thêm — dừng lại.")
                             break
@@ -487,6 +499,7 @@ class DaiDoanKetCrawler(BaseCrawler):
                     else:
                         print("✅ Hết nút 'Xem thêm'.")
                         break
+
                 except Exception:
                     print("✅ Không tìm thấy hoặc không thể click 'Xem thêm'.")
                     break
