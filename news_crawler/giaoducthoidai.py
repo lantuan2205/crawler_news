@@ -309,7 +309,8 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
                 if ":" in text:
                     location = text.split(":")[0].strip()
             figure = soup.find('figure',class_='video')
-
+            video_url=""
+            thumbnail_url=""
             if figure:
                 # tìm thẻ video hoặc source bên trong để lấy src
                 video_tag = figure.find("video")
@@ -447,20 +448,35 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless 
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://giaoducthoidai.vn/{article_type}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
-        last_size = 0  
+        last_size = 0
+        max_pages = 20
+        page_count = 0
         wait = WebDriverWait(driver, 10)
 
         try:
-            while True:
+            while page_count < max_pages:
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.many-pack article.story")
                 for article in articles:
                     try:
@@ -490,7 +506,7 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(1)
+                        page_count += 1
 
                     except Exception:
                             print("✅ Không còn nút Trang sau. Dừng lại.")

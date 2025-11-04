@@ -333,7 +333,8 @@ class BaoVePhapLuatCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://baovephapluat.vn/{article_type}/p/{page_number}"
-        
+        if page_number == 50:
+            return []
         try:
             response = requests.get(page_url, headers=headers, timeout=10)
             sleep_time = random.uniform(1, 3)

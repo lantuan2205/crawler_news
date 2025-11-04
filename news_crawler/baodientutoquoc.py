@@ -108,6 +108,7 @@ class DienTuToQuocCrawler(BaseCrawler):
             50: "to-quoc-media/ban-tin-phat-thanh",
             51: "to-quoc-media/clip-hot"
         }
+
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -374,6 +375,11 @@ class DienTuToQuocCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://toquoc.vn/{article_type}.htm"
         driver.get(page_url)
