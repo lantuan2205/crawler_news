@@ -3,7 +3,7 @@ import re
 import os
 import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 from pathlib import Path
 from utils.mongodb_utils import save_article, save_image_metadata, save_category
@@ -15,7 +15,6 @@ from io import BytesIO
 import mimetypes
 from kafka import KafkaProducer
 import json
-from datetime import datetime
 import pytz
 from urllib.parse import urlparse
 
@@ -336,7 +335,6 @@ def normalize_url_to_root_https(url: str) -> str:
 
     return f"https://{host}"
 
-
 def parse_vnexpress_time_ms(time_str):
     """
     Chuyển thời gian comment VNExpress sang timestamp milliseconds.
@@ -431,6 +429,53 @@ def parse_vnexpress_time_ms(time_str):
 
 
     return None  # Không parse được
+
+def normalize_tuple_date(input_date):
+    """
+    Chuẩn hóa input date từ tuple/list/chuỗi để clean_date() có thể xử lý.
+    - Hỗ trợ MM/DD/YYYY → DD/MM/YYYY
+    - Tự thêm giờ mặc định ", 00:00 (GMT+7)" nếu chỉ có ngày
+    - Loại bỏ giá trị None hoặc rỗng
+    """
+    import re
+
+    try:
+        # ✅ Nếu là tuple hoặc list → lấy phần tử đầu tiên
+        if isinstance(input_date, (tuple, list)):
+            input_date = input_date[0] if input_date else ""
+
+        # ✅ Nếu None hoặc rỗng → return ""
+        if not input_date or str(input_date).strip().lower() in {"", "none", "null"}:
+            return ""
+
+        # ✅ Chuẩn hóa chuỗi
+        text_date = str(input_date).strip()
+
+        # ✅ Match dạng có dấu "/"
+        match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
+        if match:
+            first, second, year = match.groups()
+            first, second = int(first), int(second)
+
+            # 🧠 Nếu là dạng Mỹ (MM/DD/YYYY) thì đảo lại
+            if first <= 12 and second > 12:
+                first, second = second, first
+
+            text_date = f"{first:02}/{second:02}/{year}"
+
+        # ✅ Nếu chưa có giờ phút → thêm ", 00:00"
+        if not re.search(r"\d{1,2}:\d{2}", text_date):
+            text_date += ", 00:00"
+
+        # ✅ Nếu chưa có timezone → thêm "(GMT+7)"
+        if "(GMT" not in text_date:
+            text_date += " (GMT+7)"
+
+        return text_date
+
+    except Exception as e:
+        print(f"[normalize_tuple_date] Lỗi xử lý: {input_date}, Error: {e}")
+        return ""
 
 def time_to_seconds(time_str: str) -> int:
     if not time_str:

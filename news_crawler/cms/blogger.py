@@ -16,7 +16,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException, WebDriverException
-
+from utils.service_utils import save_to_json, normalize_tuple_date
 import time
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.support.ui import WebDriverWait
@@ -45,7 +45,6 @@ class BloggerCrawler:
 
         with open(template_full_path, "r", encoding="utf-8") as f:
             self.template = json.load(f)
-
 
     def _init_driver(self):
         """Khởi tạo Selenium driver khi cần"""
@@ -132,15 +131,24 @@ class BloggerCrawler:
                     urls.add(el.get_text(strip=True))
         return list(urls)
 
-    def _validate_logo_url(self, value):
-        """Kiểm tra nếu logo hợp lệ (ảnh) thì giữ lại, ngược lại trả về chuỗi rỗng."""
+    def _validate_logo_url(self, value: str) -> str:
+        """Chỉ giữ lại URL ảnh hợp lệ, bỏ hết text hoặc chuỗi không phải ảnh."""
         if not value:
             return ""
-        value_lower = value.lower()
-        # Các đuôi file hợp lệ
-        valid_exts = [".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp"]
-        if any(ext in value_lower for ext in valid_exts):
+
+        value = value.strip()
+
+        # Regex: chỉ khớp URL ảnh hợp lệ (có đuôi ảnh, có thể kèm query/fragment)
+        image_pattern = re.compile(
+            r'^https?://[^\s]+\.(png|jpg|jpeg|gif|svg|webp)(\?.*)?$',
+            re.IGNORECASE
+        )
+
+        # Chỉ giữ nếu khớp pattern URL ảnh
+        if image_pattern.match(value):
             return value
+
+        # Các trường hợp còn lại (text, slogan, ký tự đặc biệt...) -> bỏ
         return ""
 
     def extract_profile_domain(self, url: str):
@@ -177,7 +185,6 @@ class BloggerCrawler:
         # --- Chuẩn hóa dữ liệu ---
         profile = self._normalize_profile(profile)
         profile = {k: (v if isinstance(v, str) else "" if v is None else str(v)) for k, v in profile.items()}
-        print("✅ Done profile:", json.dumps(profile, ensure_ascii=False, indent=2))
         return (
             profile.get("license", ""),
             profile.get("description", ""),
@@ -188,8 +195,6 @@ class BloggerCrawler:
             profile.get("infor_copyright", ""),
             profile.get("logo", "")
         )
-
-
 
     def _normalize_profile(self, profile):
         """Chuẩn hóa dữ liệu profile: loại bỏ None, strip chuỗi."""
@@ -251,25 +256,38 @@ class BloggerCrawler:
         print(f"✅ Total {len(collected)} article URLs found.")
         return list(collected)
 
-    def get_article_data(self, article_url):
-        soup = self._get_html(article_url)
-        if not soup:
-            return {"url": article_url, "error": "Cannot load article"}
+    def extract_content(self, article_url, has_video):
+        try:
+            soup = self._get_html(article_url)
+            if not soup:
+                return {"url": article_url, "error": "Cannot load article"}
 
-        tpl = self.template.get("article_data", {})
+            tpl = self.template.get("article_data", {})
+            publish_date = self._extract_first(soup, tpl.get("publishedDate", [])),
+            print("---------publish_date-----------", publish_date)
+            title = self._extract_first(soup, tpl.get("title", []))
+            description = self._extract_first(soup, tpl.get("description", []))
+            content = self._extract_first(soup, tpl.get("content", []))
+            published_date = normalize_tuple_date(publish_date) if publish_date else None
+            author = self._extract_first(soup, tpl.get("author", []))
+            content_image_urls = self._extract_all(soup, ["div.post-body img"], attr="src")
+            categories = self._extract_all(soup, tpl.get("categories", []))
+            video_url = self._extract_first(soup, tpl.get("video_url", [])) or None
+            thumbnail_url = self._extract_first(soup, tpl.get("thumbnailUrl", []))
+            location = self._extract_first(soup, tpl.get("location", [])) or None
 
-        article = {
-            "dataSource": self.base_url,
-            "url": article_url,
-            "title": self._extract_first(soup, tpl.get("title", [])),
-            "author": self._extract_first(soup, tpl.get("author", [])),
-            "publishedDate": self._extract_first(soup, tpl.get("publishedDate", [])),
-            "description": self._extract_first(soup, tpl.get("description", [])),
-            "content": self._extract_first(soup, tpl.get("content", [])),
-            "categories": self._extract_all(soup, tpl.get("categories", [])),
-            "contentImageUrls": self._extract_all(soup, ["div.post-body img"], attr="src"),
-            "thumbnailUrl": self._extract_first(soup, tpl.get("thumbnailUrl", [])),
-            "jobId": self.job_id,
-        }
-
-        return article
+            return (
+                title,
+                description,
+                content,
+                published_date,
+                author,
+                content_image_urls,
+                categories,
+                video_url,
+                thumbnail_url,
+                location,
+            )
+        except Exception as e:
+            print(f"❌ Lỗi khi trích xuất bài viết: {e}")
+            return None

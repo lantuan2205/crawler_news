@@ -9,7 +9,7 @@
     "email":  ["a[href^='mailto']"],
     "infor_copyright":  ["div#Attribution1 div.widget-content", "div.widget-content div.addthis_toolbox", "div#credit div.left", "footer div.left","footer.art-footer div.art-footer-default p"],
     "jobId": [],
-    "logo":  ["div#header-inner img","a#Header1_headerimg img","div.Header img", "div#header-inner","div.Header-inner","div.widget.Profile img.profile-img"]
+    "logo":  ["div#header-inner img","a#Header1_headerimg img","div.Header img", "div#header-inner","div.Header-inner","div.widget.Profile", "img.profile-img"]
   },
   "article_data": {
     "dataSource": [],
