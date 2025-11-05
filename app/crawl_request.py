@@ -91,16 +91,35 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
         print(f"[ERROR] Lỗi khi thiết lập proxy: {e}")
         return None
 
-def extract_main_domain(url):
-    match = re.search(r'https?://(?:www\.)?([^/]+)', url)
-    if match:
-        full_domain = match.group(1)
-        main_domain = re.sub(r'(\.com|\.vn|\.net|\.org|\.edu|\.gov|\.co|\.ac|\.info|\.me)', '', full_domain)
-        if '.' in main_domain:
-            main_domain = main_domain.split('.')[-1]
-            
-        return main_domain
-    return None
+
+def extract_main_domain(url: str) -> str | None:
+    parsed = urlparse(url)
+    host = parsed.hostname or ''
+    host = host.lower()
+
+    # --- Special platforms ---
+    if host.endswith('.blogspot.com'):
+        return host.replace('.blogspot.com', '')
+    if host.endswith('.wordpress.com'):
+        return host.replace('.wordpress.com', '')
+    if host.endswith('.medium.com'):
+        return host.replace('.medium.com', '')
+    if host.endswith('.substack.com'):
+        return host.replace('.substack.com', '')
+    if host in ('x.com', 'twitter.com'):
+        path = parsed.path.strip('/')
+        if path.startswith('@'):
+            return path.lstrip('@').split('/')[0]
+
+    # --- Generic domain handler ---
+    parts = host.split('.')
+    # Loại bỏ các hậu tố phổ biến (.com, .vn, .net, .org, .co, .uk, ...)
+    common_tlds = {"com", "vn", "net", "org", "co", "uk", "gov", "edu", "info", "me", "biz", "news"}
+    parts = [p for p in parts if p not in common_tlds]
+
+    if parts:
+        return parts[-1]
+    return host or None
 
 def process_crawl(data: Dict[str, Any]):
     """
@@ -160,14 +179,15 @@ def process_crawl(data: Dict[str, Any]):
             cms_info = detect_cms(input_data)
             cms = cms_info.get("cms")
             print(f"[INFO] CMS detect: {cms}")
-
+            url_cms = re.sub(r"/+$", "", input_data)
             if cms == "WordPress":
                 from news_crawler.cms.wordpress import WordPressCrawler
                 crawler = WordPressCrawler(input_data, proxy_session)
                 return
             elif cms == "Blogger":
                 from news_crawler.cms.blogger import BloggerCrawler
-                crawler = BloggerCrawler(input_data, proxy_session)
+                crawler = BloggerCrawler(input_data, jobId, proxy_session)
+                get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                 return
             elif cms == "Joomla":
                 from news_crawler.cms.joomla import JoomlaCrawler
