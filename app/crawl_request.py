@@ -19,6 +19,9 @@ import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
+
+BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "192.168.161.69:29092")
+
 try:
     from app.server import start_background_server
     start_background_server(port=8111)
@@ -30,7 +33,7 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
     """Thiết lập session với proxy"""
     if not proxy_config:
         print("[INFO] Không có proxy config, trả về session mặc định.")
-        return requests.Session()
+        return requests.Session(), "No proxy config provided"
 
     try:
         username = proxy_config.get("username")
@@ -41,7 +44,7 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
 
         if not all([host, port]):
             print("[WARN] Thiếu thông tin host hoặc port proxy.")
-            return None
+            return None, "Proxy host-port missing"
 
         session = requests.Session()
 
@@ -73,23 +76,21 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
             except ImportError:
                 print("[WARN] Thư viện PySocks không được cài đặt. SOCKS proxy sẽ không hoạt động.")
                 print("[INFO] Cài đặt: pip install PySocks")
-                return None
+                return None, ""
 
         # Test proxy connection
         try:
-            test_response = session.get("http://httpbin.org/ip", timeout=10)
-            if test_response.status_code == 200:
+            r = session.get("http://httpbin.org/ip", timeout=10)
+            if r.status_code == 200:
                 print(f"[INFO] Proxy kết nối thành công: {host}:{port}")
-                return session
-            else:
-                print(f"[WARN] Proxy test failed với status: {test_response.status_code}")
-                return None
+                return session, f"Proxy OK: {host}:{port}"
+            return None, f"Proxy test failed (HTTP {r.status_code}) → {host}:{port}"
         except Exception as e:
             print(f"[WARN] Không thể test proxy: {e}")
-            return None
+            return None, f"Proxy connection failed → {host}:{port} | {str(e)}"
     except Exception as e:
         print(f"[ERROR] Lỗi khi thiết lập proxy: {e}")
-        return None
+        return None, f"Proxy setup error → {str(e)}"
 
 
 def extract_main_domain(url: str) -> str | None:
@@ -157,7 +158,7 @@ def process_crawl(data: Dict[str, Any]):
     # Thiết lập proxy session nếu có
     # Hàm setup_proxy_session() được giả định đã được cập nhật
     # để trả về một requests.Session đã cấu hình proxy.
-    proxy_session = setup_proxy_session(proxy_config)
+    proxy_session, proxy_msg = setup_proxy_session(proxy_config)
 
     if proxy_session:
         print(f"[INFO] Sử dụng proxy: {proxy_config.get('host')}:{proxy_config.get('port')}")
@@ -303,6 +304,7 @@ def process_crawl(data: Dict[str, Any]):
 
             except Exception as e:
                 print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
+                update_status(jobId, "FAIL", "Crawl completed successfully!")
                 continue
 
         return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
@@ -576,6 +578,18 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
     if link:
         return profile_info
 
+def update_status(job_id: str, final_status: str, message: str):
+    api_url = f"{BACKEND_CRAWL_MANAGEMENT_SERVER}/api/crawl-management/keywords/{job_id}/status"
+    params = {"status": final_status,
+              "statusMessage": message}
+
+    try:
+        response = requests.patch(api_url, params=params, timeout=5)
+        response.raise_for_status()
+        print(f"✅ Update status [{final_status}] OK → {response.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Update status [{final_status}] FAIL → {e}")
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Crawl a news article by JSON config")
     parser.add_argument('--conf', required=True, help='JSON config string')
@@ -584,6 +598,7 @@ if __name__ == "__main__":
     # Parse JSON string
     try:
         data = json.loads(args.conf)
+        jobId = data.get("jobId")
     except json.JSONDecodeError as e:
         print(f"❌ Lỗi parse JSON conf: {e}")
         exit(1)
@@ -593,8 +608,10 @@ if __name__ == "__main__":
         result = process_crawl({"message": data})
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
+        update_status(jobId, "SUCCESS", "Crawl completed successfully!")
         pid = 1
         os.kill(pid, signal.SIGTERM)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
+        update_status(jobId, "FAIL", str(e))
         exit(1)

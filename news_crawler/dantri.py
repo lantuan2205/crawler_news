@@ -573,10 +573,11 @@ class DanTriCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://dantri.com.vn/{article_type}/trang-{page_number}.htm"
-        
+        if page_number == 30:
+            return []
         try:
             response = requests.get(page_url, headers=headers, timeout=10)
-            sleep_time = random.uniform(1, 3)
+            sleep_time = random.uniform(1, 2)
             time.sleep(sleep_time)
             response.raise_for_status()  # Kiểm tra nếu request thất bại
         except requests.exceptions.RequestException as e:
