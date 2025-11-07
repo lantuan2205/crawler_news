@@ -598,7 +598,7 @@ if __name__ == "__main__":
     # Parse JSON string
     try:
         data = json.loads(args.conf)
-        jobId = data.get("jobId")
+        jobId = data.get("body", {}).get("jobId")
     except json.JSONDecodeError as e:
         print(f"❌ Lỗi parse JSON conf: {e}")
         exit(1)

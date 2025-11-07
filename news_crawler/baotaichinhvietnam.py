@@ -273,6 +273,8 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
+        if page_number == 100:
+            return []
         page_number = (page_number - 1) * 15
         page_url = f"https://thoibaotaichinhvietnam.vn/{article_type}&s_cond=&BRSR={page_number}"
         
@@ -392,7 +394,6 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
             "duration": end_time_mp3_url,
             "publishedDate": publishedDate,
         }
-
 
     def crawl_podcast_bs4(self, category_url: str):
         def build_domain_username(domain, author_url):
