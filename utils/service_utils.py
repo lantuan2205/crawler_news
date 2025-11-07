@@ -430,51 +430,44 @@ def parse_vnexpress_time_ms(time_str):
 
     return None  # Không parse được
 
-def normalize_tuple_date(input_date):
-    """
-    Chuẩn hóa input date từ tuple/list/chuỗi để clean_date() có thể xử lý.
-    - Hỗ trợ MM/DD/YYYY → DD/MM/YYYY
-    - Tự thêm giờ mặc định ", 00:00 (GMT+7)" nếu chỉ có ngày
-    - Loại bỏ giá trị None hoặc rỗng
-    """
-    import re
 
+def normalize_tuple_date(input_date):
     try:
-        # ✅ Nếu là tuple hoặc list → lấy phần tử đầu tiên
         if isinstance(input_date, (tuple, list)):
             input_date = input_date[0] if input_date else ""
 
-        # ✅ Nếu None hoặc rỗng → return ""
         if not input_date or str(input_date).strip().lower() in {"", "none", "null"}:
             return ""
 
-        # ✅ Chuẩn hóa chuỗi
         text_date = str(input_date).strip()
 
-        # ✅ Match dạng có dấu "/"
-        match = re.match(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
-        if match:
-            first, second, year = match.groups()
-            first, second = int(first), int(second)
+        # 1) Support format: "Chủ Nhật, 5 tháng 5, 2024"
+        match_vn = re.search(r"(\d{1,2})\s*tháng\s*(\d{1,2}),\s*(\d{4})", text_date, re.IGNORECASE)
+        if match_vn:
+            day, month, year = match_vn.groups()
+            text_date = f"{int(day):02}/{int(month):02}/{year}"
 
-            # 🧠 Nếu là dạng Mỹ (MM/DD/YYYY) thì đảo lại
-            if first <= 12 and second > 12:
-                first, second = second, first
+        # 2) Format d/m/yyyy or m/d/yyyy
+        match_slash = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
+        if match_slash:
+            d1, d2, year = match_slash.groups()
+            d1, d2 = int(d1), int(d2)
+            if d1 <= 12 and d2 > 12:  # swap nếu d1 là tháng và d2 là ngày
+                d1, d2 = d2, d1
+            text_date = f"{d1:02}/{d2:02}/{year}"
 
-            text_date = f"{first:02}/{second:02}/{year}"
-
-        # ✅ Nếu chưa có giờ phút → thêm ", 00:00"
+        # 3) Nếu chưa có giờ → thêm mặc định
         if not re.search(r"\d{1,2}:\d{2}", text_date):
-            text_date += ", 00:00"
+            text_date += " 00:00"
 
-        # ✅ Nếu chưa có timezone → thêm "(GMT+7)"
-        if "(GMT" not in text_date:
+        # 4) Nếu chưa có timezone → thêm GMT+7
+        if not re.search(r"GMT|UTC|Z|\+\d{1,2}", text_date, re.IGNORECASE):
             text_date += " (GMT+7)"
 
         return text_date
 
     except Exception as e:
-        print(f"[normalize_tuple_date] Lỗi xử lý: {input_date}, Error: {e}")
+        print(f"[normalize_tuple_date] Error xử lý: {input_date}, Error: {e}")
         return ""
 
 def time_to_seconds(time_str: str) -> int:
