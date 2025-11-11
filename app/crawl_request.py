@@ -143,7 +143,7 @@ def process_crawl(data: Dict[str, Any]):
     crawlId = body.get("crawlId")
     proxy_config = parsed_data.get("proxy")
     data_to_collect = body.get("dataToCollect", [])
-    number_post = body.get("numberPost") or 0
+    number_post = body.get("numberPost") or 50
     number_audio = body.get("numberAudio") or 0
     number_video = body.get("numberVideo") or 0
     has_video = "video" in data_to_collect
@@ -236,11 +236,13 @@ def process_crawl(data: Dict[str, Any]):
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
 
             # Crawl toàn bộ domain
+            stop = False
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
                 urls = crawler.get_all_articles(category)
                 for article_url in urls:
                     if number_post and total_articles_crawled >= number_post:
+                        stop = True
                         break
 
                     if article_url:
@@ -248,10 +250,11 @@ def process_crawl(data: Dict[str, Any]):
                         if "comment" in data_to_collect:
                             get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId)
                         total_articles_crawled += 1
-
-            if "podcast" in data_to_collect:
-                data = crawler.crawl_postcast()
-                return
+                if stop:
+                    break
+            # if "podcast" in data_to_collect:
+            #     data = crawler.crawl_postcast(number_post=10)
+            #     return
 
     # Nếu inputData là một keyword
     else:
