@@ -22,12 +22,12 @@ from urllib.parse import urljoin, urlparse
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "192.168.161.69:29092")
 
-try:
-    from app.server import start_background_server
-    start_background_server(port=8111)
-    print("[INFO] Stop/Health API started on port 8111")
-except Exception as e:
-    print(f"[WARN] Không thể khởi động stop server: {e}")
+# try:
+#     from app.server import start_background_server
+#     start_background_server(port=8111)
+#     print("[INFO] Stop/Health API started on port 8111")
+# except Exception as e:
+#     print(f"[WARN] Không thể khởi động stop server: {e}")
 
 def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
     """Thiết lập session với proxy"""
@@ -304,7 +304,7 @@ def process_crawl(data: Dict[str, Any]):
 
             except Exception as e:
                 print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
-                update_status(jobId, "FAIL", "Crawl completed successfully!")
+                update_status(jobId, "FAIL", f"Lỗi khi crawl {domain}: {e}")
                 continue
 
         return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
@@ -609,9 +609,10 @@ if __name__ == "__main__":
         print("✅ Kết quả crawl:")
         print(json.dumps(result, ensure_ascii=False, indent=2))
         update_status(jobId, "SUCCESS", "Crawl completed successfully!")
-        pid = 1
-        os.kill(pid, signal.SIGTERM)
+        # pid = 1
+        # os.kill(pid, signal.SIGTERM)
+        exit(0)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
-        update_status(jobId, "FAIL", str(e))
+        update_status(jobId, "FAIL", f"Lỗi trong quá trình crawl: {e}")
         exit(1)
