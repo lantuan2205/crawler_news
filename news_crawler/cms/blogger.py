@@ -117,7 +117,7 @@ class BloggerCrawler:
                 text = el.get_text(strip=True)
                 if text:
                     return text
-        return ""
+        return None
 
     def _extract_all(self, soup, selectors, attr=None):
         urls = set()
@@ -172,15 +172,15 @@ class BloggerCrawler:
             "logo": self._validate_logo_url(self._extract_first(soup, profile_tpl.get("logo", []))) or "",
         }
 
-        # --- fallback: nếu quá nhiều trường trống, thử reload bằng Selenium ---
-        missing = sum(1 for v in profile.values() if not v)
-        if missing >= 5:
-            print("[!] Profile thiếu dữ liệu, thử lại với Selenium...")
-            soup = self._get_html(self.base_url)
-            if soup:
-                for key, sel in profile_tpl.items():
-                    if not profile.get(key):
-                        profile[key] = self._extract_first(soup, sel)
+        # # --- fallback: nếu quá nhiều trường trống, thử reload bằng Selenium ---
+        # missing = sum(1 for v in profile.values() if not v)
+        # if missing >= 5:
+        #     print("[!] Profile thiếu dữ liệu, thử lại với Selenium...")
+        #     soup = self._get_html(self.base_url)
+        #     if soup:
+        #         for key, sel in profile_tpl.items():
+        #             if not profile.get(key):
+        #                 profile[key] = self._extract_first(soup, sel)
 
         # --- Chuẩn hóa dữ liệu ---
         profile = self._normalize_profile(profile)
@@ -271,9 +271,9 @@ class BloggerCrawler:
             published_date = normalize_tuple_date(publish_date) if publish_date else None
             author = self._extract_first(soup, tpl.get("author", []))
             content_image_urls = self._extract_all(soup, ["div.post-body img"], attr="src")
-            categories = self._extract_all(soup, tpl.get("categories", []))
+            categories = self._extract_all(soup, tpl.get("categories", [])) or None
             video_url = self._extract_first(soup, tpl.get("video_url", [])) or None
-            thumbnail_url = self._extract_first(soup, tpl.get("thumbnailUrl", []))
+            thumbnail_url = self._extract_first(soup, tpl.get("thumbnailUrl", [])) or None
             location = self._extract_first(soup, tpl.get("location", [])) or None
 
             return (
