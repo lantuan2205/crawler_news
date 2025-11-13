@@ -271,7 +271,8 @@ class BloggerCrawler:
             published_date = normalize_tuple_date(publish_date) if publish_date else None
             author = self._extract_first(soup, tpl.get("author", []))
             content_image_urls = self._extract_all(soup, ["div.post-body img"], attr="src")
-            categories = self._extract_all(soup, tpl.get("categories", [])) or None
+            categories_list = self._extract_all(soup, tpl.get("categories", [])) or []
+            categories = ", ".join(categories_list)
             video_url = self._extract_first(soup, tpl.get("video_url", [])) or None
             thumbnail_url = self._extract_first(soup, tpl.get("thumbnailUrl", [])) or None
             location = self._extract_first(soup, tpl.get("location", [])) or None

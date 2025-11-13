@@ -467,7 +467,8 @@ class WordPressCrawler:
             published_date = normalize_tuple_date(published_date) if published_date else None
             author= self._extract_first(soup, tpl.get("author", [])) or None
             content_image_urls= self._extract_all(soup, ["div.et_pb_row_1_tb_body img","div.entry-content img","div.post-content img", "div.entrytext img","div.entry img"], attr="src") or []
-            categories= self._extract_all(soup, tpl.get("categories", [])) or []
+            categories_list = self._extract_all(soup, tpl.get("categories", [])) or []
+            categories = ", ".join(categories_list)
             video_url = self._extract_first(soup, tpl.get("videoUrl", [])) or None
             thumbnail_url= self._extract_first(soup, tpl.get("thumbnailUrl", [])) or None
             location= self._extract_first(soup, tpl.get("location", [])) or None
