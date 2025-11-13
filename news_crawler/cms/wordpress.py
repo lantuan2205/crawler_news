@@ -171,34 +171,48 @@ class WordPressCrawler:
 
 
     def _extract_first(self, soup, selectors):
-        from soupsieve.util import SelectorSyntaxError  # đi kèm BeautifulSoup
+        from soupsieve.util import SelectorSyntaxError
         for sel in (selectors or []):
             if not sel or not isinstance(sel, str):
                 continue
             sel = sel.strip()
-            if not sel:
-                continue
-            # tránh selector bắt đầu bằng dấu phẩy
-            if sel.startswith(','):
-                print(f"[SEL] skip leading-comma selector: {repr(sel)}", flush=True)
+            if not sel or sel.startswith(','):
                 continue
             try:
                 el = soup.select_one(sel)
             except SelectorSyntaxError as e:
                 print(f"[SEL] bad selector {repr(sel)} → {e}", flush=True)
                 continue
-            if el:
-                # ưu tiên text; nếu không có thì thử attr phổ biến (meta/time/img…)
-                txt = el.get_text(" ", strip=True)
-                if txt:
-                    return txt
-                for attr in ("content","datetime","src","href","value",
-                            "data-src","data-lazy-src","data-original"):
-                    v = el.get(attr)
-                    if v:
-                        v = v.replace("\xa0"," ").strip()
-                        if v:
-                            return v
+            if not el:
+                continue
+
+            # ✅ Ưu tiên: nếu là <a href="mailto:..."> → lấy phần sau "mailto:"
+            if el.name == "a":
+                href = (el.get("href") or "").strip()
+                if href.lower().startswith("mailto:"):
+                    # trả về địa chỉ email, bỏ query nếu có (?subject=…)
+                    return href.split(":", 1)[1].split("?", 1)[0]
+
+            # Sau đó mới fallback: lấy text
+            txt = el.get_text(" ", strip=True)
+            if txt:
+                return txt
+
+            # Cuối cùng: thử các thuộc tính phổ biến
+            for attr in ("content","datetime","src","href","value",
+                        "data-src","data-lazy-src","data-original"):
+                v = el.get(attr)
+                if not v:
+                    continue
+                v = v.replace("\xa0"," ").strip()
+                if attr in ("src","href","data-src","data-lazy-src","data-original"):
+                    # (tuỳ chọn) bỏ base64 và chuẩn hoá tuyệt đối
+                    if v.lower().startswith("data:"):
+                        continue
+                    v = urljoin(self.base_url, v)
+                if v:
+                    return v
+
         return ""
 
     def _extract_all(self, soup, selectors, attr=None, base_url=None):
@@ -307,10 +321,10 @@ class WordPressCrawler:
         # Từ khóa “text” & trong “href”
         kw_text = [
             "tin tức", "tintuc", "bài viết", "bai viet", "chuyên mục", "chuyen muc",
-            "news", "blog"
+            "webinar", "blog"
         ]
         kw_href = [
-            "/tin-tuc", "/news", "/blog", "/bai-viet", "/chuyen-muc"
+            "/tin-tuc", "/webinar", "/blog", "/bai-viet", "/chuyen-muc"
         ]
 
         zones = [
@@ -452,7 +466,7 @@ class WordPressCrawler:
             content= self._extract_first(soup, tpl.get("content", [])) or None
             published_date = normalize_tuple_date(published_date) if published_date else None
             author= self._extract_first(soup, tpl.get("author", [])) or None
-            content_image_urls= self._extract_all(soup, ["div.entry-content img","div.post-content img", "div.entrytext img","div.entry img"], attr="src") or []
+            content_image_urls= self._extract_all(soup, ["div.et_pb_row_1_tb_body img","div.entry-content img","div.post-content img", "div.entrytext img","div.entry img"], attr="src") or []
             categories= self._extract_all(soup, tpl.get("categories", [])) or []
             video_url = self._extract_first(soup, tpl.get("videoUrl", [])) or None
             thumbnail_url= self._extract_first(soup, tpl.get("thumbnailUrl", [])) or None
