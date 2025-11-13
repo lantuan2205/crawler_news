@@ -1,30 +1,131 @@
 {
   "profile": {
-    "name":  ["h1"],
-    "description":  ["meta[name='description'][content]","h2.site-description"],
-    "license":  [""],
-    "editor_in_chief":  ["p.attribution"],
-    "address":  [],
-    "phone":  ["a[href^='tel:']"],
-    "email":  ["a[href^='mailto']"],
-    "infor_copyright":  ["div#footer-info","span.footer-copyright","p.copyright", "div.site-info"],
-    "jobId": [],
-    "logo":  ["div.logo-transition a img","div.logo_container a img","h1.logo a img","div.site-branding a img", "div#site-header a img","div#header-image img"]
+    "name": [
+      "h1"
+    ],
+    "description": [
+      "meta[name='description'][content]",
+      "h2.site-description"
+    ],
+    "license": [
+      ""
+    ],
+    "editor_in_chief": [],
+    "address": [
+      "footer address",
+      "footer .address",
+      "div[class*='address']",
+      "div[class*='contact'] p",
+      "div[class*='info'] p",
+      "div[class*='wrapper'] p",
+      "section[class*='contact'] p",
+      "section[class*='info'] p",
+      "section[class*='address'] p",
+      "p:contains('Trụ sở')",
+      "p:contains('Địa chỉ')"
+    ],
+    "phone": [
+      "a[href^='tel:']",
+      "footer a[href^='tel:']",
+      "footer .phone",
+      "footer .hotline",
+      "footer p:contains('Điện thoại')",
+      "footer p:contains('Hotline')",
+      "footer span:contains('Hotline')",
+      "footer span:contains('Điện thoại')",
+      "div[class*='hotline']",
+      "div[class*='phone']",
+      "p:contains('Hotline')",
+      "p:contains('Điện thoại')",
+      "li:contains('Hotline')",
+      "li:contains('Điện thoại')",
+      "a[href^='tel:']"
+    ],
+    "email": [
+      "a[href^='mailto']"
+    ],
+    "infor_copyright": [
+      "footer .copyright",
+      "footer .footer-copyright",
+      "footer p:contains('Copyright')",
+      "footer span:contains('Copyright')",
+      "footer div:contains('Copyright')",
+      ".footer-center .footer-copyright",
+      ".footer-bottom .copyright",
+      "div[class*='copyright']",
+      "p:contains('©')",
+      "span:contains('©')",
+      "div:contains('©')"
+    ],
+    "logo": [
+      "h1.logo a img",
+      "div.logo a img",
+      "header .logo a img",
+      ".logo-transition a img",
+      ".logo_container a img",
+      "div.site-branding a img",
+      "div#site-header a img",
+      "div#header-image img",
+      "a.custom-logo-link img",
+      "img.custom-logo",
+      "img[alt*='logo']"
+    ]
   },
   "article_data": {
-    "dataSource": [],
-    "title": ["h2.wp-block-post-title","h1.entry-title", "h1.post-title", "div#content div.post h2", "h1.wp-block-post-title", "div.title h2","h2.entry-title"],
-    "url": [],
-    "author": ["div.entry-meta a.author","p.wp-block-post-author__name","span.author.vcard a", "span.post-meta-author a", "div.entrytext p b", "div.wp-block-post-author-name a"],
-    "authorId": [],
-    "publishedDate": ["span.published","span.meta-date","div.entry-meta a.entry-date","div.wp-block-post-date time","time.published","time.entry-date","span.post-meta-date a, div#content p.date"],
-    "description": ["div.entry-content h4 strong","div.entry-content h2", "div.entry-content h3 strong", " div.post-content p strong", "meta[property='og:description'][content]","meta[name='description'][content]"],
-    "content": ["div.et_pb_row_1_tb_body","div.entry-content", "div.post-content", "div.entrytext", "div.entry"],
-    "contentImageUrls": ["div.entry-content img[src]"],
-    "categories": ["a[rel='tag']","a[rel='category tag']"],
-    "thumbnailUrl": ["div.ytp-cued-thumbnail-overlay-image[style]"],
-    "location": [],
-    "videoUrl": ["div.ytp-title-text a.ytp-title-link[href]"]
+    "title": [
+      "h2.wp-block-post-title",
+      "h1.entry-title",
+      "h1.post-title",
+      "div#content div.post h2",
+      "h1.wp-block-post-title",
+      "div.title h2",
+      "h2.entry-title"
+    ],
+    "author": [
+      "div.entry-meta a.author",
+      "p.wp-block-post-author__name",
+      "span.author.vcard a",
+      "span.post-meta-author a",
+      "div.entrytext p b",
+      "div.wp-block-post-author-name a"
+    ],
+    "publishedDate": [
+      "span.published",
+      "span.meta-date",
+      "div.entry-meta a.entry-date",
+      "div.wp-block-post-date time",
+      "time.published",
+      "time.entry-date",
+      "span.post-meta-date a, div#content p.date"
+    ],
+    "description": [
+      "div.entry-content h4 strong",
+      "div.entry-content h2",
+      "div.entry-content h3 strong",
+      " div.post-content p strong",
+      "meta[property='og:description'][content]",
+      "meta[name='description'][content]"
+    ],
+    "content": [
+      "div.et_pb_row_1_tb_body",
+      "div.entry-content",
+      "div.post-content",
+      "div.entrytext",
+      "div.entry"
+    ],
+    "contentImageUrls": [
+      "div.entry-content img[src]"
+    ],
+    "categories": [
+      "a[rel='tag']",
+      "a[rel='category tag']"
+    ],
+    "thumbnailUrl": [
+      "div.ytp-cued-thumbnail-overlay-image[style]"
+    ],
+    "videoUrl": [
+      "div.ytp-title-text a.ytp-title-link[href]"
+    ]
   },
   "article_list": {
     "articleUrl": [
@@ -40,7 +141,6 @@
       "div.entry-inner-content header.entry-header h2.entry-title a",
       "h4.entry-title a[href]",
       "div.post-content a[href]"
-
     ],
     "nextPage": [
       "div#infinite-handle span button",

@@ -1,30 +1,124 @@
 {
   "profile": {
-    "name":  ["h1"],
-    "description":  ["div.descriptionwrapper p.description span","p.description span"],
-    "license":  ["div.art-footer-default p"],
-    "editor_in_chief":  ["div.widget.Attribution div.widget-content a", "div.widget-content a[href*='theme']"],
-    "address":  [],
-    "phone":  [],
-    "email":  ["a[href^='mailto']"],
-    "infor_copyright":  ["div#Attribution1 div.widget-content", "div.widget-content div.addthis_toolbox", "div#credit div.left", "footer div.left","footer.art-footer div.art-footer-default p"],
+    "name": [
+      "h1"
+    ],
+    "description": [
+      "div.descriptionwrapper p.description span",
+      "p.description span"
+    ],
+    "license": [
+      "div.art-footer-default p"
+    ],
+    "editor_in_chief": [],
+    "address": [
+      "footer address",
+      "footer .address",
+      "div[class*='address']",
+      "div[class*='contact'] p",
+      "div[class*='info'] p",
+      "div[class*='wrapper'] p",
+      "section[class*='contact'] p",
+      "section[class*='info'] p",
+      "section[class*='address'] p",
+      "p:contains('Trụ sở')",
+      "p:contains('Địa chỉ')"
+    ],
+    "phone": [
+      "a[href^='tel:']",
+      "footer a[href^='tel:']",
+      "footer .phone",
+      "footer .hotline",
+      "footer p:contains('Điện thoại')",
+      "footer p:contains('Hotline')",
+      "footer span:contains('Hotline')",
+      "footer span:contains('Điện thoại')",
+      "div[class*='hotline']",
+      "div[class*='phone']",
+      "p:contains('Hotline')",
+      "p:contains('Điện thoại')",
+      "li:contains('Hotline')",
+      "li:contains('Điện thoại')"
+    ],
+    "email": [
+      "a[href^='mailto']"
+    ],
+    "infor_copyright": [
+      "footer .copyright",
+      "footer .footer-copyright",
+      "footer p:contains('Copyright')",
+      "footer span:contains('Copyright')",
+      "footer div:contains('Copyright')",
+      ".footer-center .footer-copyright",
+      ".footer-bottom .copyright",
+      "div[class*='copyright']",
+      "p:contains('©')",
+      "span:contains('©')",
+      "div:contains('©')"
+    ],
     "jobId": [],
-    "logo":  ["div#header-inner img","a#Header1_headerimg img","div.Header img", "div#header-inner","div.Header-inner","div.widget.Profile", "img.profile-img"]
+    "logo": [
+      "h1.logo a img",
+      "div.logo a img",
+      "header .logo a img",
+      ".logo-transition a img",
+      ".logo_container a img",
+      "div.site-branding a img",
+      "div#site-header a img",
+      "div#header-image img",
+      "a.custom-logo-link img",
+      "img.custom-logo",
+      "img[alt*='logo']"
+    ]
   },
   "article_data": {
     "dataSource": [],
-    "title": ["h3.post-title","h2.post-title", "h2.art-postheader", "h1.entry-title"],
+    "title": [
+      "h3.post-title",
+      "h2.post-title",
+      "h2.art-postheader",
+      "h1.entry-title"
+    ],
     "url": [],
-    "author": ["span b span","b span", "span span span","a b span span span b", "b i span", "b i a", "strong font"],
+    "author": [
+      "span b span",
+      "b span",
+      "span span span",
+      "a b span span span b",
+      "b i span",
+      "b i a",
+      "strong font"
+    ],
     "authorId": [],
-    "publishedDate": ["h2.date-header", "time.published", "p.MsoNoSpacing span", "abbr.published", "div.postmeta-primary span.meta_date", "span.art-postdateicon"],
-    "description": ["div.post-body.entry-content b", "div.art-postcontent h4"],
-    "content": ["div.post-body"],
+    "publishedDate": [
+      "h2.date-header",
+      "time.published",
+      "p.MsoNoSpacing span",
+      "abbr.published",
+      "div.postmeta-primary span.meta_date",
+      "span.art-postdateicon"
+    ],
+    "description": [
+      "div.post-body.entry-content b",
+      "div.art-postcontent h4"
+    ],
+    "content": [
+      "div.post-body"
+    ],
     "contentImageUrls": [],
-    "categories": ["a[rel='tag']", "div.post-labels a"],
-    "thumbnailUrl": ["div.thumbnail-holder[style]","div.ytp-cued-thumbnail-overlay-image[style]"],
+    "categories": [
+      "a[rel='tag']",
+      "div.post-labels a"
+    ],
+    "thumbnailUrl": [
+      "div.thumbnail-holder[style]",
+      "div.ytp-cued-thumbnail-overlay-image[style]"
+    ],
     "location": [],
-    "videoUrl": ["div.separator iframe[src]","div.post-body iframe[src]"]
+    "videoUrl": [
+      "div.separator iframe[src]",
+      "div.post-body iframe[src]"
+    ]
   },
   "article_list": {
     "articleUrl": [
