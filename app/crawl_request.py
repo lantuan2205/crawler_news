@@ -185,6 +185,9 @@ def process_crawl(data: Dict[str, Any]):
                 from news_crawler.cms.wordpress import WordPressCrawler
                 crawler = WordPressCrawler(input_data, proxy_session)
                 get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
+                links = crawler.get_article_links(max_pages=10)
+                for url in links:
+                    get_article_details(crawler, url, False, has_video, proxy_session, jobId, crawlId)
                 return
             elif cms == "Blogger":
                 from news_crawler.cms.blogger import BloggerCrawler

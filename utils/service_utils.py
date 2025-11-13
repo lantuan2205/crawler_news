@@ -433,13 +433,62 @@ def parse_vnexpress_time_ms(time_str):
 
 def normalize_tuple_date(input_date):
     try:
+        text_date = str(input_date).strip()
+
+        m_ymd = re.match(r"^\s*(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?\s*$", text_date)
+        if m_ymd:
+            year, month, day, hh, mm = m_ymd.groups()
+            hh = int(hh) if hh else 0
+            mm = int(mm) if mm else 0
+            return f"{int(day):02}/{int(month):02}/{int(year):04}, {hh:02}:{mm:02} (GMT+7)"
+
+        # 2) Month DD, YYYY (English)  → "October 22, 2015" / "Oct 22, 2015"
+        mdy_match = re.match(r"^[A-Za-z]+\s+\d{1,2},\s*\d{4}$", text_date)
+        if mdy_match:
+            try:
+                dt = datetime.strptime(text_date, "%B %d, %Y")
+            except ValueError:
+                dt = datetime.strptime(text_date, "%b %d, %Y")
+            return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+
+        # 3) Tháng <chữ/số> DD, YYYY (tiếng Việt) → "Tháng Tám 17, 2020", "tháng 12 5, 2024"
+        m_vi = re.match(
+            r"(?i)^\s*tháng\s+([A-Za-zÀ-ỹ]+(?:\s+[A-Za-zÀ-ỹ]+)?|\d{1,2})\s+(\d{1,2}),\s*(\d{4})\s*$",
+            text_date
+        )
+        if m_vi:
+            mon_token, day, year = m_vi.groups()
+
+            def _strip_accents(s: str) -> str:
+                import unicodedata, re as _re
+                return ''.join(c for c in unicodedata.normalize('NFD', s)
+                            if unicodedata.category(c) != 'Mn')
+
+            key = _strip_accents(mon_token).lower().strip()
+            key = re.sub(r"\s+", " ", key)
+
+            vn_months = {
+                "mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5,
+                "sau": 6, "bay": 7, "tam": 8, "chin": 9,
+                "muoi": 10, "muoi mot": 11, "muoi hai": 12,
+            }
+
+            if key.isdigit():
+                month = int(key)
+            else:
+                month = vn_months.get(key)
+                if month is None and key.startswith("muoi "):
+                    if " mot" in key: month = 11
+                    elif " hai" in key: month = 12
+
+            if month and 1 <= month <= 12:
+                return f"{int(day):02}/{int(month):02}/{int(year):04}, 00:00 (GMT+7)"
         if isinstance(input_date, (tuple, list)):
             input_date = input_date[0] if input_date else ""
 
         if not input_date or str(input_date).strip().lower() in {"", "none", "null"}:
             return ""
 
-        text_date = str(input_date).strip()
 
         # 1) Support format: "Chủ Nhật, 5 tháng 5, 2024"
         match_vn = re.search(r"(\d{1,2})\s*tháng\s*(\d{1,2}),\s*(\d{4})", text_date, re.IGNORECASE)
