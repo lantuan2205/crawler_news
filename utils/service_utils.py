@@ -434,6 +434,16 @@ def parse_vnexpress_time_ms(time_str):
 def normalize_tuple_date(input_date):
     try:
         text_date = str(input_date).strip()
+        # dd.MM.yyyy  hoặc  dd.MM.yyyy HH:mm
+        m_dot = re.match(
+            r"^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?\s*$",
+            text_date
+        )
+        if m_dot:
+            d, m, y, hh, mm = m_dot.groups()
+            hh = int(hh) if hh is not None else 0
+            mm = mm if mm is not None else "00"
+            return f"{int(d):02}/{int(m):02}/{y}, {hh:02}:{mm} (GMT+7)"
 
         m_ymd = re.match(r"^\s*(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2}))?\s*$", text_date)
         if m_ymd:
