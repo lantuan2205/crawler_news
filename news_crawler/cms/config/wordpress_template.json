@@ -5,21 +5,21 @@
     "license":  [""],
     "editor_in_chief":  ["p.attribution"],
     "address":  [],
-    "phone":  [],
+    "phone":  ["a[href^='tel:']"],
     "email":  ["a[href^='mailto']"],
-    "infor_copyright":  ["p.copyright", "div.site-info"],
+    "infor_copyright":  ["span.footer-copyright","p.copyright", "div.site-info"],
     "jobId": [],
-    "logo":  ["div.site-branding a img", "div#site-header a img","div#header-image img"]
+    "logo":  ["h1.logo a img","div.site-branding a img", "div#site-header a img","div#header-image img"]
   },
   "article_data": {
     "dataSource": [],
-    "title": ["h2.wp-block-post-title","h1.entry-title", "h1.post-title", "div#content div.post h2", "h1.wp-block-post-title", "div.title h2"],
+    "title": ["h2.wp-block-post-title","h1.entry-title", "h1.post-title", "div#content div.post h2", "h1.wp-block-post-title", "div.title h2","h2.entry-title"],
     "url": [],
     "author": ["div.entry-meta a.author","p.wp-block-post-author__name","span.author.vcard a", "span.post-meta-author a", "div.entrytext p b", "div.wp-block-post-author-name a"],
     "authorId": [],
-    "publishedDate": ["div.entry-meta a.entry-date","div.wp-block-post-date time","time.published","time.entry-date","span.post-meta-date a"],
-    "description": ["div.entry-content h4 strong","div.entry-content h2", "div.entry-content h3 strong", " div.post-content p strong", "meta[property='og:description']","meta[name='description']"],
-    "content": ["div.entry-content p", "div.post-content p", "div.entrytext p", "div.entry p"],
+    "publishedDate": ["span.meta-date","div.entry-meta a.entry-date","div.wp-block-post-date time","time.published","time.entry-date","span.post-meta-date a, div#content p.date"],
+    "description": ["div.entry-content h4 strong","div.entry-content h2", "div.entry-content h3 strong", " div.post-content p strong", "meta[property='og:description'][content]","meta[name='description'][content]"],
+    "content": ["div.entry-content", "div.post-content", "div.entrytext", "div.entry"],
     "contentImageUrls": ["div.entry-content img[src]"],
     "categories": ["a[rel='tag']","a[rel='category tag']"],
     "thumbnailUrl": ["div.ytp-cued-thumbnail-overlay-image[style]"],
@@ -37,7 +37,8 @@
       "div.wideposts div.title h2 a[href]",
       "header.entry-header h2.entry-title a",
       "header.entry-header h1.entry-title a",
-      "div.entry-inner-content header.entry-header h2.entry-title a"
+      "div.entry-inner-content header.entry-header h2.entry-title a",
+      "h4.entry-title a[href]"
 
     ],
     "nextPage": [
@@ -45,7 +46,9 @@
       ".nav-previous a",
       ".bottomnavigation .alignleft a",
       ".wp-block-group .alignwide a.wp-block-query-pagination-next",
-      ".post-navigation p a"
+      ".post-navigation p a",
+      "a.next-page-numbers",
+      "link[rel='next'][href]"
     ]
   }
 }
