@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
 
-BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "192.168.161.69:29092")
+BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
 
 # try:
 #     from app.server import start_background_server
@@ -92,7 +92,6 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
         print(f"[ERROR] Lỗi khi thiết lập proxy: {e}")
         return None, f"Proxy setup error → {str(e)}"
 
-
 def extract_main_domain(url: str) -> str | None:
     parsed = urlparse(url)
     host = parsed.hostname or ''
@@ -144,7 +143,7 @@ def process_crawl(data: Dict[str, Any]):
     proxy_config = parsed_data.get("proxy")
     data_to_collect = body.get("dataToCollect", [])
     number_post = body.get("numberPost") or 50
-    number_audio = body.get("numberAudio") or 0
+    number_audio = body.get("numberAudio") or 10
     number_video = body.get("numberVideo") or 0
     has_video = "video" in data_to_collect
 
@@ -170,7 +169,6 @@ def process_crawl(data: Dict[str, Any]):
         from news_crawler.factory import get_crawler
         return get_crawler(domain, proxy_session=proxy_session)
 
-    # Nếu inputData là một URL
     if input_data.startswith("http://") or input_data.startswith("https://"):
         domain = extract_main_domain(input_data)
         crawler = _create_crawler(domain)
@@ -205,7 +203,6 @@ def process_crawl(data: Dict[str, Any]):
             else:
                 raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
 
-
         response = {
             "status": "success",
             "url": input_data,
@@ -238,7 +235,6 @@ def process_crawl(data: Dict[str, Any]):
             if "profile" in data_to_collect:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
 
-            # Crawl toàn bộ domain
             stop = False
             total_articles_crawled = 0
             for category in crawler.article_type_dict.values():
@@ -255,14 +251,15 @@ def process_crawl(data: Dict[str, Any]):
                         total_articles_crawled += 1
                 if stop:
                     break
-            # if "podcast" in data_to_collect:
-            #     data = crawler.crawl_postcast(number_post=10)
-            #     return
+            if "podcast" in data_to_collect:
+                if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
+                    data = crawler.crawl_postcast(number_post=number_audio)
+                    return
+                else:
+                    print("⚠ Crawler does not support crawl_postcast")
 
-    # Nếu inputData là một keyword
     else:
         keyword = input_data.strip()
-        # Chỉ sử dụng các domain có trong WEBNAMES
         domains_to_crawl = [
             "vietnamnet",
             "vnexpress",
@@ -310,7 +307,7 @@ def process_crawl(data: Dict[str, Any]):
 
             except Exception as e:
                 print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
-                update_status(jobId, "FAIL", f"Lỗi khi crawl {domain}: {e}")
+                update_status(jobId, "FAIL", f"Crawl job failed (Details: {e})")
                 continue
 
         return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
@@ -620,5 +617,5 @@ if __name__ == "__main__":
         exit(0)
     except Exception as e:
         print(f"❌ Lỗi trong quá trình crawl: {e}")
-        update_status(jobId, "FAIL", f"Lỗi trong quá trình crawl: {e}")
+        update_status(jobId, "FAIL", f"Crawl job failed (Details: {e})")
         exit(1)

@@ -172,17 +172,6 @@ class BloggerCrawler:
             "logo": self._validate_logo_url(self._extract_first(soup, profile_tpl.get("logo", []))) or "",
         }
 
-        # # --- fallback: nếu quá nhiều trường trống, thử reload bằng Selenium ---
-        # missing = sum(1 for v in profile.values() if not v)
-        # if missing >= 5:
-        #     print("[!] Profile thiếu dữ liệu, thử lại với Selenium...")
-        #     soup = self._get_html(self.base_url)
-        #     if soup:
-        #         for key, sel in profile_tpl.items():
-        #             if not profile.get(key):
-        #                 profile[key] = self._extract_first(soup, sel)
-
-        # --- Chuẩn hóa dữ liệu ---
         profile = self._normalize_profile(profile)
         profile = {k: (v if isinstance(v, str) else "" if v is None else str(v)) for k, v in profile.items()}
         return (

@@ -15,11 +15,7 @@ from urllib.parse import urljoin, urlparse
 
 class WordPressCrawler:
     def __init__(self, input_data, proxy_session=None, template_path="./config/wordpress_template.json", driver=None):
-        """
-        input_data: dict chứa ít nhất 'url' website cần crawl
-        proxy_session: requests.Session (nếu có proxy)
-        template_path: file json mapping selector
-        """
+
         self.base_url = input_data
         self.driver = driver
         self.job_id = input_data
@@ -35,46 +31,36 @@ class WordPressCrawler:
         with open(template_full_path, "r", encoding="utf-8") as f:
             self.template = json.load(f)
 
-
     def _init_driver(self):
-        """Khởi tạo Selenium driver khi cần"""
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-images")
-        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
         chrome_options.set_capability("pageLoadStrategy", "eager")
 
-        # if self.proxy_session:
-        #     options.add_argument(f"--proxy-server={self.proxy_session}")
         return webdriver.Chrome(options=chrome_options)
 
     def _is_html_useful(self, html: str) -> bool:
-        """Kiểm tra HTML có chứa nội dung thực không."""
         lower = html.lower()
         if len(lower) < 800:
             return False
-        # Có tag bài viết hoặc nội dung chính
         if any(tag in lower for tag in ["<article", "entry-content", "post-body", "post-title"]):
             return True
-        # Nếu trang chỉ toàn script (render bằng JS)
         script_count = lower.count("<script")
         p_count = lower.count("<p")
         if script_count > 10 and p_count < 5:
             return False
-        # Có chữ hoặc thẻ nội dung hợp lý
         return True
-    # -----------------------------
-    # Utility
-    # -----------------------------
+
     def _scroll_to_bottom(self, max_scrolls=15, pause=0.8):
-        """Kéo xuống đáy trang để load thêm nội dung (infinite/lazy)."""
+
         if not self.driver:
             return
         stable = 0
@@ -96,6 +82,7 @@ class WordPressCrawler:
             else:
                 stable = 0
             last_h = new_h
+
     def _is_wp_com(self, url: str) -> bool:
         try:
             host = urlparse(url).netloc.lower()
@@ -105,19 +92,14 @@ class WordPressCrawler:
         
     def _get_html(self, url, scroll=False, link_selectors=None,
                 max_scrolls=20, pause=0.8, stable_rounds=2):
-        """
-        Trả về BeautifulSoup của trang hiện tại.
-        - scroll=True: kéo xuống cho tới khi KHÔNG còn link mới (dựa trên link_selectors) 
-        hoặc chiều cao trang không tăng trong 'stable_rounds' lần, hoặc chạm 'max_scrolls'.
-        - link_selectors: list CSS selectors của các thẻ link bài để đếm số lượng.
-        """
+
         print(f"[*] Falling back to Selenium for: {url}")
         try:
             if self.driver is None:
                 self.driver = self._init_driver()
 
             self.driver.get(url)
-            time.sleep(1.0)  # cho JS/HTML khởi tạo
+            time.sleep(1.0)
 
             if scroll:
                 link_selectors = link_selectors or []
@@ -143,13 +125,11 @@ class WordPressCrawler:
 
                     time.sleep(pause)
 
-                    # Lấy chiều cao mới
                     try:
                         new_h = self.driver.execute_script("return document.body.scrollHeight") or 0
                     except Exception:
                         new_h = 0
 
-                    # Kiểm tra có “tăng” (số link hoặc chiều cao)
                     grew = (cur_count > last_count) or (new_h > last_h)
                     if not grew:
                         stable += 1
@@ -168,7 +148,6 @@ class WordPressCrawler:
         except Exception as e:
             print(f"[x] Selenium failed: {url} ({e})")
         return None
-
 
     def _extract_first(self, soup, selectors):
         from soupsieve.util import SelectorSyntaxError
@@ -230,10 +209,6 @@ class WordPressCrawler:
                         urls.add(text)
         return list(urls)
 
-
-    # -----------------------------
-    # 1️⃣ Lấy thông tin profile
-    # -----------------------------
     def extract_profile_domain(self, url:str):
         print(f"📰 Crawling profile: {self.base_url}")
 
@@ -255,20 +230,8 @@ class WordPressCrawler:
             "logo": self._extract_first(soup, profile_tpl.get("logo", [])) or "",
         }
 
-        # --- fallback: nếu quá nhiều trường trống, thử reload bằng Selenium ---
-        missing = sum(1 for v in profile.values() if not v)
-        if missing >= 5:
-            print("[!] Profile thiếu dữ liệu, thử lại với Selenium...")
-            soup = self._get_html(self.base_url)
-            if soup:
-                for key, sel in profile_tpl.items():
-                    if not profile.get(key):
-                        profile[key] = self._extract_first(soup, sel)
-
-        # --- Chuẩn hóa dữ liệu ---
         profile = self._normalize_profile(profile)
 
-        print(f"✅ Done profile: {profile.get('name')}")
         return (
             profile.get("license", ""),
             profile.get("description", ""),
@@ -279,8 +242,8 @@ class WordPressCrawler:
             profile.get("infor_copyright", ""),
             profile.get("logo", "")
         )
+
     def _normalize_profile(self, profile):
-        """Chuẩn hóa dữ liệu profile: loại bỏ None, strip chuỗi."""
         normalized = {}
         for k, v in profile.items():
             if isinstance(v, str):
@@ -290,19 +253,13 @@ class WordPressCrawler:
             normalized[k] = v
         return normalized
 
-    # ==============================
-    # Helper functions
-    # ==============================
-
     def _clean_email(self, text):
-        """Tách email hợp lệ từ chuỗi."""
         if not text:
             return None
         match = re.search(r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+", text)
         return match.group(0) if match else text.strip()
 
     def _clean_phone(self, text):
-        """Lọc số điện thoại khỏi chuỗi."""
         if not text:
             return None
         match = re.search(r"(\+?\d[\d\-\s]{8,15})", text)
@@ -318,7 +275,6 @@ class WordPressCrawler:
         if not soup:
             return None
 
-        # Từ khóa “text” & trong “href”
         kw_text = [
             "tin tức", "tintuc", "bài viết", "bai viet", "chuyên mục", "chuyen muc",
             "webinar", "blog"
@@ -338,9 +294,9 @@ class WordPressCrawler:
             text = (a.get_text(" ", strip=True) or "").lower()
             href  = (a.get("href") or "").strip().lower()
             s = 0
-            if any(k in text for k in kw_text): s += 3   # text khớp → điểm cao
-            if any(k in href for k in kw_href): s += 2   # slug khớp → thêm điểm
-            # Ưu tiên link ngắn & không ra ngoài domain
+            if any(k in text for k in kw_text): s += 3
+            if any(k in href for k in kw_href): s += 2
+
             if href.startswith("/"): s += 1
             if len(href) <= 40: s += 1
             return s
@@ -360,11 +316,6 @@ class WordPressCrawler:
 
         return urljoin(self.base_url, best) if best and best_score >= 3 else None
 
-    # -----------------------------
-    # 2️⃣ Lấy danh sách URL bài viết
-    # -----------------------------
-    
-
     def _resolve_next_url(self, soup, current_url, next_selectors):
         # CHỈ dùng selector trong template (yêu cầu của bạn)
         for sel in (next_selectors or []):
@@ -379,7 +330,6 @@ class WordPressCrawler:
             if href:
                 return urljoin(current_url, href)
         return None
-
 
     def get_article_links(self, max_pages=5):
         print(f"🧩 Collecting article URLs from: {self.base_url}")
@@ -449,9 +399,6 @@ class WordPressCrawler:
         print(f"✅ Total {len(collected)} article URLs found.")
         return list(collected)
 
-    # -----------------------------
-    # 3️⃣ Crawl nội dung từng bài
-    # -----------------------------
     def extract_content(self, article_url, has_video):
         try:
             soup = self._get_html(article_url)
