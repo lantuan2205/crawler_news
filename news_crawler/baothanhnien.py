@@ -695,7 +695,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         base = "thanhnien"
@@ -712,7 +712,9 @@ class BaoThanhNienCrawler(BaseCrawler):
 
         podcasts = []
 
-        for item in items:
+        for idx, item in enumerate(items):
+            if idx >= number_post:
+                break
             try:
                 # 1. Title + URL
                 title_elem = item.select_one("a[title]")
@@ -758,19 +760,20 @@ class BaoThanhNienCrawler(BaseCrawler):
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "genz.htm",
             1: "showbiz.htm",
         }
 
-        BASE_URL = "https://thanhnien.vn/podcast.htm"
+        n_category = len(podcast_type_dict)
+        per_category = max(1, number_post // n_category)
 
-        # bỏ .htm / .html ở BASE_URL + chuẩn hoá dấu /
+        BASE_URL = "https://thanhnien.vn/podcast.htm"
         base = re.sub(r'\.html?$', '', BASE_URL.strip())
         base = base.rstrip('/')
 
         for idx, slug in podcast_type_dict.items():
             category_url = f"{base}/{slug.lstrip('/')}"
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post=per_category)

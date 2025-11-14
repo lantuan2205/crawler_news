@@ -444,7 +444,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
 
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
@@ -473,7 +473,9 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
                 print(f"✅ Hết dữ liệu ở trang {page}")
                 break
 
-            for item in items:
+            for idx, item in enumerate(items):
+                if idx >= number_post:
+                    break
                 try:
                     title_elem = item.select_one("a[title]")
                     if not title_elem:
@@ -522,7 +524,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         print(f"🎯 Tổng số bài đã thu thập: {len(podcasts)}")
         return podcasts
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "podcast",
         }
@@ -532,4 +534,4 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post)

@@ -685,7 +685,7 @@ class VietNamNetCrawler(BaseCrawler):
 }
         send_podcast_to_kafka(podcast)
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0:  "doc-la",
             1:  "goc-nhin",
@@ -694,12 +694,16 @@ class VietNamNetCrawler(BaseCrawler):
             4:  "sach-hay",
             5:  "chuyen-cua-nhung-dong-song",
         }
-
+        n_category = len(podcast_type_dict)
+        per_category = max(1, number_post // n_category)
         BASE_URL = "https://vietnamnet.vn/podcast"
 
         for idx, slug in podcast_type_dict.items():
             urls = self.get_url_podcast(BASE_URL, slug)
-            for url in urls:
+            for idx, url in enumerate(urls):
+                if idx >= per_category:
+                    break
                 self.crawl_podcast_bs4(url, slug)
+
             
 

@@ -143,7 +143,7 @@ def process_crawl(data: Dict[str, Any]):
     proxy_config = parsed_data.get("proxy")
     data_to_collect = body.get("dataToCollect", [])
     number_post = body.get("numberPost") or 50
-    number_audio = body.get("numberAudio") or 10
+    number_audio = body.get("numberAudio") or 50
     number_video = body.get("numberVideo") or 0
     has_video = "video" in data_to_collect
 

@@ -395,7 +395,7 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
             "publishedDate": publishedDate,
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -439,7 +439,9 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
 
                 new_count = 0
 
-                for item in items:
+                for idx, item in enumerate(items):
+                    if idx >= number_post:
+                        break
                     # 1) Title + URL
                     title_elem = item.select_one("a[title]")
                     if not title_elem:
@@ -506,7 +508,7 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)
 
-    def crawl_postcast(self):
+    def crawl_postcast(self,  number_post: int):
         podcast_type_dict = {
             0: "podcasts",
         }
@@ -516,4 +518,4 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post)

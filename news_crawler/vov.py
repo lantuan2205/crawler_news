@@ -513,7 +513,7 @@ class VovCrawler(BaseCrawler):
             "publishedDate": publishedDate,
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         headers = {
@@ -528,7 +528,9 @@ class VovCrawler(BaseCrawler):
         BASE_DOMAIN = "https://vov.vn"
         podcasts = []
         try :
-            for item in items:
+            for idx, item in enumerate(items):
+                if idx >= number_post:
+                    break
                 # 1. Title + URL
                 title_elem = item.select_one("div.article-media")
                 if not title_elem:
@@ -579,7 +581,7 @@ class VovCrawler(BaseCrawler):
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "cau-chuyen-thoi-su",
             1: "doc-truyen-dem-khuya",
@@ -587,10 +589,11 @@ class VovCrawler(BaseCrawler):
             3: "ke-chuyen-cho-be",
             4: "hat-giong-tam-hon",
         }
-
+        n_category = len(podcast_type_dict)
+        per_category = max(1, number_post // n_category)
         BASE_URL = "https://vov.vn/podcast/"
 
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url,  number_post=per_category)

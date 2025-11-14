@@ -484,7 +484,7 @@ class VtvCrawler(BaseCrawler):
             "end_time_mp3": end_time_mp3_url,
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
@@ -533,7 +533,9 @@ class VtvCrawler(BaseCrawler):
             items = soup.select(
                 "div.flex-latest-news.br-bot div.box-liti-news div.box-category-middle div.box-category-item"
             )
-            for item in items:
+            for idx, item in enumerate(items):
+                if idx >= number_post:
+                    break
                 # 1. Title + URL
                 title_elem = item.select_one("a[title]")
                 if not title_elem:
@@ -585,7 +587,7 @@ class VtvCrawler(BaseCrawler):
             except:
                 pass
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "hat-giong-tam-hon.htm",
             1: "oi-nghe-ne.htm",
@@ -594,10 +596,11 @@ class VtvCrawler(BaseCrawler):
             4: "thoi-su-hang-ngay.htm",
             5: "tam-su-dem.htm",
         }
-
+        n_category = len(podcast_type_dict)
+        per_category = max(1, number_post // n_category)
         BASE_URL = "https://vtv.vn/podcast/"
 
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post=per_category)

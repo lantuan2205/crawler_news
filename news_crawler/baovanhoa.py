@@ -575,7 +575,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -600,7 +600,9 @@ class BaoVanHoaCrawler(BaseCrawler):
             if not items:
                 break
 
-            for item in items:
+            for idx, item in enumerate(items):
+                if idx >= number_post:
+                    break
                 try:
                     # 1) Title + URL
                     title_elem = item.select_one("a[title]")
@@ -664,7 +666,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             # ngủ nhẹ tránh bị chặn
             time.sleep(random.uniform(0.8, 1.8))
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "podcast/",
         }
@@ -674,4 +676,4 @@ class BaoVanHoaCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post)

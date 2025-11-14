@@ -659,7 +659,7 @@ class VNExpressCrawler(BaseCrawler):
             "publishedDate": publishedDate,
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         base = "vnexpress"
@@ -674,7 +674,9 @@ class VNExpressCrawler(BaseCrawler):
 
         podcasts = []
 
-        for item in items:
+        for idx, item in enumerate(items):
+            if idx >= number_post:
+                break
             try:
                 # 1. Title + URL
                 title_elem = item.select_one("a[title]")
@@ -719,7 +721,7 @@ class VNExpressCrawler(BaseCrawler):
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
 
-    def crawl_postcast(self):
+    def crawl_postcast(self, number_post: int):
         podcast_type_dict = {
             0: "toi-ke",
             1: "vnexpress-hom-nay",
@@ -738,10 +740,11 @@ class VNExpressCrawler(BaseCrawler):
             14: "nguy-co",
             15: "diem-tin"
         }
-
+        n_category = len(podcast_type_dict)
+        per_category = max(1, number_post // n_category)
         BASE_URL = "https://vnexpress.net/vne-go/podcast/"
 
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post=per_category)

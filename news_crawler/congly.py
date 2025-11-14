@@ -623,7 +623,7 @@ class CongLyCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
 
@@ -669,7 +669,9 @@ class CongLyCrawler(BaseCrawler):
 
         items = soup.select(ITEM_SELECTOR)
 
-        for item in items:
+        for idx, item in enumerate(items):
+            if idx >= number_post:
+                break
             try:
                 # URL bài
                 a = item.select_one("a[href]")
@@ -737,4 +739,4 @@ class CongLyCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url)
+            self.crawl_podcast_bs4(category_url, number_post)
