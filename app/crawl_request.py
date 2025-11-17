@@ -138,6 +138,7 @@ def process_crawl(data: Dict[str, Any]):
     source = parsed_data.get("source")
     action = parsed_data.get("action")
     input_data = body.get("inputData")
+    crawl_setting_raw = body.get("crawlSetting")
     # Kiểm tra kiểu dữ liệu
     if not crawl_setting_raw:
         # crawlSetting null hoặc rỗng
