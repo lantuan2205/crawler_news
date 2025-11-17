@@ -555,9 +555,11 @@ class CongAnNhanDanCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         last_size = 0
+        max_pages = 5
+        page_count = 0
         ul_element = driver.find_element(By.CSS_SELECTOR, "div.box-widget-loaded")
         try:
-            while True:
+            while page_count < max_pages:
                 wait = WebDriverWait(driver, 10)
 
                 container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.box-widget-loaded")))
@@ -594,6 +596,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
                         next_button.click()
                         print("➡️ Đã click nút 'Trang sau'")
                         time.sleep(1)
+                        page_count += 1
 
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")

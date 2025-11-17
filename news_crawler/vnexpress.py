@@ -505,7 +505,7 @@ class VNExpressCrawler(BaseCrawler):
 
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vnexpress.net/{article_type}-p{page_number}"
-        if(page_number == 20):
+        if(page_number == 5):
             return []
         articles_urls = []
         try:

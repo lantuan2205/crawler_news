@@ -315,7 +315,7 @@ class KiemSatCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         page_count = 0
-        max_pages = 2
+        max_pages = 5
         try:
             wait = WebDriverWait(driver, 10)
 

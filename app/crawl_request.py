@@ -172,17 +172,17 @@ def process_crawl(data: Dict[str, Any]):
     crawlId = body.get("crawlId")
     proxy_config = parsed_data.get("proxy")
     data_to_collect = body.get("dataToCollect", [])
-    number_post = body.get("numberPost") or 500
+    number_post = body.get("numberPost") or 1000
     number_audio = body.get("numberAudio") or 60
     number_video = body.get("numberVideo") or 0
     has_video = "video" in data_to_collect
 
 
     if source != "NEWS" or action != "GENERAL":
-        raise ValueError("Sai source hoặc action")
+        raise ValueError("False source or action")
 
     if not input_data:
-        raise ValueError("URL hoặc keyword không được để trống")
+        raise ValueError("URL or keyword is required")
 
     # Thiết lập proxy session nếu có
     # Hàm setup_proxy_session() được giả định đã được cập nhật

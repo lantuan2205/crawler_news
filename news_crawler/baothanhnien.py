@@ -533,7 +533,7 @@ class BaoThanhNienCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         last_size = 0
-        max_pages = 20
+        max_pages = 5
         page_count = 0
         wait = WebDriverWait(driver, 10)
         seen_article_ids = set()  # set theo object id hoặc nội dung text

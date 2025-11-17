@@ -320,7 +320,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         page_url = f"https://www.qdnd.vn/{article_type}/p/{page_number}"
-        if page_number == 50:
+        if page_number == 5:
             return []
         
         try:

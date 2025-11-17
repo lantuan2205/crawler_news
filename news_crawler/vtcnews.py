@@ -540,7 +540,7 @@ class VTCNewsCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
-        if(page_number == 2):
+        if(page_number == 5):
             return []
         page_url = f"https://vtcnews.vn/{article_type}/trang-{page_number}.html"
         urls = []

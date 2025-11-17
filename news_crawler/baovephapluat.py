@@ -70,7 +70,8 @@ class BaoVePhapLuatCrawler(BaseCrawler):
             30: "phap-luat-ban-doc/dieu-tra-theo-don-thu",
             31: "phap-luat-ban-doc/hoi-am",
             32: "phap-luat-ban-doc/bao-chi-cong-dan",                                                                                   
-        }   
+        }
+
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {

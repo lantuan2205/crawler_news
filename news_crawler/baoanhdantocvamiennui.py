@@ -162,7 +162,7 @@ class BaoDanTocMienNuiCrawler(BaseCrawler):
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
         page_count = 0
-        max_pages = 20
+        max_pages = 5
         last_size = 0  
         try:
             wait = WebDriverWait(driver, 10)

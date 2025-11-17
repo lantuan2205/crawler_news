@@ -474,7 +474,7 @@ class VietNamNetCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         page_url = f"https://vietnamnet.vn/{article_type}-page{page_number-1}"
-        if(page_number == 2):
+        if(page_number == 5):
             return []
         articles_urls = []
         try:
