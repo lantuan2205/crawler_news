@@ -50,10 +50,8 @@ class KiemSatCrawler(BaseCrawler):
             4: "ban-can-biet",
             5: "chung-toi-la-vien-kiem-sat-vien",
             6: "tap-chi-in",
-        
-
-
         }
+
     def extract_profile_domain(self, url: str):
         job_id = 1
         info = {
@@ -184,23 +182,24 @@ class KiemSatCrawler(BaseCrawler):
             info.get("infor_copyright", ""),
             info.get("logo", "")
         )
-    def extract_content(self, url: str, has_video) -> tuple:
+
+    def extract_content(self, url: str, has_video=False) -> tuple:
         """
-        Extract title, description, content, publish date, author, and content images from url.
-        @param url (str): url to crawl
-        @return tuple: (title, description, content, publish_date, author, content_images)
+        Return:
+            title, description, content, publish_date, author,
+            content_images, categories, video_url, thumbnail_url, audio_url
         """
         try:
-            response = requests.get(url, headers=headers)
-          
+            response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
+
             soup = BeautifulSoup(response.content, "html.parser")
 
-            # Lấy title
-            title_tag = soup.find('h1')
+            # ----- TITLE -----
+            title_tag = soup.find("h1")
             title = title_tag.get_text(strip=True) if title_tag else None
 
-            # Lấy description
+            # ----- DESCRIPTION -----
             desc_tag = soup.select_one("div.mota h2")
             if desc_tag:
                 headline = desc_tag.find("div", class_="headline-makeup")
@@ -210,126 +209,52 @@ class KiemSatCrawler(BaseCrawler):
             else:
                 description = None
 
-            # Trích xuất ngày viết bài
-            publish_date = None
-            date_tag = soup.find("div", class_='time')
-            publish_date = date_tag.get_text(strip=True).rstrip('|').strip() if date_tag else None
+            # ----- DATE -----
+            date_tag = soup.find("div", class_="time")
+            publish_date = date_tag.get_text(strip=True).rstrip("|").strip() if date_tag else None
 
-            # Lấy tất cả các ảnh trong phần tử này
+            # ----- AUDIO URL -----
+            audio_url = ""
+            audio_tag = soup.select_one("#audio-player audio")
+            if audio_tag and audio_tag.get("src"):
+                audio_url = audio_tag.get("src")
+
+            # ----- CONTENT + IMAGES -----
             content_div = soup.find("div", class_="noidung")
-            images = content_div.find_all('img')
-            content_images = [img['src'] for img in images if img.get('src')]
-            if not content_div:
-                return [], []
-            
-            # Lấy toàn bộ văn bản (không lấy script, ads, liên kết liên quan)
-            content = content_div.get_text(separator="\n", strip=True)
-            images = content_div.find_all("img")
-            content_images = [img.get("src") for img in images if img.get("src")]
+            if content_div:
+                # text
+                content = content_div.get_text(separator="\n", strip=True)
 
-            # Trích xuất tác giả
-            author_box = soup.find('div', class_='chuky')
-            author_tag = author_box.find('a')
-            author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
-            try:
-                chrome_options = Options()
-                chrome_options.add_argument("--headless=new")
-                chrome_options.add_argument("--disable-gpu")
-                chrome_options.add_argument("--no-sandbox")
-                driver = webdriver.Chrome(options=chrome_options)
-                driver.get(url) 
-                # Chờ cho slick-slider render xong
-                cat_tag = WebDriverWait(driver, 2).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "a.slick-current.slick-active"))
-                )
-                categories = cat_tag.text.strip()
-            except Exception as e:
-                print("Không tìm thấy category:", e)
-            finally:
-                driver.quit()
+                # images
+                imgs = content_div.find_all("img")
+                content_images = [i["src"] for i in imgs if i.get("src")]
+            else:
+                content = ""
+                content_images = []
 
-            location = ""
+            # ----- AUTHOR -----
+            author = None
+            author_box = soup.find("div", class_="chuky")
+            if author_box:
+                atag = author_box.find("a")
+                if atag:
+                    author = atag.get_text(strip=True).split("/")[0].strip()
+
+            # ---------- SELENIUM PART ----------
+            categories = ""
+            video_url = ""
             thumbnail_url = ""
-            try:
-                chrome_options = Options()
-                chrome_options.add_argument("--headless=new")
-                chrome_options.add_argument("--no-sandbox")
-                chrome_options.add_argument("--disable-extensions")
-                chrome_options.add_argument("--disable-popup-blocking")
-                chrome_options.add_argument("--disable-notifications")
-                chrome_options.add_argument("--window-size=1200,900")
-                chrome_options.add_argument("--log-level=3")
+            location = ""
 
-                driver = webdriver.Chrome(options=chrome_options)
-                driver.get(url)
-                try:
-                    cat_tag = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.slick-current.slick-active"))
-                    )
-                    categories = cat_tag.text.strip()
-                except Exception as e:
-                    print("Không tìm thấy category:", e)
+            return (
+                title, description, content, publish_date, author,
+                content_images, categories, video_url, thumbnail_url, location
+            )
 
-                try:
-                    driver.switch_to.default_content()
-                    yt_iframe = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((
-                            By.CSS_SELECTOR,
-                            'iframe[src*="youtube.com"], iframe[src*="youtube-nocookie.com"]'
-                        ))
-                    )
-                    driver.switch_to.frame(yt_iframe)
-
-                    poster = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.ytp-cued-thumbnail-overlay-image"))
-                    )
-                    style_attr = poster.get_attribute("style") or ""
-                    m = re.search(r'url\((["\']?)(.*?)\1\)', style_attr)
-                    if m:
-                        thumbnail_url = m.group(2).strip()
-                    else:
-                        # computed style fallback
-                        bg = driver.execute_script(
-                            "return getComputedStyle(arguments[0]).getPropertyValue('background-image');", poster
-                        ) or ""
-                        m2 = re.search(r'url\((["\']?)(.*?)\1\)', bg)
-                        thumbnail_url = m2.group(2).strip() if m2 else ""
-
-                    driver.switch_to.default_content()
-                except TimeoutException:
-                    thumbnail_url = ""
-
-                try:
-                    iframe = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[src*='youtube.com/embed/']"))
-                    )
-                    driver.switch_to.frame(iframe)
-
-                    link_tag = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.ytp-impression-link"))
-                    )
-                    video_url = link_tag.get_attribute("href")
-                except Exception as e:
-                    video_url = ""
-                finally:
-                    driver.quit()
-            except WebDriverException as e:
-                print("⚠️ Selenium error:", e)
-            finally:
-                try:
-                    if driver:
-                        driver.quit()
-                except:
-                    pass
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
-
-        except requests.exceptions.RequestException as e:
-            print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
         except Exception as e:
-            print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
-    
+            print("❌ ERROR:", e)
+            return None, None, None, None, None, [], "", "", "", ""
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -364,7 +289,7 @@ class KiemSatCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+        """ Get URLs of articles in a specific type (e.g., 'su-kien-van-de') """
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
@@ -375,53 +300,65 @@ class KiemSatCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://kiemsat.vn/{article_type}"
         driver.get(page_url)
+        
         seen_links = set()
         last_size = 0
-        max_pages = 20
         page_count = 0
+        max_pages = 5
         try:
             wait = WebDriverWait(driver, 10)
 
             while page_count < max_pages:
-
+                # Lấy tất cả bài trên trang hiện tại
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.loadmore-list div.item.loadmore-item")
 
                 for article in articles:
                     try:
-                        title_link = article.find_element(By.CSS_SELECTOR, "div.khungAnh > a.khungAnhCrop")
-                        href = title_link.get_attribute("href")
-                        # print("🧪 Found link:", href)  # ✅ In ra để debug
+                        link_tag = article.find_element(By.CSS_SELECTOR, "div.khungAnh > a.khungAnhCrop")
+                        href = link_tag.get_attribute("href")
                         if href:
                             if href.startswith("/"):
                                 href = urljoin("https://kiemsat.vn", href)
                             if href.startswith("http") and href not in seen_links:
                                 seen_links.add(href)
                     except Exception:
-                        pass
+                        continue
+
+                # Nếu không có link mới → dừng
                 if len(seen_links) == last_size:
                     print("✅ Không còn bài mới. Dừng lại.")
                     break
                 last_size = len(seen_links)
 
+                # Click nút 'Xem thêm bài viết' nếu có
                 try:
-                        next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.view_more")))
-                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
-                        driver.execute_script("arguments[0].click();", next_button)
-                        print("➡️ Đã click nút 'Trang sau'")
-                        page_count += 1
-
+                    next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a.view_more")))
+                    driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                    time.sleep(1)
+                    driver.execute_script("arguments[0].click();", next_button)
+                    print("➡️ Đã click nút 'Xem thêm bài viết'")
+                    time.sleep(2)
+                    page_count += 1
                 except Exception:
-                        print("✅ Không còn nút Trang sau. Dừng lại.")
-                        break
+                    print("✅ Không còn nút 'Xem thêm bài viết'. Dừng lại.")
+                    break
 
         except Exception as e:
             print("⚠️ Lỗi collect links:", e)
         finally:
             driver.quit()
+
         print(f"📄 Tổng số bài thu thập: {len(seen_links)}")
         return seen_links
 

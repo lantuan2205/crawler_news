@@ -238,92 +238,93 @@ class VtvCrawler(BaseCrawler):
 
     def extract_content(self, url: str, has_video) -> tuple:
         """
-        Extract title, description, content, publish date, author, and content images from url.
+        Extract title, description, content, publish date, author, content images, categories, video, thumbnail, location from url.
         @param url (str): url to crawl
-        @return tuple: (title, description, content, publish_date, author, content_images)
+        @param has_video (bool): có video hay không
+        @return tuple: (title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location)
         """
         try:
+            print(f"🔎 Crawling article: {url}")
             response = requests.get(url, headers=headers)
-          
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-            # Lấy title
+
+            # ------------------- Title -------------------
             title_tag = soup.find('h1', class_='title')
             title = title_tag.get_text(strip=True) if title_tag else ""
 
-            # Lấy description
+            # ------------------- Description -------------------
             desc_tag = soup.find("h2", class_="sapo")
             if desc_tag:
                 raw_description = desc_tag.get_text(strip=True)
-                # Tách phần mô tả sau dấu "-"
                 split_parts = raw_description.split("-", 1)
                 description = split_parts[1].strip() if len(split_parts) > 1 else raw_description
             else:
                 description = ""
 
-            # Trích xuất ngày viết bài
+            # ------------------- Publish Date -------------------
             import re
-
             publish_date = ""
             date_tag = soup.find("p", class_="days")
-
             if date_tag:
                 text = date_tag.get_text(strip=True)
-                # Tìm chuỗi dạng dd/mm/yyyy hh:mm bằng regex
                 match = re.search(r"\d{2}/\d{2}/\d{4} \d{2}:\d{2}", text)
                 if match:
                     publish_date = match.group(0)
 
+            # ------------------- Content & Images -------------------
             content_images = []
             content = ""
-            # Lấy tất cả các ảnh trong phần tử này
             content_div = soup.find("div", class_="detail-cmain")
             if content_div:
+                # Nội dung
                 content = "\n".join(
                     txt for txt in (p.get_text(strip=True) for p in content_div.find_all("p"))
                     if txt
                 )
-            if content_div:
+                # Ảnh
                 for img in content_div.find_all("img"):
-                    # ưu tiên src, rồi tới các thuộc tính lazy phổ biến
-                    url = (img.get("src") or img.get("data-src") or
-                        img.get("data-original") or img.get("data-lazy-src") or "").strip()
-                    if not url:
-                        continue
-                    # chuẩn hoá về absolute URL (nếu cần)
-                    content_images.append(url)
-
-                # khử trùng lặp, giữ nguyên thứ tự
+                    url_img = (img.get("src") or img.get("data-src") or
+                            img.get("data-original") or img.get("data-lazy-src") or "").strip()
+                    if url_img:
+                        content_images.append(url_img)
+                # Khử trùng lặp
                 seen = set()
                 content_images = [u for u in content_images if not (u in seen or seen.add(u))]
-            else:
-                content_images = []
 
-            # Trích xuất tác giả
+            # ------------------- Author -------------------
             author = ""
             author_div = soup.find('div', class_='flex-author')
             author_tag = author_div.select_one("span.name") if author_div else None
             author = author_tag.get_text(strip=True) if author_tag else ""
-            
+
+            # ------------------- Categories -------------------
             categories_tag = soup.find("div", class_="list-cate")
             a = categories_tag.select_one("a.item-cate") if categories_tag else None
             categories = a.get_text(strip=True) if a else ""
-            location = ""
+
+            # ------------------- Video & Thumbnail (TH mới) -------------------
             video_url = ""
             thumbnail_url = ""
-            box = soup.select_one("div.VCSortableInPreviewMode")
-            video_url = box.get('data-vid').strip() if box else ''
-            thumbnail_url = box.get('data-thumb').strip() if box else ''
+            if has_video:
+                box = soup.select_one("div.VCSortableInPreviewMode")
+                if box:
+                    video_url = box.get('data-vid', '').strip()
+                    thumbnail_url = box.get('data-thumb', '').strip()
 
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
+            # ------------------- Location (TH mới) -------------------
+            location_tag = soup.find("div", class_="location")  # ví dụ
+            location = location_tag.get_text(strip=True) if location_tag else ""
+
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
-    
+            return None, None, None, None, None, [], None, None, None, None
+
     def write_content(self, url: str, article_type: str) -> bool:
         """
         From url, extract title, description and paragraphs then write in output_fpath
@@ -374,7 +375,7 @@ class VtvCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         last_size = 0
-        max_pages = 20
+        max_pages = 2
         page_count = 0
         wait = WebDriverWait(driver, 10)
 

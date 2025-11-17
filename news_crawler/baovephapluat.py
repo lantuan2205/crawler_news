@@ -332,27 +332,82 @@ class BaoVePhapLuatCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
-        page_url = f"https://baovephapluat.vn/{article_type}/p/{page_number}"
-        if page_number == 50:
-            return []
+        base_url = "https://baovephapluat.vn"
+
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = webdriver.Chrome(options=chrome_options)
+        page_url = f"{base_url}/{article_type}"
+        driver.get(page_url)
+
+        seen_links = set()
+        page_count = 0
+        max_pages = 2
+        wait = WebDriverWait(driver, 10)
+
         try:
-            response = requests.get(page_url, headers=headers, timeout=10)
-            sleep_time = random.uniform(1, 3)
-            time.sleep(sleep_time)
-            response.raise_for_status()  # Kiểm tra nếu request thất bại
-        except requests.exceptions.RequestException as e:
-            self.logger.error(f"Error fetching {page_url}: {e}")
-            return []
+            while page_count < max_pages:
+                previous_count = len(seen_links)
 
-        soup = BeautifulSoup(response.content, "html.parser")
-        ctrangc3_div = soup.find('div', class_='ctrangc3')
-        link_tags = ctrangc3_div.find_all('a', href=True) if ctrangc3_div else []
+                # Scroll xuống cuối page để load bài viết
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(0.5)
 
-        if (len(link_tags) == 0):
-            return []
+                # Lấy tất cả bài viết
+                articles = driver.find_elements(By.CSS_SELECTOR, "div.pcontent3.contentCategory")
+                for article in articles:
+                    try:
+                        a_tag = article.find_element(By.TAG_NAME, "a")
+                        href = a_tag.get_attribute("href")
+                        if href:
+                            href = urljoin(base_url, href)
+                            seen_links.add(href)
+                    except Exception:
+                        continue
 
-        urls = [tag['href'] for tag in link_tags]
-        return urls
+                # Nếu không có link mới → dừng
+                new_links_found = len(seen_links) - previous_count
+                if new_links_found == 0:
+                    print("✅ Không còn link mới. Kết thúc.")
+                    break
+
+                # Click nút "XEM TIẾP" nếu còn
+                try:
+                    next_button = wait.until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.btnViewMoreData"))
+                    )
+                    driver.execute_script("arguments[0].scrollIntoView(true);", next_button)
+                    time.sleep(0.5)
+                    driver.execute_script("arguments[0].click();", next_button)
+                    print("➡️ Đã click 'XEM TIẾP'")
+                except Exception as e:
+                    print("❌ Không tìm thấy hoặc không click được nút 'XEM TIẾP':", e)
+                    break
+
+                page_count += 1
+
+        finally:
+            driver.quit()
+
+        print(f"📄 Tổng số link thu thập được: {len(seen_links)}")
+        return seen_links
 
     def get_all_articles(self, category):
         
