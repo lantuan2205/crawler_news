@@ -147,15 +147,15 @@ def process_crawl(data: Dict[str, Any]):
     profile = crawl_setting.get("PROFILE", {})
 
     # Lấy các giá trị trong POST
-    audience_enable = post.get("AUDIENCE_INFORMATION")
-    comments_enable = post.get("COMMENTS", {}).get("ENABLE")
-    comments_limit = post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS")
-    date_range = post.get("DATE_RANGE")
-    post_enable = post.get("ENABLE")
-    location_enable = post.get("LOCATION")
-    image_download_enable = post.get("IMAGE_DOWNLOAD")
-    video_download_enable = post.get("VIDEO_DOWNLOAD")
-    video_thumbnail_enable = post.get("VIDEO_THUMBNAIL")
+    audience_enable = post.get("AUDIENCE_INFORMATION", True)
+    comments_enable = post.get("COMMENTS", {}).get("ENABLE", True)
+    comments_limit = post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS", 10)
+    date_range = post.get("DATE_RANGE", 30)
+    post_enable = post.get("ENABLE", True)
+    location_enable = post.get("LOCATION", False)
+    image_download_enable = post.get("IMAGE_DOWNLOAD", True)
+    video_download_enable = post.get("VIDEO_DOWNLOAD", False)
+    video_thumbnail_enable = post.get("VIDEO_THUMBNAIL", False)
 
     # Lấy trong PROFILE
     profile_enable = profile.get("ENABLE")
