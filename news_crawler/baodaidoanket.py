@@ -579,7 +579,7 @@ class DaiDoanKetCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str, number_post: int):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int, crawl_id: Optional[str] = None):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         headers = {
@@ -633,12 +633,13 @@ class DaiDoanKetCrawler(BaseCrawler):
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": domain_username,
+                    "crawlId": crawl_id or str(uuid.uuid4())
                 }
                 send_podcast_to_kafka(podcast)
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)
 
-    def crawl_postcast(self, number_post: int):
+    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "podcast.html",
 
@@ -649,4 +650,4 @@ class DaiDoanKetCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url, number_post)
+            self.crawl_podcast_bs4(category_url, number_post, crawl_id=crawl_id)

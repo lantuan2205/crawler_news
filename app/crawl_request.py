@@ -343,7 +343,7 @@ def process_crawl(data: Dict[str, Any]):
                         break
                 if "podcast" in data_to_collect and audience_enable:
                     if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
-                        data = crawler.crawl_postcast(number_post=number_audio)
+                        data = crawler.crawl_postcast(number_post=number_audio, crawlId=crawlId)
                         return
                     else:
                         print("⚠ Crawler does not support crawl_postcast")
@@ -643,6 +643,7 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
             return None
         comments = comments[:limit]
         for comment in comments:
+            comment["crawlId"] = crawlId
             send_comment_article_to_kafka(comment)
             time.sleep(0.2)
         if link:

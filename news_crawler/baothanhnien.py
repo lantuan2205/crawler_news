@@ -695,7 +695,7 @@ class BaoThanhNienCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str, number_post: int):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int, crawl_id: Optional[int] = None):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         base = "thanhnien"
@@ -754,13 +754,14 @@ class BaoThanhNienCrawler(BaseCrawler):
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": domain_username,
+                    "crawlId": crawl_id or str(uuid.uuid4())
                 }
                 send_podcast_to_kafka(podcast)
             except Exception as e:
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
 
-    def crawl_postcast(self, number_post: int):
+    def crawl_postcast(self, number_post: int, crawl_id: Optional[int] = None):
         podcast_type_dict = {
             0: "genz.htm",
             1: "showbiz.htm",
@@ -776,4 +777,4 @@ class BaoThanhNienCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = f"{base}/{slug.lstrip('/')}"
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url, number_post=per_category)
+            self.crawl_podcast_bs4(category_url, number_post=per_categor, crawl_id=crawl_id)

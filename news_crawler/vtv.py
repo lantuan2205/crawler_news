@@ -485,7 +485,7 @@ class VtvCrawler(BaseCrawler):
             "end_time_mp3": end_time_mp3_url,
         }
 
-    def crawl_podcast_bs4(self, category_url: str, number_post: int):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int, crawl_id: Optional[str] = None):
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
@@ -578,6 +578,7 @@ class VtvCrawler(BaseCrawler):
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
+                    "crawlId": crawl_id or str(uuid.uuid4()),
 
                 }
                 send_podcast_to_kafka(podcast)
@@ -588,7 +589,7 @@ class VtvCrawler(BaseCrawler):
             except:
                 pass
 
-    def crawl_postcast(self, number_post: int):
+    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "hat-giong-tam-hon.htm",
             1: "oi-nghe-ne.htm",
@@ -604,4 +605,4 @@ class VtvCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url, number_post=per_category)
+            self.crawl_podcast_bs4(category_url, number_post=per_category, crawl_id=crawl_id)

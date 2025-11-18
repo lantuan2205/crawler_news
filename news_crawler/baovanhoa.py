@@ -575,7 +575,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             "publishedDate": datetime_url
         }
 
-    def crawl_podcast_bs4(self, category_url: str, number_post: int):
+    def crawl_podcast_bs4(self, category_url: str, number_post: int, crawl_id: Optional[str] = None):
         def build_domain_username(domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
@@ -645,6 +645,7 @@ class BaoVanHoaCrawler(BaseCrawler):
                         "duration": time_to_seconds(end_time_url),
                         "publishedDate": datetime_url,
                         "authorId": domain_username,
+                        "crawlId": crawl_id or str(uuid.uuid4())
                     }
                     send_podcast_to_kafka(podcast)
                 except Exception as e:
@@ -666,7 +667,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             # ngủ nhẹ tránh bị chặn
             time.sleep(random.uniform(0.8, 1.8))
 
-    def crawl_postcast(self, number_post: int):
+    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "podcast/",
         }
@@ -676,4 +677,4 @@ class BaoVanHoaCrawler(BaseCrawler):
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")
-            self.crawl_podcast_bs4(category_url, number_post)
+            self.crawl_podcast_bs4(category_url, number_post, crawl_id=crawl_id)

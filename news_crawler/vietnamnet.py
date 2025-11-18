@@ -632,7 +632,7 @@ class VietNamNetCrawler(BaseCrawler):
         }         
 
 
-    def crawl_podcast_bs4(self, url: str, category: str):
+    def crawl_podcast_bs4(self, url: str, category: str, crawl_id: Optional[str] = None):
         def build_domain_username( domain, author_url):
             return f"{domain}_{author_url.replace(' ', '')}"
         domain = "vietnamnet"
@@ -682,10 +682,11 @@ class VietNamNetCrawler(BaseCrawler):
             "duration": end_time_url,
             "publishedDate": datetime_url,
             "authorId": domain_username,
-}
+            "crawlId": crawl_id or str(uuid.uuid4())
+        }
         send_podcast_to_kafka(podcast)
 
-    def crawl_postcast(self, number_post: int):
+    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0:  "doc-la",
             1:  "goc-nhin",
@@ -703,7 +704,7 @@ class VietNamNetCrawler(BaseCrawler):
             for idx, url in enumerate(urls):
                 if idx >= per_category:
                     break
-                self.crawl_podcast_bs4(url, slug)
+                self.crawl_podcast_bs4(url, slug, crawl_id=crawl_id)
 
             
 
