@@ -234,7 +234,7 @@ def process_crawl(data: Dict[str, Any]):
                 for url in links:
                     get_article_details(
                         crawler=crawler,
-                        url=article_url,
+                        url=url,
                         link=False,
                         has_video=has_video,
                         proxy_session=proxy_session,
@@ -256,7 +256,7 @@ def process_crawl(data: Dict[str, Any]):
                 for url in links:
                     get_article_details(
                         crawler=crawler,
-                        url=article_url,
+                        url=url,
                         link=False,
                         has_video=has_video,
                         proxy_session=proxy_session,
@@ -343,7 +343,7 @@ def process_crawl(data: Dict[str, Any]):
                         break
                 if "podcast" in data_to_collect and audience_enable:
                     if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
-                        data = crawler.crawl_postcast(number_post=number_audio, crawlId=crawlId)
+                        data = crawler.crawl_postcast(number_post=number_audio, crawl_id=crawlId)
                         return
                     else:
                         print("⚠ Crawler does not support crawl_postcast")
@@ -570,7 +570,7 @@ def get_article_details(
         author_id = f"{extract_main_domain(url)}_{author_clean}"
     else:
         author_id = None
-    print(f"[INFO] Đã lấy bài viết: {published_date} - {title}")
+    # print(f"[INFO] Đã lấy bài viết: {published_date} - {title}")
 
     article_data = {
         "dataSource": normalize_url_to_root_https(url),

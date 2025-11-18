@@ -22,7 +22,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
-from typing import Optional  
+from typing import Optional
 from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
 
 
@@ -436,11 +436,14 @@ class VtvCrawler(BaseCrawler):
             chrome_options.add_argument("--headless=new")
             chrome_options.add_argument("--disable-gpu")
             chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-images")
+            # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
             chrome_options.add_argument("--disable-extensions")
             chrome_options.add_argument("--disable-popup-blocking")
-            chrome_options.add_argument("--remote-debugging-port=9222")
             chrome_options.add_argument("--disable-notifications")
             chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+            chrome_options.set_capability("pageLoadStrategy", "eager")
 
             driver = webdriver.Chrome(options=chrome_options)
             driver.get(url)
