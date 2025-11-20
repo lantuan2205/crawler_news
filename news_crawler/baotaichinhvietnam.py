@@ -238,7 +238,7 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
             video_url = ""
             thumbnail_url = ""
             location = ""
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")

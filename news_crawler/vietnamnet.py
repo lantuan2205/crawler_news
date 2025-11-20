@@ -263,70 +263,44 @@ class VietNamNetCrawler(BaseCrawler):
         
         location = ""
         video_url = ""
-        try:
-            chrome_options = Options()
-            chrome_options.add_argument("--headless=new")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--disable-popup-blocking")
-            chrome_options.add_argument("--disable-notifications")
-
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.get(url)
-
-            # iframe trong figure.vnn-template-noneditable
-            try:
-                iframe_el = driver.find_element(By.CSS_SELECTOR, "figure.vnn-template-noneditable iframe")
-                video_url = iframe_el.get_attribute("src") or ""
-            except NoSuchElementException:
-                video_url = ""
-
-        except WebDriverException as e:
-            print("⚠️ Selenium error:", e)
-        finally:
-            try:
-                driver.quit()
-            except:
-                pass
-        
         thumbnail_url = ""
-        try:
-            chrome_options = Options()
-            chrome_options.add_argument("--headless=new")
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--no-sandbox")
-            chrome_options.add_argument("--disable-extensions")
-            chrome_options.add_argument("--disable-popup-blocking")
-            chrome_options.add_argument("--disable-notifications")
+        if has_video:
+            try:
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--remote-debugging-port=9222")
+                chrome_options.add_argument("--disable-images")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+                chrome_options.set_capability("pageLoadStrategy", "eager")
+                driver = webdriver.Chrome(options=chrome_options)
+                driver.get(url)
+                time.sleep(2)
+                # iframe trong figure.vnn-template-noneditable
+                try:
+                    thumbnail_el = driver.find_element(By.CSS_SELECTOR, "div.vjs-poster img")
+                    thumbnail_url = thumbnail_el.get_attribute("src")
+                except:
+                    thumbnail_url = ""
 
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.get(url)
-            WebDriverWait(driver, 12).until(
-                EC.frame_to_be_available_and_switch_to_it(
-                    (By.CSS_SELECTOR, "figure.vnn-template-noneditable iframe")
-                )
-            )
-            img_el = WebDriverWait(driver, 12).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "picture.vjs-poster img"))
-            )
-            thumbnail_url = (img_el.get_attribute("src") or "").strip()
-            # iframe trong figure.vnn-template-noneditable
-            if not thumbnail_url:
-                # a) thuộc tính poster trên thẻ <video>
+                # blob video
                 try:
                     video_el = driver.find_element(By.CSS_SELECTOR, "video.vjs-tech")
-                    thumbnail_url = (video_el.get_attribute("poster") or "").strip()
-                except Exception:
-                    pass
+                    video_url = video_el.get_attribute("src")
+                except:
+                    video_url = ""
 
-        except WebDriverException as e:
-            print("⚠️ Selenium error:", e)
-        finally:
-            try:
-                driver.quit()
-            except:
-                pass
+            except WebDriverException as e:
+                print("⚠️ Selenium error:", e)
+            finally:
+                try:
+                    driver.quit()
+                except:
+                    pass
         return title, description, content, published_date, author, content_images, categories, video_url, thumbnail_url, location
 
     def extract_comment(self, url: str):
@@ -635,7 +609,6 @@ class VietNamNetCrawler(BaseCrawler):
             "duration": time_to_seconds(end_time_mp3_url),
             "publishedDate": publishedDate
         }         
-
 
     def crawl_podcast_bs4(self, url: str, category: str, crawl_id: Optional[str] = None):
         def build_domain_username( domain, author_url):

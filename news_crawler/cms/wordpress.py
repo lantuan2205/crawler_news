@@ -268,23 +268,35 @@ class WordPressCrawler:
     def _pick_news_list_url(self, soup):
         """
         Trả về URL trang danh sách bài (nếu đoán được) hoặc None.
-        Quét menu/header/footer để tìm các link có text/href gợi ý 'tin tức', 'news', 'blog', 'category'...
+
+        Cải tiến:
+        - Thêm nhiều từ khóa text/href
+        - Scoring thông minh hơn
+        - Check thêm footer + toàn bộ links fallback
         """
         from urllib.parse import urljoin
 
         if not soup:
             return None
 
+        # Các từ khóa có thể xuất hiện trong text
         kw_text = [
-            "tin tức", "tintuc", "bài viết", "bai viet", "chuyên mục", "chuyen muc",
-            "webinar", "blog"
-        ]
-        kw_href = [
-            "/tin-tuc", "/webinar", "/blog", "/bai-viet", "/chuyen-muc"
+            "tin tức", "tintuc", "bài viết", "bai viet",
+            "chuyên mục", "chuyen muc", "blog", "tin công ty",
+            "tin hoạt động", "news", "event", "sự kiện", "tuyển dụng"
         ]
 
+        # Các từ khóa có thể xuất hiện trong URL
+        kw_href = [
+            "/tin", "/news", "/blog", "/bai-viet", "/chuyen-muc",
+            "/category", "/categories", "/posts", "/post",
+            "/event", "/su-kien", "/tuyen-dung"
+        ]
+
+        # Khu vực quan trọng: menu/navigation
         zones = [
             "nav a[href]", ".menu a[href]", "header a[href]",
+            ".navbar a[href]", ".navigation a[href]"
         ]
 
         best = None
@@ -292,27 +304,59 @@ class WordPressCrawler:
 
         def _score(a):
             text = (a.get_text(" ", strip=True) or "").lower()
-            href  = (a.get("href") or "").strip().lower()
-            s = 0
-            if any(k in text for k in kw_text): s += 3
-            if any(k in href for k in kw_href): s += 2
+            href = (a.get("href") or "").strip().lower()
+            score = 0
 
-            if href.startswith("/"): s += 1
-            if len(href) <= 40: s += 1
-            return s
+            # Bỏ qua các link vô nghĩa
+            if href.startswith("javascript") or href.startswith("#") \
+            or href.startswith("tel:") or href.startswith("mailto:"):
+                return -1
 
+            # Từ khóa trong text
+            for k in kw_text:
+                if k in text:
+                    score += 4
+
+            # Từ khóa trong href
+            for k in kw_href:
+                if k in href:
+                    score += 3
+
+            # Link kiểu "/path"
+            if href.startswith("/"):
+                score += 1
+            
+            # URL ngắn → thường là category
+            if len(href) <= 50:
+                score += 1
+
+            return score
+
+        # Ưu tiên quét menu / header
         for sel in zones:
             for a in soup.select(sel):
                 href = a.get("href")
-                if not href: 
+                if not href:
                     continue
+
                 sc = _score(a)
                 if sc > best_score:
                     best_score = sc
                     best = href
 
-            if best_score >= 3:  # đã tìm được ứng viên “đủ tốt”
+            if best_score >= 4:  # tìm được ứng viên đủ mạnh
                 break
+
+        # FALLBACK: nếu vẫn chưa thấy → scan toàn bộ link
+        if best_score < 4:
+            for a in soup.select("a[href]"):
+                href = a.get("href")
+                if not href:
+                    continue
+                sc = _score(a)
+                if sc > best_score:
+                    best_score = sc
+                    best = href
 
         return urljoin(self.base_url, best) if best and best_score >= 3 else None
 
@@ -413,12 +457,26 @@ class WordPressCrawler:
             content= self._extract_first(soup, tpl.get("content", [])) or None
             published_date = normalize_tuple_date(published_date) if published_date else None
             author= self._extract_first(soup, tpl.get("author", [])) or None
-            content_image_urls= self._extract_all(soup, ["div.et_pb_row_1_tb_body img","div.entry-content img","div.post-content img", "div.entrytext img","div.entry img"], attr="src") or []
+            content_image_urls = self._extract_all(soup, tpl.get("contentImageUrls", []), attr="src") or []
             categories_list = self._extract_all(soup, tpl.get("categories", [])) or []
             categories = ", ".join(categories_list)
             video_url = self._extract_first(soup, tpl.get("videoUrl", [])) or None
             thumbnail_url= self._extract_first(soup, tpl.get("thumbnailUrl", [])) or None
             location= self._extract_first(soup, tpl.get("location", [])) or None
+
+            data = {
+                "title": title,
+                "description": description,
+                "content": content,
+                "published_date": published_date,
+                "author": author,
+                "content_image_urls": content_image_urls,
+                "categories": categories,
+                "video_url": video_url,
+                "thumbnail_url": thumbnail_url,
+                "location": location,
+            }
+            print(json.dumps(data, ensure_ascii=False, indent=4))
 
             return (
                 title,

@@ -308,11 +308,13 @@ class BaoVanHoaCrawler(BaseCrawler):
                 chrome_options.add_argument("--headless=new")
                 chrome_options.add_argument("--disable-gpu")
                 chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--remote-debugging-port=9222")
+                chrome_options.add_argument("--disable-images")
                 chrome_options.add_argument("--disable-extensions")
                 chrome_options.add_argument("--disable-popup-blocking")
                 chrome_options.add_argument("--disable-notifications")
-                chrome_options.add_argument("--window-size=1200,900")
-                chrome_options.add_argument("--log-level=3")
+                chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+                chrome_options.set_capability("pageLoadStrategy", "eager")
 
                 driver = webdriver.Chrome(options=chrome_options)
                 driver.get(url)
@@ -352,7 +354,7 @@ class BaoVanHoaCrawler(BaseCrawler):
                         driver.quit()
                 except:
                     pass
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")

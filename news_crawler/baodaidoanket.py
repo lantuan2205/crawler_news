@@ -341,13 +341,19 @@ class DaiDoanKetCrawler(BaseCrawler):
                     video_url = urljoin(url, iframe["src"].strip())  # gán luôn src 
             # 2 Trường hợp YouTube nhúng — thumbnail nằm trong style
             if not thumbnail_url:
-                opts = Options()
-                opts.add_argument("--headless=new")
-                opts.add_argument("--no-sandbox")
-                opts.add_argument("--disable-gpu")
-                # ❌ đừng tắt ảnh khi cần poster: bỏ --disable-images & blink image off
+                chrome_options = Options()
+                chrome_options.add_argument("--headless=new")
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--no-sandbox")
+                chrome_options.add_argument("--remote-debugging-port=9222")
+                chrome_options.add_argument("--disable-images")
+                chrome_options.add_argument("--disable-extensions")
+                chrome_options.add_argument("--disable-popup-blocking")
+                chrome_options.add_argument("--disable-notifications")
+                chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+                chrome_options.set_capability("pageLoadStrategy", "eager")
 
-                driver = webdriver.Chrome(options=opts)
+                driver = webdriver.Chrome(options=chrome_options)
                 try:
                     driver.get(url)
                     wait = WebDriverWait(driver, 12)
@@ -383,14 +389,14 @@ class DaiDoanKetCrawler(BaseCrawler):
                 finally:
                     driver.quit()
             
-            return title, description, content, publish_date, author, content_images,categories, video_url, thumbnail_url, location
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
