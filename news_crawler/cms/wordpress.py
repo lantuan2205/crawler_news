@@ -375,35 +375,89 @@ class WordPressCrawler:
                 return urljoin(current_url, href)
         return None
 
+    def _is_article_link(self, url):
+        """Detect link bài viết dựa trên pattern WordPress phổ biến."""
+        WP_URL_PATTERNS = [
+            r"/20\d{2}/\d{1,2}/\d{1,2}/",
+            r"/20\d{2}/\d{1,2}/",
+            r"/category/[^/]+/[^/]+",
+            r"/tag/[^/]+/[^/]+",
+            r"/post[s]?/",
+            r"/bai-viet/",
+            r"/tin-tuc/",
+            r"/news/",
+            r"/bai-viet-[\w-]+"
+        ]
+
+        for pat in WP_URL_PATTERNS:
+            if re.search(pat, url):
+                return True
+        return False
+
+
+    def _load_sitemap(self):
+        """Crawl sitemap từ 3 nguồn phổ biến của WordPress."""
+        sitemap_urls = [
+            urljoin(self.base_url, "/wp-sitemap.xml"),
+            urljoin(self.base_url, "/sitemap_index.xml"),
+            urljoin(self.base_url, "/sitemap.xml"),
+        ]
+
+        links = []
+        for sm in sitemap_urls:
+            try:
+                r = self.session.get(sm, timeout=5)
+                if r.status_code != 200: continue
+
+                soup = BeautifulSoup(r.text, "xml")
+                for loc in soup.find_all("loc"):
+                    url = loc.get_text(strip=True)
+                    if self._is_article_link(url):
+                        links.append(url)
+            except:
+                pass
+
+        return list(set(links))
+
     def get_article_links(self, max_pages=5):
         print(f"🧩 Collecting article URLs from: {self.base_url}")
+
         tpl = self.template.get("article_list", {}) or {}
         selectors = tpl.get("articleUrl", []) or []
         next_selectors = tpl.get("nextPage", []) or []
         collected = set()
 
+        # ------------------------------------------------------------
+        # CRAWLER CORE
+        # ------------------------------------------------------------
         def crawl_list(start_url):
+            """Crawl 1 list page với phân trang"""
             seen = set()
             cur = start_url
+
             for page in range(max_pages):
-                if cur in seen: break
+                if cur in seen:
+                    break
                 seen.add(cur)
 
                 is_wp = self._is_wp_com(cur)
                 soup = self._get_html(cur, scroll=is_wp)
-                if not soup: break
+                if not soup:
+                    break
 
                 before = len(collected)
                 links = self._extract_all(soup, selectors, attr="href")
                 if not links:
                     print(f"[!] Page {page+1} ({cur}) returned 0 links → stop.")
                     break
+
                 collected.update(links)
                 print(f"  ➜ Page {page+1}: +{len(collected)-before} new links (total {len(collected)})")
 
+                # tìm nextPage từ template
                 nxt = self._resolve_next_url(soup, cur, next_selectors)
 
-                # WP.com: sau scroll, nếu URL đã nhảy /page/N thì dùng luôn
+                # WP.com special: scroll xong URL nhảy sang /page/N/
                 if not nxt and is_wp and self.driver:
                     after = self.driver.current_url
                     if after != cur and re.search(r"/page/\d+/?$", after):
@@ -411,34 +465,132 @@ class WordPressCrawler:
 
                 if not nxt:
                     break
+
                 cur = nxt
                 time.sleep(1.0)
 
-        # Phase 1: luôn thử từ homepage (hoặc list page đoán được nếu home không có link)
+        # ------------------------------------------------------------
+        # PHASE 1 — Crawl homepage hoặc list page đoán được
+        # ------------------------------------------------------------
         home_soup = self._get_html(self.base_url)
         start_url = self.base_url
+
+        has_home_links = False
         if home_soup:
-            has_home_links = bool(self._extract_all(
-                home_soup, (self.template.get("article_list", {}) or {}).get("articleUrl", []) or [],
-                attr="href", base_url=self.base_url
-            ))
-            if not has_home_links:
+            has_home_links = bool(
+                self._extract_all(home_soup, selectors, attr="href", base_url=self.base_url)
+            )
+
+        if not has_home_links:
+            guess = None
+            if home_soup:
                 guess = self._pick_news_list_url(home_soup)
-                if guess:
-                    start_url = guess
-                    print(f"[AUTO] Discovered list page: {start_url}")
+            elif self.driver:
+                guess = self._pick_news_list_url(
+                    BeautifulSoup(self.driver.page_source, "html.parser")
+                )
+
+            if guess:
+                start_url = guess
+                print(f"[AUTO] Using guessed list page: {start_url}")
 
         crawl_list(start_url)
 
-        # Phase 2: Nếu có trang 'tin tức' riêng & khác homepage → crawl tiếp
+        # ------------------------------------------------------------
+        # PHASE 2 — Crawl list page "tin tức" riêng nếu có
+        # ------------------------------------------------------------
+        news_url = None
         if home_soup:
             news_url = self._pick_news_list_url(home_soup)
-            if news_url and news_url.rstrip("/").lower() != self.base_url.rstrip("/").lower():
-                print(f"[AUTO] Also crawl list page: {news_url}")
-                before = len(collected)
-                crawl_list(news_url)
-                if len(collected) == before:
-                    print("[AUTO] News list added 0 links → stop early.")
+
+        if news_url and news_url.rstrip("/") != self.base_url.rstrip("/"):
+            print(f"[AUTO] Also crawl list page: {news_url}")
+            before = len(collected)
+            crawl_list(news_url)
+            if len(collected) == before:
+                print("[AUTO] News list added 0 links → stop early.")
+
+        # ------------------------------------------------------------
+        # PHASE 3 — Auto detect category pages
+        # ------------------------------------------------------------
+        print("📂 Auto-detecting category pages...")
+
+        def _extract_categories(soup):
+            cats = set()
+            if not soup:
+                return cats
+
+            for a in soup.select("a[href]"):
+                href = a.get("href", "")
+                if "/category/" in href:
+                    full = urljoin(self.base_url, href)
+                    if not full.endswith("/"):
+                        full += "/"
+                    cats.add(full)
+
+            return cats
+
+        categories = set()
+        try:
+            categories.update(_extract_categories(home_soup))
+        except:
+            pass
+
+        # detect thêm từ start_url page
+        try:
+            if start_url and start_url != self.base_url:
+                page_soup = self._get_html(start_url)
+                categories.update(_extract_categories(page_soup))
+        except:
+            pass
+
+        # loại base_url
+        categories = {
+            re.sub(r'/page/\d+/?$', '', urljoin(self.base_url, c).rstrip('/'))
+            for c in categories
+            if c and re.sub(r'/page/\d+/?$', '', urljoin(self.base_url, c).rstrip('/')) != self.base_url.rstrip('/')
+        }
+
+        # Crawl từng category
+        for cat in categories:
+            print(f"\n[CATEGORY] Crawling: {cat}")
+            before = len(collected)
+            crawl_list(cat)
+            print(f"  → +{len(collected)-before} links from {cat}")
+            break
+
+        try:
+            soup = self._get_html(self.base_url)
+            if soup:
+                for a in soup.select("a[href]"):
+                    href = urljoin(self.base_url, a.get("href", ""))
+                    if self._is_article_link(href):
+                        collected.add(href)
+        except:
+            pass
+
+        print(f"  ➜ Pattern fallback added: {len(collected)} links")
+
+        try:
+            for art in soup.select("article a[href]"):
+                collected.add(urljoin(self.base_url, art.get("href")))
+        except:
+            pass
+
+        print(f"  ➜ Article-tag fallback added: {len(collected)} links")
+
+        for i in range(2, max_pages):
+            url = urljoin(self.base_url, f"page/{i}/")
+            soup = self._get_html(url)
+            if not soup:
+                break
+
+            links = self._extract_all(soup, selectors, attr="href")
+            if not links:
+                break
+
+            collected.update(links)
+            print(f"  ➜ /page/{i}/: added {len(links)}")
 
         print(f"✅ Total {len(collected)} article URLs found.")
         return list(collected)

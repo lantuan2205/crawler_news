@@ -212,29 +212,23 @@ def clean_date(text_date):
         text_date = re.sub(r"\s*[-|]\s*", ", ", text_date)
         text_date = re.sub(r"^Cập nhật lúc\s*", "", text_date, flags=re.IGNORECASE).strip()
         text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
-        # Loại bỏ từ "lúc" giữa ngày và giờ
+
         text_date = re.sub(r"\s*lúc\s*", " ", text_date, flags=re.IGNORECASE)
 
-        # Loại bỏ (GMT) không rõ ràng
         text_date = re.sub(r"\(GMT\)", "", text_date)
 
-        # Thay dấu "-" bằng dấu ","
         text_date = text_date.replace(" - ", ", ").replace(" -", ",").replace("- ", ",")
 
-        # Nếu text có dạng [giờ phút][khoảng trắng][ngày/tháng/năm]
         match = re.search(r"(\d{1,2}):(\d{2})\s*,?\s*(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
         if match:
             hour, minute, day, month, year = match.groups()
             text_date = f"{int(day):02}/{int(month):02}/{year}, {int(hour):02}:{minute}"
         else:
-            # Nếu là dạng ngày trước giờ sau
-            # Chuẩn hóa ngày/tháng/năm thành dạng 2 chữ số (nếu thiếu)
             match_date = re.search(r"(\d{1,2})/(\d{1,2})/(\d{4})", text_date)
             if match_date:
                 day, month, year = match_date.groups()
                 text_date = text_date.replace(match_date.group(), f"{int(day):02}/{int(month):02}/{year}")
 
-            # Chuẩn hóa giờ phút AM/PM (nếu có)
             match_time = re.search(r"(\d{1,2}):(\d{2})\s?(AM|PM)?", text_date, re.IGNORECASE)
             if match_time:
                 hour, minute, period = match_time.groups()
@@ -246,19 +240,15 @@ def clean_date(text_date):
                         hour = 0
                 text_date = re.sub(r"(\d{1,2}):(\d{2})\s?(AM|PM)?", f"{hour:02}:{minute}", text_date)
 
-            # Đảm bảo có dấu "," giữa ngày và giờ nếu thiếu
             text_date = re.sub(r"(\d{2}/\d{2}/\d{4})\s+(\d{2}:\d{2})", r"\1, \2", text_date)
 
-        # Xử lý cho trường hợp có múi giờ và ngày tháng giờ kết hợp như "Thứ Sáu, 04/10/2024 16:40:00 +07:00"
         match_timezone = re.search(r"(\d{2}/\d{2}/\d{4})\s*(\d{2}:\d{2}):\d{2}\s*\+?\d{1,2}:\d{2}", text_date)
         if match_timezone:
             date, time = match_timezone.groups()
             text_date = f"{date}, {time} (GMT+7)"
 
-        # Loại bỏ giây (nếu có) và múi giờ (+07:00) nếu có
         text_date = re.sub(r"(:\d{2})\s?\+?\d{1,2}:\d{2}", "", text_date)
 
-        # Đảm bảo có dấu cách trước (GMT+7) nếu thiếu
         text_date = re.sub(r"(?<!\s)\(GMT\+7\)", r" (GMT+7)", text_date)
 
         if "(GMT+7)" not in text_date:

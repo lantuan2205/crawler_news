@@ -80,6 +80,7 @@
       "h1.wp-block-post-title",
       "div.title h2",
       "h2.entry-title",
+      "div.header-single h1",
       "div.prose h1",
       "div.prose h2",
       "div[class*='HTMLToReact_wpStyleList__'] h1",
@@ -112,7 +113,7 @@
       "div#content p.date",
       "div.prose time",
       "div[class*='HTMLToReact_wpStyleList__'] time",
-      "div.PostTemplate_content__* time",
+      "div[class*='PostTemplate_content__'] time",
       "span.date",
       "p.post-date time"
     ],
@@ -125,10 +126,10 @@
       "meta[name='description'][content]",
       "div.prose p:first-of-type",
       "div[class*='HTMLToReact_wpStyleList__'] p:first-of-type",
-      "div.PostTemplate_content__* p:first-of-type",
+      "div[class*='PostTemplate_content__'] p:first-of-type",
       "div.prose p",
       "div[class*='HTMLToReact_wpStyleList__'] p",
-      "div.PostTemplate_content__* p"
+      "div[class*='PostTemplate_content__'] p"
     ],
     "content": [
       "div.et_pb_row_1_tb_body",
@@ -139,6 +140,7 @@
       "article .entry-content",
       "article .post-content",
       "div#content",
+      "div.content-single-post",
       "div.single-content",
       "div.post-body",
       "div.the-content",
@@ -148,7 +150,7 @@
       ".post-inner .entry-content",
       "div.prose",
       "div[class*='HTMLToReact_wpStyleList__']",
-      "div.PostTemplate_content__*"
+      "div[class*='PostTemplate_content__']"
     ],
     "contentImageUrls": [
       "div.entry-content img[src]",
@@ -218,7 +220,9 @@
       "header.entry-header h1.entry-title a",
       "div.entry-inner-content header.entry-header h2.entry-title a",
       "h4.entry-title a[href]",
-      "div.post-content a[href]"
+      "div.post-content a[href]",
+      "div.listNews div.itemNews a[href]",
+      "div.listNews div.itemNews h5.title-h5 a[href]"
     ],
     "nextPage": [
       "div#infinite-handle span button",
