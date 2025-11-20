@@ -643,6 +643,14 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
             return None
         comments = comments[:limit]
         for comment in comments:
+            user_clean = (comment["username"] or "").strip().replace(" ", "")
+            if user_clean:
+                user_id = f"{extract_main_domain(url)}_{user_clean}"
+            else:
+                user_id = None
+
+            comment["userId"] = user_id
+            comment["username"] = user_clean
             comment["crawlId"] = crawlId
             send_comment_article_to_kafka(comment)
             time.sleep(0.2)
