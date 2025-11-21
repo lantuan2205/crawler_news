@@ -129,7 +129,135 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
 
         }
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: Lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            logo_tag = soup.select_one("a.footer-logo img")
+            if logo_tag and logo_tag.get("src"):
+                info["logo"] = urljoin(url, logo_tag["src"])
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: Lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer
+            try:
+                WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "footer.main-footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            footer = soup.select_one("footer.main-footer")
+
+            if footer:
+                # Hotline
+                phone_tag = footer.select_one("div.phone_line a[href^=tel]")
+                if phone_tag:
+                    info["phone"] = phone_tag.get_text(strip=True)
+
+                # Giấy phép
+                license_tag = footer.select_one("div.footer-info-office-left p strong")
+                if license_tag:
+                    info["license"] = license_tag.get_text(strip=True)
+
+                # Địa chỉ và điện thoại (cùng 1 p)
+                address_phone_p = footer.select_one("div.footer-info-office-left p")
+                if address_phone_p:
+                    text = address_phone_p.get_text(" ", strip=True)
+                    # Lấy địa chỉ sau "Địa chỉ:"
+                    if "Địa chỉ:" in text:
+                        info["address"] = text.split("Địa chỉ:")[1].split(";")[0].strip()
+                    # Lấy điện thoại sau "Điện thoại:"
+                    if "Điện thoại:" in text:
+                        info["phone"] = text.split("Điện thoại:")[1].split(".")[0].strip()
+
+                # Email
+                email_tag = footer.select_one("div.footer-info-office-left a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True)
+
+                # Tổng Biên tập
+                editor_tag = footer.select_one("div.footer-info-office-right p strong")
+                if editor_tag:
+                    info["editor_in_chief"] = editor_tag.get_text(strip=True)
+
+                # Thông tin bản quyền
+                copyright_tag = footer.select_one("div.footer-copy-right p")
+                if copyright_tag:
+                    info["infor_copyright"] = copyright_tag.get_text(strip=True)
+
+                # Description = inffopage
+                desc_tag = footer.select_one("p.inffopage")
+                if desc_tag:
+                    info["description"] = desc_tag.get_text(strip=True)
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""),
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -176,8 +304,19 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_box = soup.find('p', class_='content-author')
             author = author_box.get_text(strip=True).split('/')[0].strip() if author_box else None
+            cate_tag = soup.select_one("div.main-cate a")
+            if cate_tag:
+                category = {
+                    "name": cate_tag.get_text(strip=True),
+                }
+            else:
+                category = None
+            categories = category["name"]
+            video_url = None
+            thumbnail_url = None
+            location = None
 
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
@@ -218,6 +357,7 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
         }
 
         return article_data
+
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page"""
         chrome_options = Options()
@@ -230,16 +370,26 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://nongnghiepmoitruong.vn/{article_type}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
         last_size = 0
+        page_count = 0
+        max_pages = 10
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page_count < max_pages:
 
                 articles = driver.find_elements(By.CSS_SELECTOR, "div.main-content-page li.news-home-item")
 
@@ -266,6 +416,7 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
+                        page_count += 1
                         time.sleep(1)
 
                 except Exception:
