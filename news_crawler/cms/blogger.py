@@ -65,6 +65,28 @@ class BloggerCrawler:
         #     options.add_argument(f"--proxy-server={self.proxy_session}")
         return webdriver.Chrome(options=chrome_options)
 
+    def close_driver(self):
+        """Đóng driver nếu đã khởi tạo"""
+        if self.driver:
+            try:
+                self.driver.quit()
+            except Exception as e:
+                print(f"[!] Error when quitting driver: {e}")
+            finally:
+                self.driver = None
+    
+    def __enter__(self):
+        if self.driver is None:
+            self.driver = self._init_driver()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close_driver()
+
+    def __del__(self):
+        """Fallback: tự động đóng driver khi object bị hủy"""
+        self.close_driver()
+
     def _is_html_useful(self, html: str) -> bool:
         """Kiểm tra HTML có chứa nội dung thực không."""
         lower = html.lower()

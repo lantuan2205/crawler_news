@@ -47,6 +47,27 @@ class WordPressCrawler:
 
         return webdriver.Chrome(options=chrome_options)
 
+    def __enter__(self):
+        if self.driver is None:
+            self.driver = self._init_driver()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close_driver()
+
+    def close_driver(self):
+        if self.driver:
+            try:
+                self.driver.quit()
+            except Exception as e:
+                print(f"[!] Error quitting driver: {e}")
+            finally:
+                self.driver = None
+
+    def __del__(self):
+        """Fallback: tự động đóng driver khi object bị hủy"""
+        self.close_driver()
+
     def _is_html_useful(self, html: str) -> bool:
         lower = html.lower()
         if len(lower) < 800:
