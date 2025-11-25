@@ -299,14 +299,14 @@ def process_crawl(data: Dict[str, Any]):
 
         url = re.sub(r"/+$", "", input_data)
         if is_article:
-            raise ValueError("No support for single article crawl in this mode")
-            # article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
+            # raise ValueError("No support for single article crawl in this mode")
+            article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
             # if "comment" in data_to_collect or comments_enable:
             #     get_comment_details(crawler, url, False, proxy_session, jobId, crawlId, limit=comments_limit)
-            # if not article:
-            #     raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
+            if not article:
+                raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
             # response["articles"].append(article)
-            # return response
+            return article
         else:
             if "profile" in data_to_collect or profile_enable:
                 get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
