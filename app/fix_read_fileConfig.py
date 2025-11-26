@@ -287,7 +287,7 @@ def get_article_details(crawler, url: str, link, proxy_session=None, jobId=None,
     if crawlId:
         article_data['crawlId'] = crawlId
     
-    save_to_json(article_data)
+    # save_to_json(article_data)
     #send_json_to_api()
     if article_data.get("publishedDate")  or article_data.get("content"):
         send_clean_article_to_kafka(article_data)

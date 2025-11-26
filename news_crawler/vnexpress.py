@@ -347,6 +347,18 @@ class VNExpressCrawler(BaseCrawler):
 
         return title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url, location
 
+    def safe_get_attr(self, tag, attr, default=""):
+        try:
+            return tag[attr]
+        except Exception:
+            return default
+
+    def safe_int(self, value, default=0):
+        try:
+            return int(value)
+        except Exception:
+            return default
+
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
         # --- Phase 2: lấy footer bằng Selenium ---
@@ -377,15 +389,11 @@ class VNExpressCrawler(BaseCrawler):
             # --- Click "Xem thêm ý kiến" để load thêm comment ---
             while True:
                 try:
-                    show_more_btn = WebDriverWait(driver, 5).until(
-                        EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_coment"))
+                    btn = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "a#show_more_coment"))
                     )
-                    # Cuộn tới nút
-                    driver.execute_script("arguments[0].scrollIntoView(true);", show_more_btn)
-                    time.sleep(0.2)
-                    # Click bằng JS (bypass quảng cáo che)
-                    driver.execute_script("arguments[0].click();", show_more_btn)
-                    time.sleep(0.5)  # chờ comment load
+                    driver.execute_script("arguments[0].click();", btn)
+                    time.sleep(0.6)
                 except (TimeoutException, NoSuchElementException):
                     break  # hết nút để click
 
@@ -395,7 +403,7 @@ class VNExpressCrawler(BaseCrawler):
             for item in soup.select("div.comment_item"):
                 # comment_id
                 comment_id = item.select_one("a.link_thich")
-                comment_id = comment_id["id"] if comment_id else ""
+                comment_id = self.safe_get_attr(comment_id, "id")
                 
                 # user_id
                 user_div = item.select_one("div.user_status")
@@ -415,12 +423,16 @@ class VNExpressCrawler(BaseCrawler):
                 
                 # avatar
                 avatar_tag = item.select_one("a.avata_coment img")
-                avatar = avatar_tag["src"] if avatar_tag else ""
+                avatar = self.safe_get_attr(avatar_tag, "src")
                 
                 # content
                 # content: ưu tiên content_more, nếu không thì lấy full_content
                 content_tag = item.select_one("p.content_more") or item.select_one("p.full_content")
-                content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
+                if content_tag:
+                    raw_content = content_tag.get_text(" ", strip=True) or ""
+                    content = raw_content.replace(username, "")
+                else:
+                    content = ""
                 
                 # time
                 time_tag = item.select_one("span.time-com")
@@ -440,23 +452,21 @@ class VNExpressCrawler(BaseCrawler):
                 reactions = {}
                 for r in item.select("div.reactions-detail div.item"):
                     img_tag = r.select_one("span.icons img")
-                    label = img_tag["alt"] if img_tag else ""
-                    # Chuyển sang tiếng Anh
-                    label_en = reaction_map.get(label, label)
-                    
+                    label_vn = self.safe_get_attr(img_tag, "alt")
+                    label = reaction_map.get(label_vn, label_vn)
+
                     count_tag = r.select_one("strong")
-                    reactions[label_en] = int(count_tag.get_text()) if count_tag else 0
+                    reactions[label] = self.safe_int(count_tag.get_text() if count_tag else 0)
                 
                 # reply count
-                reply_count = 0
-                reply_info = None
                 reply_tag = item.select_one("p.count-reply a.view_all_reply")
+                reply_count = 0
                 if reply_tag:
-                    reply_count = int(reply_tag.get("data-total", 0))
+                    reply_count = self.safe_int(reply_tag.get("data-total", 0))
                     reply_info = {
-                        "commentId": reply_tag.get("rel"),
+                        "commentId": reply_tag.get("rel", ""),
                         "total": reply_count,
-                        "offset": reply_tag.get("data-offset", 0)
+                        "offset": self.safe_int(reply_tag.get("data-offset", 0))
                     }
                 
                 comments.append({
