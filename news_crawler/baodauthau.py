@@ -62,6 +62,105 @@ class BaoDauThauCrawler(BaseCrawler):
             12: "dau-tu",
             13: "bat-dong-san",
         }
+
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+
+            # CASE 1: logo trong div.banner
+            try:
+                banner_div = soup.find("div", class_="banner")
+                logo_img = banner_div.find("img") if banner_div else None
+                if logo_img and logo_img.get("src"):
+                    info["logo"] = urljoin(url, logo_img["src"])
+            except:
+                pass
+
+            # CASE 2: img trong header
+            if not info["logo"]:
+                try:
+                    header_div = soup.find(["header", "div"], 
+                        id=lambda v: v and "header" in v.lower() if v else False,
+                        class_=lambda v: v and "header" in v.lower() if v else False)
+                    if header_div:
+                        logo_img = header_div.find("img")
+                        if logo_img and logo_img.get("src"):
+                            info["logo"] = urljoin(url, logo_img["src"])
+                except:
+                    pass
+
+            # CASE 3: img có class/id chứa chữ logo
+            if not info["logo"]:
+                try:
+                    logo_img = soup.find("img", attrs={
+                        "class": lambda v: v and "logo" in v.lower(),
+                        "id": lambda v: v and "logo" in v.lower()
+                    })
+                    if logo_img and logo_img.get("src"):
+                        info["logo"] = urljoin(url, logo_img["src"])
+                except:
+                    pass
+
+            # CASE 4: favicon trong <link rel="icon">
+            if not info["logo"]:
+                try:
+                    links = soup.find_all("link", rel=lambda v: v and "icon" in v.lower())
+                    for link in links:
+                        href = link.get("href")
+                        if href:
+                            info["logo"] = urljoin(url, href)
+                            break
+                except:
+                    pass
+
+            # CASE 5: og:image
+            if not info["logo"]:
+                try:
+                    og = soup.find("meta", property="og:image")
+                    if og and og.get("content"):
+                        info["logo"] = urljoin(url, og["content"])
+                except:
+                    pass
+
+            # CASE 6: twitter:image
+            if not info["logo"]:
+                try:
+                    tw = soup.find("meta", property="twitter:image")
+                    if tw and tw.get("content"):
+                        info["logo"] = urljoin(url, tw["content"])
+                except:
+                    pass
+
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
    
     def extract_content(self, url: str) -> tuple:
         """
@@ -170,6 +269,7 @@ class BaoDauThauCrawler(BaseCrawler):
         }
 
         return article_data
+
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")

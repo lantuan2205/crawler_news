@@ -631,3 +631,6 @@ class DanTriCrawler(BaseCrawler):
             return list(urls)
         except Exception as e:
             return []
+    
+    def crawl_postcast(self):
+        return

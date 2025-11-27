@@ -68,6 +68,142 @@ class BaoChinhPhuCrawler(BaseCrawler):
             18: "quoc-te/viet-nam-asean"
         }
 
+    def extract_profile_domain(self, url: str):
+        job_id = 1
+        info = {
+            "name": url,
+            "description": "",
+            "license": None,
+            "editor_in_chief": None,
+            "address": None,
+            "phone": None,
+            "email": None,
+            "infor_copyright": None,
+            "jobId": job_id or str(uuid.uuid4()),
+            "logo": None,
+        }
+
+        # --- Phase 1: lấy logo bằng requests ---
+        try:
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, "html.parser")
+            banner_div = soup.find("div", class_="banner")
+            logo_img = banner_div.find("img") if banner_div else None
+            logo_src = urljoin(url, logo_img["src"]) if logo_img and logo_img.get("src") else None
+            info["logo"] = logo_src
+        except Exception as e:
+            print("⚠️ Lỗi khi lấy logo:", e)
+
+        # --- Phase 2: lấy footer bằng Selenium ---
+        chrome_options = Options()
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option(
+            "prefs",
+            {
+                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
+                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+            }
+        )
+        chrome_options.set_capability("pageLoadStrategy", "eager")
+
+        driver = None
+        try:
+            driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(100)
+
+            try:
+                driver.get(url)
+            except TimeoutException:
+                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+                return info
+
+            # Chờ phần footer xuất hiện
+            try:
+                footer = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "div#footer"))
+                )
+            except TimeoutException:
+                print("⚠️ Không tìm thấy footer.")
+                return info
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            tool_header = soup.find("div", class_="tool-header")
+            if tool_header:
+                hotline_div = tool_header.find("div", class_="hotline")
+                if hotline_div:
+                    # Lấy text sau dấu ":"
+                    phone_text = hotline_div.get_text(strip=True).split(":")[-1].strip()
+                    info["phone"] = phone_text
+
+            footer_copyright = soup.find("div", id="footer-content")
+            if footer_copyright:
+                text = footer_copyright.get_text("\n", strip=True)
+                lines = text.split("\n")
+
+                # Description = 2 dòng đầu tiên
+                if len(lines) >= 2:
+                    info["description"] = f"{lines[0]} - {lines[1]}"
+
+                # License
+                license_line = [line for line in lines if "Giấy phép" in line]
+                if license_line:
+                    # ví dụ: "Giấy phép số 790/GP-BTTTT do Bộ Thông tin và Truyền thông cấp ngày 02/12/2021."
+                    info["license"] = license_line[0].split("số")[-1].split("do")[0].strip()
+
+                # Tổng biên tập
+                editor_line = [line for line in lines if "Tổng Biên tập" in line]
+                if editor_line:
+                    info["editor_in_chief"] = editor_line[0].split(":")[-1].strip()
+
+                # Địa chỉ
+                address_line = [line for line in lines if "Tòa soạn" in line]
+                if address_line:
+                    info["address"] = address_line[0].split(":")[-1].strip()
+
+                # Điện thoại
+                if "Điện thoại:" in text:
+                    phone_line = [line for line in lines if "Điện thoại:" in line]
+                    if phone_line:
+                        info["phone"] = phone_line[0].replace("Điện thoại:", "").strip()
+
+                # Email
+                email_tag = footer_copyright.select_one("a[href^=mailto]")
+                if email_tag:
+                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
+
+                # Thông tin bản quyền
+                copyright_line = [line for line in lines if "Bản quyền" in line]
+                if copyright_line:
+                    info["infor_copyright"] = copyright_line[0].strip()
+
+        except WebDriverException as e:
+            print("⚠️ Lỗi Selenium:", e)
+        finally:
+            if driver:
+                driver.quit()
+
+        return (
+            info.get("license", ""),
+            info.get("description", ""),
+            info.get("editor_in_chief", ""),
+            info.get("address", ""), 
+            info.get("phone", ""),
+            info.get("email", ""),
+            info.get("infor_copyright", ""),
+            info.get("logo", "")
+        )
+
+
     def extract_content(self, url: str) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.

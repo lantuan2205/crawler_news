@@ -124,9 +124,6 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             65: "tri-thuc-nong-dan/doanh-nong",
             66: "tri-thuc-nong-dan/nhin-ra-the-gioi",
             67: "tri-thuc-nong-dan/nhip-cau-nha-nong",
-        
-
-
         }
 
     def extract_profile_domain(self, url: str):
