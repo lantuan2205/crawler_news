@@ -231,7 +231,8 @@ class WordPressCrawler:
 
         soup = self._get_html(self.base_url)
         if not soup:
-            return {"error": f"Cannot load homepage: {self.base_url}"}
+            print(f"Cannot load homepage: {self.base_url}")
+            return ("", "", "", "", "", "", "", "")
 
         profile_tpl = self.template.get("profile", {})
         profile = {

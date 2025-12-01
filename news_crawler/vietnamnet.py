@@ -335,7 +335,6 @@ class VietNamNetCrawler(BaseCrawler):
                     EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[src*='comment']"))
                 )
                 driver.switch_to.frame(iframe)
-                print("Đã switch vào iframe comment")
             except Exception as e:
                 print("Không tìm thấy iframe comment:", e)
                 return []

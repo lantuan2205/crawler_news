@@ -653,7 +653,7 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
         try:
             comments = crawler.extract_comment(url)
         except Exception as e:
-            print(f"Lỗi khi lấy nội dung bài báo: {e}")
+            print(f"Lỗi khi lấy comment: {e}")
             return None
         comments = comments[:limit]
         for comment in comments:
@@ -689,7 +689,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
     try:
         license_infor, description, editor_in_chief, address, phone, email, infor_copyright, logo = crawler.extract_profile_domain(url)
     except Exception as e:
-        print(f"Lỗi khi lấy nội dung bài báo: {e}")
+        print(f"Lỗi khi lấy profile: {e}")
         return None
 
     profile_info = {
