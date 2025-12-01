@@ -19,6 +19,15 @@ import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Crawl timeout exceeded")
+
+# Register signal handler
+signal.signal(signal.SIGALRM, timeout_handler)
+
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
 
@@ -120,280 +129,297 @@ def extract_main_domain(url: str) -> str | None:
     return host or None
 
 def process_crawl(data: Dict[str, Any]):
-    """
-    Xử lý tác vụ crawl web, hỗ trợ crawl URL cụ thể hoặc tìm kiếm theo từ khóa.
-    """
-    print(f"Processing message: {data}")
-    print(f"START crawling.....")
+
+    TIMEOUT_SECONDS = 900
+    signal.alarm(TIMEOUT_SECONDS)
 
     try:
-        parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
-    except (json.JSONDecodeError, TypeError):
-        raise ValueError("Invalid JSON format")
+        """
+        Xử lý tác vụ crawl web, hỗ trợ crawl URL cụ thể hoặc tìm kiếm theo từ khóa.
+        """
+        print(f"Processing message: {data}")
+        print(f"START crawling.....")
 
-    body = parsed_data.get("body") or {}
-
-    source = parsed_data.get("source")
-    action = parsed_data.get("action")
-    input_data = body.get("inputData")
-    crawl_setting_raw = body.get("crawlSetting")
-    if not crawl_setting_raw:
-        crawl_setting = {}
-    elif isinstance(crawl_setting_raw, str):
         try:
-            crawl_setting = json.loads(crawl_setting_raw)
-        except Exception as e:
-            print(f"Lỗi khi parse crawlSetting: {e}")
+            parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
+        except (json.JSONDecodeError, TypeError):
+            raise ValueError("Invalid JSON format")
+
+        body = parsed_data.get("body") or {}
+
+        source = parsed_data.get("source")
+        action = parsed_data.get("action")
+        input_data = body.get("inputData")
+        crawl_setting_raw = body.get("crawlSetting")
+        if not crawl_setting_raw:
             crawl_setting = {}
-    elif isinstance(crawl_setting_raw, dict):
-        crawl_setting = crawl_setting_raw
-    else:
-        crawl_setting = {}
-
-    # Lấy từng nhóm
-    post = crawl_setting.get("POST", {})
-    profile = crawl_setting.get("PROFILE", {})
-
-    # Lấy các giá trị trong POST
-    audience_enable = post.get("AUDIENCE_INFORMATION", True)
-    comments_enable = post.get("COMMENTS", {}).get("ENABLE", True)
-    comments_limit = post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS", 10)
-    date_range = post.get("DATE_RANGE", 30)
-    post_enable = post.get("ENABLE", True)
-    location_enable = post.get("LOCATION", False)
-    image_download_enable = post.get("IMAGE_DOWNLOAD", True)
-    video_download_enable = post.get("VIDEO_DOWNLOAD", False)
-    video_thumbnail_enable = post.get("VIDEO_THUMBNAIL", False)
-
-    # Lấy trong PROFILE
-    profile_enable = profile.get("ENABLE")
-
-    # In kết quả
-    # print("POST settings:")
-    # print(audience_enable, comments_enable, comments_limit, date_range,
-    #     post_enable, image_download_enable,
-    #     video_download_enable, video_thumbnail_enable)
-
-    # print("PROFILE settings:")
-    # print(profile_enable)
-    jobId = body.get("jobId")
-    crawlId = body.get("crawlId")
-    proxy_config = parsed_data.get("proxy")
-    data_to_collect = body.get("dataToCollect", [])
-    number_post = body.get("numberPost") or 1000
-    number_audio = body.get("numberAudio") or 60
-    number_video = body.get("numberVideo") or 0
-    has_video = "video" in data_to_collect
-
-
-    if source != "NEWS" or action != "GENERAL":
-        raise ValueError("False source or action")
-
-    if not input_data:
-        raise ValueError("URL or keyword is required")
-
-    # Thiết lập proxy session nếu có
-    # Hàm setup_proxy_session() được giả định đã được cập nhật
-    # để trả về một requests.Session đã cấu hình proxy.
-    proxy_session, proxy_msg = setup_proxy_session(proxy_config)
-
-    if proxy_session:
-        print(f"[INFO] Sử dụng proxy: {proxy_config.get('host')}:{proxy_config.get('port')}")
-    else:
-        print("[INFO] Không sử dụng proxy")
-
-    # Sử dụng session để tạo crawler
-    def _create_crawler(domain: str):
-        from news_crawler.factory import get_crawler
-        return get_crawler(domain, proxy_session=proxy_session)
-
-    if input_data.startswith("http://") or input_data.startswith("https://"):
-        domain = extract_main_domain(input_data)
-        crawler = _create_crawler(domain)
-
-        if not crawler:
-            print(f"[INFO] Không có crawler cho {domain}, thử nhận diện CMS...")
-            cms_info = detect_cms(input_data)
-            cms = cms_info.get("cms")
-            print(f"[INFO] CMS detect: {cms}")
-            url_cms = re.sub(r"/+$", "", input_data)
-            if cms == "WordPress":
-                from news_crawler.cms.wordpress import WordPressCrawler
-                crawler = WordPressCrawler(input_data, proxy_session)
-                if profile_enable is True:
-                    get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                links = crawler.get_article_links(max_pages=10)
-                for url in links:
-                    get_article_details(
-                        crawler=crawler,
-                        url=url,
-                        link=False,
-                        has_video=has_video,
-                        proxy_session=proxy_session,
-                        jobId=jobId,
-                        crawlId=crawlId,
-                        date_range=None,
-                        image_download_enable=image_download_enable,
-                        video_download_enable=video_download_enable,
-                        location_enable=location_enable,
-                        video_thumbnail_enable=video_thumbnail_enable
-                    )
-                return
-            elif cms == "Blogger":
-                from news_crawler.cms.blogger import BloggerCrawler
-                crawler = BloggerCrawler(input_data, jobId, proxy_session)
-                if profile_enable is True:
-                    get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                links = crawler.get_article_links(max_pages=10)
-                for url in links:
-                    get_article_details(
-                        crawler=crawler,
-                        url=url,
-                        link=False,
-                        has_video=has_video,
-                        proxy_session=proxy_session,
-                        jobId=jobId,
-                        crawlId=crawlId,
-                        date_range=None,
-                        image_download_enable=image_download_enable,
-                        video_download_enable=video_download_enable,
-                        location_enable=location_enable,
-                        video_thumbnail_enable=video_thumbnail_enable
-                    )
-                return
-            elif cms == "Joomla":
-                from news_crawler.cms.joomla import JoomlaCrawler
-                crawler = JoomlaCrawler(input_data, proxy_session)
-                if profile_enable is True:
-                    get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                return
-            else:
-                raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
-
-        response = {
-            "status": "success",
-            "url": input_data,
-            "articles": [],
-        }
-
-        # Kiểm tra xem có phải là URL bài viết cụ thể không
-        is_article = any([
-            re.search(r'\d{6,}\.htm[l]?$', input_data),
-            re.search(r'/[^/]+-\d+\.htm[l]?$', input_data),
-            re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', input_data),
-            re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
-            re.search(r'-i\d+/?$', input_data),
-            re.search(r'-post\d+\.vov($|\?)', input_data),
-            re.search(r'-\d+\.vov($|\?)', input_data),
-            re.search(r'/[^/]+\.htm[l]?$', input_data),
-            re.search(r'-(?!page-)\d+(?:/|$|\?)', input_data),  
-        ])
-
-        url = re.sub(r"/+$", "", input_data)
-        if is_article:
-            raise ValueError("No support for single article crawl in this mode")
-            # article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
-            # if "comment" in data_to_collect or comments_enable:
-            #     get_comment_details(crawler, url, False, proxy_session, jobId, crawlId, limit=comments_limit)
-            # if not article:
-            #     raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
-            # response["articles"].append(article)
-            # return response
+        elif isinstance(crawl_setting_raw, str):
+            try:
+                crawl_setting = json.loads(crawl_setting_raw)
+            except Exception as e:
+                print(f"Lỗi khi parse crawlSetting: {e}")
+                crawl_setting = {}
+        elif isinstance(crawl_setting_raw, dict):
+            crawl_setting = crawl_setting_raw
         else:
-            if "profile" in data_to_collect or profile_enable:
-                get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+            crawl_setting = {}
 
-            if post_enable:
-                stop = False
-                total_articles_crawled = 0
-                for category in crawler.article_type_dict.values():
-                    urls = crawler.get_all_articles(category)
-                    for article_url in urls:
-                        if number_post and total_articles_crawled >= number_post:
-                            stop = True
+        # Lấy từng nhóm
+        post = crawl_setting.get("POST", {})
+        profile = crawl_setting.get("PROFILE", {})
+
+        # Lấy các giá trị trong POST
+        audience_enable = post.get("AUDIENCE_INFORMATION", True)
+        comments_enable = post.get("COMMENTS", {}).get("ENABLE", True)
+        comments_limit = post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS", 10)
+        date_range = post.get("DATE_RANGE", 30)
+        post_enable = post.get("ENABLE", True)
+        location_enable = post.get("LOCATION", False)
+        image_download_enable = post.get("IMAGE_DOWNLOAD", True)
+        video_download_enable = post.get("VIDEO_DOWNLOAD", False)
+        video_thumbnail_enable = post.get("VIDEO_THUMBNAIL", False)
+
+        # Lấy trong PROFILE
+        profile_enable = profile.get("ENABLE")
+
+        # In kết quả
+        # print("POST settings:")
+        # print(audience_enable, comments_enable, comments_limit, date_range,
+        #     post_enable, image_download_enable,
+        #     video_download_enable, video_thumbnail_enable)
+
+        # print("PROFILE settings:")
+        # print(profile_enable)
+        jobId = body.get("jobId")
+        crawlId = body.get("crawlId")
+        proxy_config = parsed_data.get("proxy")
+        data_to_collect = body.get("dataToCollect", [])
+        number_post = body.get("numberPost") or 1000
+        number_audio = body.get("numberAudio") or 60
+        number_video = body.get("numberVideo") or 0
+        has_video = "video" in data_to_collect
+
+
+        if source != "NEWS" or action != "GENERAL":
+            raise ValueError("False source or action")
+
+        if not input_data:
+            raise ValueError("URL or keyword is required")
+
+        # Thiết lập proxy session nếu có
+        # Hàm setup_proxy_session() được giả định đã được cập nhật
+        # để trả về một requests.Session đã cấu hình proxy.
+        proxy_session, proxy_msg = setup_proxy_session(proxy_config)
+
+        if proxy_session:
+            print(f"[INFO] Sử dụng proxy: {proxy_config.get('host')}:{proxy_config.get('port')}")
+        else:
+            print("[INFO] Không sử dụng proxy")
+
+        # Sử dụng session để tạo crawler
+        def _create_crawler(domain: str):
+            from news_crawler.factory import get_crawler
+            return get_crawler(domain, proxy_session=proxy_session)
+
+        if input_data.startswith("http://") or input_data.startswith("https://"):
+            domain = extract_main_domain(input_data)
+            crawler = _create_crawler(domain)
+
+            if not crawler:
+                print(f"[INFO] Không có crawler cho {domain}, thử nhận diện CMS...")
+                cms_info = detect_cms(input_data)
+                cms = cms_info.get("cms")
+                print(f"[INFO] CMS detect: {cms}")
+                url_cms = re.sub(r"/+$", "", input_data)
+                if cms == "WordPress":
+                    from news_crawler.cms.wordpress import WordPressCrawler
+                    crawler = WordPressCrawler(input_data, proxy_session)
+                    if profile_enable is True:
+                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
+                    links = crawler.get_article_links(max_pages=10)
+                    for url in links:
+                        get_article_details(
+                            crawler=crawler,
+                            url=url,
+                            link=False,
+                            has_video=has_video,
+                            proxy_session=proxy_session,
+                            jobId=jobId,
+                            crawlId=crawlId,
+                            date_range=None,
+                            image_download_enable=image_download_enable,
+                            video_download_enable=video_download_enable,
+                            location_enable=location_enable,
+                            video_thumbnail_enable=video_thumbnail_enable
+                        )
+                    return
+                elif cms == "Blogger":
+                    from news_crawler.cms.blogger import BloggerCrawler
+                    crawler = BloggerCrawler(input_data, jobId, proxy_session)
+                    if profile_enable is True:
+                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
+                    links = crawler.get_article_links(max_pages=10)
+                    for url in links:
+                        get_article_details(
+                            crawler=crawler,
+                            url=url,
+                            link=False,
+                            has_video=has_video,
+                            proxy_session=proxy_session,
+                            jobId=jobId,
+                            crawlId=crawlId,
+                            date_range=None,
+                            image_download_enable=image_download_enable,
+                            video_download_enable=video_download_enable,
+                            location_enable=location_enable,
+                            video_thumbnail_enable=video_thumbnail_enable
+                        )
+                    return
+                elif cms == "Joomla":
+                    from news_crawler.cms.joomla import JoomlaCrawler
+                    crawler = JoomlaCrawler(input_data, proxy_session)
+                    if profile_enable is True:
+                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
+                    return
+                else:
+                    raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
+
+            response = {
+                "status": "success",
+                "url": input_data,
+                "articles": [],
+            }
+
+            # Kiểm tra xem có phải là URL bài viết cụ thể không
+            is_article = any([
+                re.search(r'\d{6,}\.htm[l]?$', input_data),
+                re.search(r'/[^/]+-\d+\.htm[l]?$', input_data),
+                re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', input_data),
+                re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
+                re.search(r'-i\d+/?$', input_data),
+                re.search(r'-post\d+\.vov($|\?)', input_data),
+                re.search(r'-\d+\.vov($|\?)', input_data),
+                re.search(r'/[^/]+\.htm[l]?$', input_data),
+                re.search(r'-(?!page-)\d+(?:/|$|\?)', input_data),  
+            ])
+
+            url = re.sub(r"/+$", "", input_data)
+            if is_article:
+                raise ValueError("No support for single article crawl in this mode")
+                # article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
+                # if "comment" in data_to_collect or comments_enable:
+                #     get_comment_details(crawler, url, False, proxy_session, jobId, crawlId, limit=comments_limit)
+                # if not article:
+                #     raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
+                # response["articles"].append(article)
+                # return response
+            else:
+                if "profile" in data_to_collect or profile_enable:
+                    get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+
+                if post_enable:
+                    stop = False
+                    total_articles_crawled = 0
+                    for category in crawler.article_type_dict.values():
+                        urls = crawler.get_all_articles(category)
+                        for article_url in urls:
+                            if number_post and total_articles_crawled >= number_post:
+                                stop = True
+                                break
+
+                            if article_url:
+                                get_article_details(
+                                    crawler=crawler,
+                                    url=article_url,
+                                    link=False,
+                                    has_video=has_video,
+                                    proxy_session=proxy_session,
+                                    jobId=jobId,
+                                    crawlId=crawlId,
+                                    date_range=date_range,
+                                    image_download_enable=image_download_enable,
+                                    video_download_enable=image_download_enable,
+                                    location_enable=location_enable,
+                                    video_thumbnail_enable=video_thumbnail_enable
+                                )
+                                if "comment" in data_to_collect and comments_enable:
+                                    get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId, limit=comments_limit)
+                                total_articles_crawled += 1
+                        if stop:
                             break
+                    if "podcast" in data_to_collect and audience_enable:
+                        if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
+                            data = crawler.crawl_postcast(number_post=number_audio, crawl_id=crawlId)
+                            return
+                        else:
+                            print("⚠ Crawler does not support crawl_postcast")
 
-                        if article_url:
-                            get_article_details(
-                                crawler=crawler,
-                                url=article_url,
-                                link=False,
-                                has_video=has_video,
-                                proxy_session=proxy_session,
-                                jobId=jobId,
-                                crawlId=crawlId,
-                                date_range=date_range,
-                                image_download_enable=image_download_enable,
-                                video_download_enable=image_download_enable,
-                                location_enable=location_enable,
-                                video_thumbnail_enable=video_thumbnail_enable
-                            )
-                            if "comment" in data_to_collect and comments_enable:
-                                get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId, limit=comments_limit)
-                            total_articles_crawled += 1
-                    if stop:
-                        break
-                if "podcast" in data_to_collect and audience_enable:
-                    if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
-                        data = crawler.crawl_postcast(number_post=number_audio, crawl_id=crawlId)
-                        return
-                    else:
-                        print("⚠ Crawler does not support crawl_postcast")
+        else:
+            raise ValueError("No support for keyword crawl in this mode")
+            # keyword = input_data.strip()
+            # domains_to_crawl = [
+            #     "vietnamnet",
+            #     "vnexpress",
+            #     "dantri",
+            #     "thoibaotaichinhvietnam",
+            #     "thanhtra",
+            #     "qdnd",
+            #     "baotintuc",
+            #     "baovephapluat",
+            #     "baodantoc",
+            #     "tapchicongthuong",
+            #     "tainguyenvamoitruong",
+            #     "dangcongsan",
+            #     "phunumoi",
+            #     "vneconomy",
+            #     "kinhtedouong",
+            #     "thuonghieuvaphapluat",
+            # ]
 
-    else:
-        raise ValueError("No support for keyword crawl in this mode")
-        # keyword = input_data.strip()
-        # domains_to_crawl = [
-        #     "vietnamnet",
-        #     "vnexpress",
-        #     "dantri",
-        #     "thoibaotaichinhvietnam",
-        #     "thanhtra",
-        #     "qdnd",
-        #     "baotintuc",
-        #     "baovephapluat",
-        #     "baodantoc",
-        #     "tapchicongthuong",
-        #     "tainguyenvamoitruong",
-        #     "dangcongsan",
-        #     "phunumoi",
-        #     "vneconomy",
-        #     "kinhtedouong",
-        #     "thuonghieuvaphapluat",
-        # ]
+            # for domain in domains_to_crawl:
+            #     try:
+            #         search_url = build_search_url(domain, keyword)
+            #         print(f"[INFO] Search URL for {domain}: {search_url}")
+            #         # Tạo crawler với proxy session
+            #         if proxy_session:
+            #             from news_crawler.factory import get_crawler
+            #             try:
+            #                 crawler = get_crawler(domain, proxy_session=proxy_session)
+            #             except KeyError as e:
+            #                 print(f"[ERROR] {e}")
+            #                 continue
+            #         else:
+            #             crawler = CRAWLERS.get(domain)
 
-        # for domain in domains_to_crawl:
-        #     try:
-        #         search_url = build_search_url(domain, keyword)
-        #         print(f"[INFO] Search URL for {domain}: {search_url}")
-        #         # Tạo crawler với proxy session
-        #         if proxy_session:
-        #             from news_crawler.factory import get_crawler
-        #             try:
-        #                 crawler = get_crawler(domain, proxy_session=proxy_session)
-        #             except KeyError as e:
-        #                 print(f"[ERROR] {e}")
-        #                 continue
-        #         else:
-        #             crawler = CRAWLERS.get(domain)
+            #         if not crawler:
+            #             print(f"[WARN] Không hỗ trợ crawler cho domain: {domain}")
+            #             continue
 
-        #         if not crawler:
-        #             print(f"[WARN] Không hỗ trợ crawler cho domain: {domain}")
-        #             continue
+            #         urls = crawler.get_all_articles_by_keyword(search_url)
+            #         print(f"[INFO] Found {len(urls)} articles for {domain}")
 
-        #         urls = crawler.get_all_articles_by_keyword(search_url)
-        #         print(f"[INFO] Found {len(urls)} articles for {domain}")
+            #         for article_url in urls:
+            #             if article_url:
+            #                 get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
 
-        #         for article_url in urls:
-        #             if article_url:
-        #                 get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
+            #     except Exception as e:
+            #         print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
+            #         update_status(jobId, "FAIL", f"Crawl job failed (Details: {e})")
+            #         continue
 
-        #     except Exception as e:
-        #         print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
-        #         update_status(jobId, "FAIL", f"Crawl job failed (Details: {e})")
-        #         continue
+            # return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
+    except TimeoutException as te:
+        print(f"[TIMEOUT] Crawl bị timeout: {te}")
+        update_status(jobId, "FAIL", f"Crawl job failed (Details: {te})")
+        return
 
-        # return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
+    except Exception as e:
+        print(f"[ERROR] Lỗi khi crawl: {e}")
+        return
+
+    finally:
+        # Tắt alarm cho chắc chắn
+        signal.alarm(0)
 
 def detect_cms(url):
     from selenium import webdriver
