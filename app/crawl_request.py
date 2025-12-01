@@ -74,8 +74,6 @@ def setup_proxy_session(proxy_config: dict) -> Optional[requests.Session]:
                 session.mount('https://', requests.adapters.HTTPAdapter())
 
             except ImportError:
-                print("[WARN] Thư viện PySocks không được cài đặt. SOCKS proxy sẽ không hoạt động.")
-                print("[INFO] Cài đặt: pip install PySocks")
                 return None, ""
 
         # Test proxy connection
@@ -152,7 +150,6 @@ def process_crawl(data: Dict[str, Any]):
     else:
         crawl_setting = {}
 
-    print(f"Crawl setting: {crawl_setting}")
     # Lấy từng nhóm
     post = crawl_setting.get("POST", {})
     profile = crawl_setting.get("PROFILE", {})
@@ -172,13 +169,13 @@ def process_crawl(data: Dict[str, Any]):
     profile_enable = profile.get("ENABLE")
 
     # In kết quả
-    print("POST settings:")
-    print(audience_enable, comments_enable, comments_limit, date_range,
-        post_enable, image_download_enable,
-        video_download_enable, video_thumbnail_enable)
+    # print("POST settings:")
+    # print(audience_enable, comments_enable, comments_limit, date_range,
+    #     post_enable, image_download_enable,
+    #     video_download_enable, video_thumbnail_enable)
 
-    print("PROFILE settings:")
-    print(profile_enable)
+    # print("PROFILE settings:")
+    # print(profile_enable)
     jobId = body.get("jobId")
     crawlId = body.get("crawlId")
     proxy_config = parsed_data.get("proxy")
@@ -534,17 +531,14 @@ def get_article_details(
     """Hàm lấy chi tiết bài báo"""
     # Inject proxy session vào crawler nếu có
     if proxy_session:
-        # print(f"[INFO] Áp dụng proxy cho crawler: {url}")
 
         crawler.proxy_session = proxy_session
 
         if hasattr(crawler, 'session'):
             crawler.session = proxy_session
-            # print(f"[INFO] Đã cập nhật session của crawler với proxy")
 
         if hasattr(crawler, 'proxies'):
             crawler.proxies = proxy_session.proxies
-            # print(f"[INFO] Đã cập nhật proxies của crawler")
 
     try:
         title, description, content, published_date, author, content_image_urls, categories, video_url, thumbnail_url, location  = crawler.extract_content(url, has_video)
@@ -565,7 +559,6 @@ def get_article_details(
         author_id = f"{extract_main_domain(url)}_{author_clean}"
     else:
         author_id = None
-    # print(f"[INFO] Đã lấy bài viết: {published_date} - {title}")
 
     article_data = {
         "dataSource": normalize_url_to_root_https(url),
@@ -655,21 +648,17 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
 def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, crawlId=None) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
     # Inject proxy session vào crawler nếu có
-    print(f"[INFO] ======================= PROFILE INFORMATION=====================: {url}")
     if proxy_session:
-        print(f"[INFO] Áp dụng proxy cho crawler: {url}")
         # Lưu proxy session vào crawler để sử dụng
         crawler.proxy_session = proxy_session
 
         # Nếu crawler có thuộc tính session, cập nhật nó
         if hasattr(crawler, 'session'):
             crawler.session = proxy_session
-            print(f"[INFO] Đã cập nhật session của crawler với proxy")
 
         # Nếu crawler có thuộc tính proxies, cập nhật nó
         if hasattr(crawler, 'proxies'):
             crawler.proxies = proxy_session.proxies
-            print(f"[INFO] Đã cập nhật proxies của crawler")
 
     try:
         license_infor, description, editor_in_chief, address, phone, email, infor_copyright, logo = crawler.extract_profile_domain(url)

@@ -398,10 +398,10 @@ class VTCNewsCrawler(BaseCrawler):
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)
@@ -543,7 +543,7 @@ class VTCNewsCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         if(page_number == 5):
             return []
         page_url = f"https://vtcnews.vn/{article_type}/trang-{page_number}.html"

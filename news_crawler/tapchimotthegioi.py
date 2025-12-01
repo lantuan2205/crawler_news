@@ -178,7 +178,7 @@ class TapChiMotTheGioiCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -222,15 +222,18 @@ class TapChiMotTheGioiCrawler(BaseCrawler):
             # Trích xuất tác giả
             author = soup.select_one("span.sc-longform-header-author")
             author = author.get_text(strip=True) if author else None
-
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -276,18 +279,25 @@ class TapChiMotTheGioiCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://1thegioi.vn/{article_type}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
         wait = WebDriverWait(driver, 10)
+        max_page = 5
+        page = 0
         try: 
             # Scroll 4 lần
             for i in range(4):
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
                 time.sleep(1.5)
-            while True:
+            while page < max_page:
                 # Lưu số lượng link trước khi quét
                 previous_count = len(seen_links)
 
@@ -317,7 +327,7 @@ class TapChiMotTheGioiCrawler(BaseCrawler):
                 try:
                     next_button = wait.until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(),'Xem thêm')]")))
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(1)
+                    page += 1
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
                     time.sleep(1)

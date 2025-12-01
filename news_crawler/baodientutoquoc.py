@@ -315,6 +315,12 @@ class DienTuToQuocCrawler(BaseCrawler):
             tag = soup.select_one("div.VCSortableInPreviewMode[type='VideoStream']")
             video_url = tag.get("data-vid", "").strip() if tag else ""
             thumbnail_url = tag.get("data-thumb", "").strip() if tag else ""
+
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:

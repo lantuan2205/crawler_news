@@ -388,6 +388,11 @@ class DaiDoanKetCrawler(BaseCrawler):
                     pass
                 finally:
                     driver.quit()
+
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
             
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
@@ -432,16 +437,22 @@ class DaiDoanKetCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-dev-shm-usage")
-        chrome_options.add_argument("--disable-software-rasterizer")
         chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
         chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"{self.base_url}{article_type}.html"
         driver.get(page_url)

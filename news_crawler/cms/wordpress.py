@@ -114,7 +114,6 @@ class WordPressCrawler:
     def _get_html(self, url, scroll=False, link_selectors=None,
                 max_scrolls=20, pause=0.8, stable_rounds=2):
 
-        print(f"[*] Falling back to Selenium for: {url}")
         try:
             if self.driver is None:
                 self.driver = self._init_driver()
@@ -165,7 +164,6 @@ class WordPressCrawler:
             html = self.driver.page_source
             if self._is_html_useful(html):
                 return BeautifulSoup(html, "html.parser")
-            print(f"[!] Selenium HTML vẫn thiếu nội dung: {url}")
         except Exception as e:
             print(f"[x] Selenium failed: {url} ({e})")
         return None
@@ -181,7 +179,6 @@ class WordPressCrawler:
             try:
                 el = soup.select_one(sel)
             except SelectorSyntaxError as e:
-                print(f"[SEL] bad selector {repr(sel)} → {e}", flush=True)
                 continue
             if not el:
                 continue
@@ -231,7 +228,6 @@ class WordPressCrawler:
         return list(urls)
 
     def extract_profile_domain(self, url:str):
-        print(f"📰 Crawling profile: {self.base_url}")
 
         soup = self._get_html(self.base_url)
         if not soup:
@@ -387,7 +383,6 @@ class WordPressCrawler:
             try:
                 el = soup.select_one(sel)
             except Exception as e:
-                print(f"[SEL] bad nextPage selector {repr(sel)} → {e}", flush=True)
                 continue
             if not el:
                 continue
@@ -441,7 +436,7 @@ class WordPressCrawler:
         return list(set(links))
 
     def get_article_links(self, max_pages=5):
-        print(f"🧩 Collecting article URLs from: {self.base_url}")
+        
 
         tpl = self.template.get("article_list", {}) or {}
         selectors = tpl.get("articleUrl", []) or []
@@ -469,11 +464,10 @@ class WordPressCrawler:
                 before = len(collected)
                 links = self._extract_all(soup, selectors, attr="href")
                 if not links:
-                    print(f"[!] Page {page+1} ({cur}) returned 0 links → stop.")
+                    
                     break
 
                 collected.update(links)
-                print(f"  ➜ Page {page+1}: +{len(collected)-before} new links (total {len(collected)})")
 
                 # tìm nextPage từ template
                 nxt = self._resolve_next_url(soup, cur, next_selectors)
@@ -513,7 +507,6 @@ class WordPressCrawler:
 
             if guess:
                 start_url = guess
-                print(f"[AUTO] Using guessed list page: {start_url}")
 
         crawl_list(start_url)
 
@@ -525,16 +518,11 @@ class WordPressCrawler:
             news_url = self._pick_news_list_url(home_soup)
 
         if news_url and news_url.rstrip("/") != self.base_url.rstrip("/"):
-            print(f"[AUTO] Also crawl list page: {news_url}")
+            
             before = len(collected)
             crawl_list(news_url)
             if len(collected) == before:
                 print("[AUTO] News list added 0 links → stop early.")
-
-        # ------------------------------------------------------------
-        # PHASE 3 — Auto detect category pages
-        # ------------------------------------------------------------
-        print("📂 Auto-detecting category pages...")
 
         def _extract_categories(soup):
             cats = set()
@@ -574,10 +562,8 @@ class WordPressCrawler:
 
         # Crawl từng category
         for cat in categories:
-            print(f"\n[CATEGORY] Crawling: {cat}")
             before = len(collected)
             crawl_list(cat)
-            print(f"  → +{len(collected)-before} links from {cat}")
             break
 
         try:
@@ -590,15 +576,11 @@ class WordPressCrawler:
         except:
             pass
 
-        print(f"  ➜ Pattern fallback added: {len(collected)} links")
-
         try:
             for art in soup.select("article a[href]"):
                 collected.add(urljoin(self.base_url, art.get("href")))
         except:
             pass
-
-        print(f"  ➜ Article-tag fallback added: {len(collected)} links")
 
         for i in range(2, max_pages):
             url = urljoin(self.base_url, f"page/{i}/")
@@ -611,7 +593,6 @@ class WordPressCrawler:
                 break
 
             collected.update(links)
-            print(f"  ➜ /page/{i}/: added {len(links)}")
 
         print(f"✅ Total {len(collected)} article URLs found.")
         return list(collected)
@@ -624,7 +605,6 @@ class WordPressCrawler:
 
             tpl = self.template.get("article_data", {}) or {}
             published_date= self._extract_first(soup, tpl.get("publishedDate", [])) or None
-            print("---------publish_date-----------", published_date) 
             title = self._extract_first(soup, tpl.get("title", [])) or None
             description= self._extract_first(soup, tpl.get("description", [])) or None
             content= self._extract_first(soup, tpl.get("content", [])) or None
@@ -649,7 +629,6 @@ class WordPressCrawler:
                 "thumbnail_url": thumbnail_url,
                 "location": location,
             }
-            print(json.dumps(data, ensure_ascii=False, indent=4))
 
             return (
                 title,

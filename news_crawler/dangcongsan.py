@@ -136,7 +136,7 @@ class DangCongSanCrawler(BaseCrawler):
             info.get("logo", "")
         ) 
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -178,15 +178,19 @@ class DangCongSanCrawler(BaseCrawler):
                 if img.get('src')
             ]
 
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -222,7 +226,8 @@ class DangCongSanCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+        if page_number == 5:
+            return []
         page_url = f"https://dangcongsan.vn/noidung/tintuc/Lists/{article_type}/View.aspx?Page={page_number}"
         
         try:

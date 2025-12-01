@@ -507,7 +507,7 @@ class DaiBieuNhanDanCrawler(BaseCrawler):
         return article_data
 
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")

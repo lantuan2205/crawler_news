@@ -153,7 +153,7 @@ class TapChiDoanhNghiepVietNamCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -224,15 +224,18 @@ class TapChiDoanhNghiepVietNamCrawler(BaseCrawler):
                 author_tag = soup.find("span", class_="link-source-text-name")
                 if author_tag:
                     author = author_tag.get_text(strip=True).split('/')[0].strip()
-
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -268,22 +271,33 @@ class TapChiDoanhNghiepVietNamCrawler(BaseCrawler):
         return article_data
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless 
-        chrome_options.add_argument("--disable-gpu")  # Tăng độ ổn định khi headless
-        chrome_options.add_argument("--no-sandbox")   # Bắt buộc khi chạy ở môi trường Linux                                                
-        chrome_options.add_argument("--window-size=1920,1080")  # Kích thước cửa sổ giả lập
+        chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--disable-gpu")
+        chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://doanhnghiepvn.vn/{article_type}/p-{page_number}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
-
+        page = 0
+        max_page = 5
         last_size = 0  
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page < max_page:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
                 time.sleep(1)
@@ -319,10 +333,10 @@ class TapChiDoanhNghiepVietNamCrawler(BaseCrawler):
                 try:
                         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "span.pagination-next")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
                         time.sleep(1)
+                        page += 1
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break

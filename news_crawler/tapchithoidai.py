@@ -181,7 +181,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -210,7 +210,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
             if not content_div:
                 if "pdf" in url or "docs" in url or "paper" in url or not "html" in response.headers.get("Content-Type", ""):
                     print(f"⚠️ Bỏ qua file không phải HTML: {url}")
-                    return None, None, None, None, None, []
+                    return None, None, None, None, None, [], None, None, None, None
 
             # Tìm tất cả table tpl_CMS_ARTICLE_EMBED
             excluded_tables = content_div.find_all("table", class_="tpl_CMS_ARTICLE_EMBED")
@@ -235,15 +235,18 @@ class TapChiThoiDaiCrawler(BaseCrawler):
             author_box = soup.find('h2', class_='author-title')
             author_tag = author_box.find('a')
             author = author_tag.get_text(strip=True).split('(')[0].strip() if author_tag else None
-
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -280,11 +283,20 @@ class TapChiThoiDaiCrawler(BaseCrawler):
     def get_urls_of_type_thread(self, article_type, page_number):
         """" Get URLs of articles in a specific type on a given page """
         chrome_options = Options()
-        chrome_options.add_argument("--headless")  # Chạy trình duyệt ở chế độ headless
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
-
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_number = (page_number - 1) * 16
 
@@ -294,11 +306,12 @@ class TapChiThoiDaiCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         first_time = True
-
+        max_page = 5
+        page = 0
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page < max_page:
                 articles = driver.find_elements(By.CSS_SELECTOR, "div._BX_LISTING div.article")
 
                 for article in articles:
@@ -338,7 +351,7 @@ class TapChiThoiDaiCrawler(BaseCrawler):
                             break
 
                     driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                    time.sleep(0.5)
+                    page += 1
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click nút Trang sau")
                     time.sleep(1)

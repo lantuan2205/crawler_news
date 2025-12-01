@@ -313,14 +313,19 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
             thumbnail_url = None
             location = None
 
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -382,7 +387,7 @@ class NongNghiepMoiTruongCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         page_count = 0
-        max_pages = 10
+        max_pages = 5
         try:
             wait = WebDriverWait(driver, 10)
 

@@ -181,7 +181,7 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
             info.get("logo", "")
         )
   
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -241,16 +241,19 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
                         name_candidate = last_strong.get_text(strip=True).strip("()")
                         if name_candidate and len(name_candidate) >= 3:
                             author = name_candidate
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -293,11 +296,14 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-images")
-        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
         chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://congluan.vn/{article_type}"
@@ -305,12 +311,14 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
         time.sleep(1)
         seen_links = set()
         wait = WebDriverWait(driver, 10)
+        page = 0
+        max_page = 5
         try: 
             # Scroll 4 lần
             for i in range(4):
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
                 time.sleep(1.5)
-            while True:
+            while page < max_page:
                 # Lưu số lượng link trước khi quét
                 previous_count = len(seen_links)
 
@@ -343,6 +351,7 @@ class BaoNhaBaoVaCongLuanCrawler(BaseCrawler):
                     time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
+                    page += 1
                     time.sleep(1)
                 except Exception as e:
                     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)

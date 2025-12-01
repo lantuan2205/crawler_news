@@ -365,8 +365,8 @@ class VtvCrawler(BaseCrawler):
         chrome_options.add_experimental_option(
             "prefs",
             {
-                "profile.managed_default_content_settings.images": 2,  # tắt ảnh
-                "profile.managed_default_content_settings.javascript": 1,  # bật JS
+                "profile.managed_default_content_settings.images": 2,
+                "profile.managed_default_content_settings.javascript": 1,
             }
         )
         chrome_options.set_capability("pageLoadStrategy", "eager")

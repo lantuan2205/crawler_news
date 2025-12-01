@@ -162,7 +162,7 @@ class BaoDauThauCrawler(BaseCrawler):
             info.get("logo", "")
         )
    
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -227,15 +227,19 @@ class BaoDauThauCrawler(BaseCrawler):
             author_tag = soup.find(["a","span"], class_=["name","cms-author"])
             # author_tag = soup.find("span", class_="cms-author")
             author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else ""
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -277,25 +281,28 @@ class BaoDauThauCrawler(BaseCrawler):
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--remote-debugging-port=9222")
         chrome_options.add_argument("--disable-images")
-        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
         chrome_options.set_capability("pageLoadStrategy", "eager")
-
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://baodauthau.vn/{article_type}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
         seen_article_ids = set()  # set theo object id hoặc nội dung text
-
+        page_count = 0
+        max_pages = 5
         last_size = 0  
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page_count < max_pages:
                 # Scroll và đợi DOM render
                 driver.execute_script("window.scrollBy(0, document.body.scrollHeight);")
                 time.sleep(1)
@@ -334,6 +341,7 @@ class BaoDauThauCrawler(BaseCrawler):
                         time.sleep(1)
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
+                        page_count +=1
                 except Exception:
                         print("✅ Không còn nút Trang sau. Dừng lại.")
                         break

@@ -327,14 +327,12 @@ class VovCrawler(BaseCrawler):
                     )
                     video_url = (el.get_attribute("data-url") or "").strip()
                 except TimeoutException:
-                    print("⚠️ Không tìm thấy video_url")
                     video_url = ""
 
                 try:
                     el_thumb = driver.find_element(By.CSS_SELECTOR, "div.gallery-embed.video_file.videojs-player")
                     thumbnail_url = (el_thumb.get_attribute("data-thumb") or "").strip()
                 except NoSuchElementException:
-                    print("⚠️ Không tìm thấy thumbnail_url")
                     thumbnail_url = ""
 
             except WebDriverException as e:
@@ -350,10 +348,10 @@ class VovCrawler(BaseCrawler):
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
 
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -381,7 +379,7 @@ class VovCrawler(BaseCrawler):
         return article_data
 
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")

@@ -219,7 +219,7 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -269,14 +269,19 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
             author_tag = soup.select_one("span.sc-longform-header-author.block-sc-author")
             author = author_tag.get_text(strip=True) if author_tag else None
 
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -312,7 +317,7 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+        
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
@@ -323,14 +328,21 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://diendandoanhnghiep.vn/{article_type}"
         driver.get(page_url)
         time.sleep(1)
         seen_links = set()
         ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading ")
+        page = 0
+        max_page = 5
         try:
-            while True:
+            while page < max_page:
                 # Lấy các bài viết hiện tại
                 articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.b-grid__title a")
                 for article in articles:
@@ -343,6 +355,7 @@ class TapChiDienDanDoanhNghiepCrawler(BaseCrawler):
                         load_more_button.click()
                         print("🔄 Đã click 'Xem thêm'")
                         time.sleep(1)
+                        page += 1
                     else:
                         break
                 except Exception:

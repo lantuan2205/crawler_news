@@ -147,7 +147,7 @@ class TapChiCongThuongCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -193,10 +193,10 @@ class TapChiCongThuongCrawler(BaseCrawler):
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -232,7 +232,8 @@ class TapChiCongThuongCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+        if page_number == 5:
+            return []
         page_url = f"https://tapchicongthuong.vn/hashtag/{article_type}/page-{page_number}"
         
         try:

@@ -398,6 +398,12 @@ class CongLyCrawler(BaseCrawler):
                         driver.quit()
                 except:
                     pass
+
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
@@ -441,7 +447,7 @@ class CongLyCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")

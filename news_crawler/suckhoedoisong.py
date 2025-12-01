@@ -197,7 +197,7 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -249,15 +249,19 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
                     if bold:
                         author = bold.get_text(strip=True)
 
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
             
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -304,14 +308,21 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://suckhoedoisong.vn/{article_type}.htm"
         driver.get(page_url)
         time.sleep(1)
+        page = 0
+        max_page = 5
         seen_links = set()
         ul_elements = driver.find_elements(By.CSS_SELECTOR, "div.box-category-middle")
         try:
-            while True:
+            while page < max_page:
                 # Lấy các bài viết hiện tại
                 for ul_element in ul_elements:
                     articles = ul_element.find_elements(By.CSS_SELECTOR, "h3 a")
@@ -325,6 +336,7 @@ class SucKhoeDoiSongCrawler(BaseCrawler):
                         load_more_button.click()
                         print("🔄 Đã click 'Xem thêm'")
                         time.sleep(1)
+                        page += 1
                     else:
                         break
                 except Exception:

@@ -172,7 +172,7 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -252,15 +252,19 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
                     bold_tag = author_tag.find('b')
                     if bold_tag:
                         author = bold_tag.get_text(strip=True)
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -303,10 +307,20 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
     
     def get_urls_of_type_thread(self, article_type, page_number):
         chrome_options = Options()
-        chrome_options.add_argument("--headless")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--window-size=1920,1080")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        chrome_options.add_argument("--disable-extensions")
+        chrome_options.add_argument("--disable-popup-blocking")
+        chrome_options.add_argument("--disable-notifications")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         
         page_url = f"https://doanhnghieptiepthi.vn/{article_type}.htm"
@@ -315,9 +329,10 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
 
         seen_links = set()
         wait = WebDriverWait(driver, 10)
-
+        page = 0
+        max_page = 5
         try:
-            while True:
+            while page < max_page:
                 # Lưu số lượng link trước khi quét
                 previous_count = len(seen_links)
 
@@ -355,7 +370,8 @@ class TapChiDoanhNghiepVaTiepThiCrawler(BaseCrawler):
                     time.sleep(1)
                     driver.execute_script("arguments[0].click();", next_button)
                     print("➡️ Đã click 'Xem thêm'")
-                    time.sleep(4)
+                    time.sleep(1)
+                    page += 1
                 except Exception as e:
                     print("❌ Không tìm thấy hoặc không click được nút 'Xem thêm':", e)
                     break

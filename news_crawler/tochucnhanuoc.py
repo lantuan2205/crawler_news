@@ -160,7 +160,7 @@ class ToChucNhaNuocCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -222,15 +222,18 @@ class ToChucNhaNuocCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_tag = soup.find('p', class_='pt5')
             author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
-
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -265,7 +268,8 @@ class ToChucNhaNuocCrawler(BaseCrawler):
 
         return article_data
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+        if page_number == 5:
+            return []
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
@@ -276,6 +280,11 @@ class ToChucNhaNuocCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://tcnnld.vn/news/category/{article_type}.html"
         driver.get(page_url)

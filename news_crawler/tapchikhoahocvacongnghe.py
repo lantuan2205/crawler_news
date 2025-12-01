@@ -167,7 +167,7 @@ class TapChiKhoaHocVaCongNgheCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -238,16 +238,19 @@ class TapChiKhoaHocVaCongNgheCrawler(BaseCrawler):
                     right_aligned = target_div.select_one("p[style*='text-align: justify'] > strong")
                     if right_aligned:
                         author = right_aligned.get_text(strip=True)  if right_aligned else None
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
 
-
-            return title, description, content, publish_date, author, content_images
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -293,7 +296,8 @@ class TapChiKhoaHocVaCongNgheCrawler(BaseCrawler):
         import time, random
         from bs4 import BeautifulSoup
         from urllib.parse import urljoin
-
+        if page_number == 5:
+            return []
         page_url = f"https://vjst.vn/vn/chuyen-muc/{article_type}.aspx?page={page_number}"
         print(f"📄 Đang xử lý trang: {page_url}")
 

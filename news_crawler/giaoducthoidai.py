@@ -331,10 +331,10 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
 
     def extract_comment(self, url: str):
         # Sử dụng session từ base class (có thể là proxy session)

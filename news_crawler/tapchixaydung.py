@@ -184,7 +184,7 @@ class TapChiXayDungCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -232,14 +232,19 @@ class TapChiXayDungCrawler(BaseCrawler):
             author_tag = author_box.find('a')
             author = author_tag.get_text(strip=True).split('/')[0].strip() if author_tag else None
 
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -285,6 +290,11 @@ class TapChiXayDungCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://tapchixaydung.vn/{article_type}.html"
         driver.get(page_url)
@@ -292,11 +302,12 @@ class TapChiXayDungCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         seen_article_ids = set()  # set theo object id hoặc nội dung text
-
+        max_page = 5
+        page = 0
         try:
             wait = WebDriverWait(driver, 10)
 
-            while True:
+            while page < max_page:
 
                 articles = driver.find_elements(By.CSS_SELECTOR, "div#list-articles div.card-news-hz")
                 new_found = 0
@@ -326,7 +337,7 @@ class TapChiXayDungCrawler(BaseCrawler):
                 try:
                         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "a#show_more_category")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
+                        page += 1
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
                         time.sleep(1)

@@ -104,20 +104,6 @@ class BloggerCrawler:
         return True
 
     def _get_html(self, url):
-
-        # try:
-        #     resp = self.session.get(url, headers=self.headers, timeout=15, allow_redirects=True)
-        #     html = resp.text
-        #     if resp.status_code == 200 and self._is_html_useful(html):
-        #         return BeautifulSoup(html, "html.parser")
-        #     else:
-        #         print(f"[!] HTML không đủ nội dung, fallback Selenium: {url}")
-        # except Exception as e:
-        #     print(f"[!] Request failed: {url} ({e})")
-
-        # --- fallback sang Selenium ---
-
-        print(f"[*] Falling back to Selenium for: {url}")
         try:
             if self.driver is None:
                 self.driver = self._init_driver()
@@ -127,7 +113,6 @@ class BloggerCrawler:
             html = self.driver.page_source
             if self._is_html_useful(html):
                 return BeautifulSoup(html, "html.parser")
-            print(f"[!] Selenium HTML vẫn thiếu nội dung: {url}")
         except Exception as e:
             print(f"[x] Selenium failed: {url} ({e})")
         return None
@@ -174,7 +159,6 @@ class BloggerCrawler:
         return ""
 
     def extract_profile_domain(self, url: str):
-        print(f"📰 Crawling profile: {self.base_url}")
 
         soup = self._get_html(self.base_url)
         if not soup:
@@ -233,7 +217,6 @@ class BloggerCrawler:
         return match.group(1).strip() if match else text.strip()
 
     def get_article_links(self, max_pages=5):
-        print(f"🧩 Collecting article URLs from: {self.base_url}")
         tpl = self.template.get("article_list", {})
         selectors = tpl.get("articleUrl", [])
         next_selectors = tpl.get("nextPage", [])
@@ -247,11 +230,9 @@ class BloggerCrawler:
 
             links = self._extract_all(soup, selectors, attr="href")
             if not links:
-                print(f"[!] Page {page + 1} returned no links, stop.")
                 break
 
             collected.update(links)
-            print(f"  ➜ Page {page + 1}: {len(links)} links")
 
             next_url = None
             for sel in next_selectors:
@@ -275,7 +256,6 @@ class BloggerCrawler:
 
             tpl = self.template.get("article_data", {})
             publish_date = self._extract_first(soup, tpl.get("publishedDate", [])),
-            print("---------publish_date-----------", publish_date)
             title = self._extract_first(soup, tpl.get("title", []))
             description = self._extract_first(soup, tpl.get("description", []))
             content = self._extract_first(soup, tpl.get("content", []))

@@ -189,7 +189,7 @@ class TheThaoVanHoaCrawler(BaseCrawler):
             info.get("logo", "")
         )
 
-    def extract_content(self, url: str) -> tuple:
+    def extract_content(self, url: str, has_video) -> tuple:
         """
         Extract title, description, content, publish date, author, and content images from url.
         @param url (str): url to crawl
@@ -244,15 +244,18 @@ class TheThaoVanHoaCrawler(BaseCrawler):
             # Trích xuất tác giả
             author_box = soup.find('p', class_='author')
             author = author_box.get_text(strip=True).rstrip('-').strip() if author_box else None
-
-            return title, description, content, publish_date, author, content_images
+            categories= ""
+            video_url = ""
+            thumbnail_url = ""
+            location = ""
+            return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
     
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -298,6 +301,11 @@ class TheThaoVanHoaCrawler(BaseCrawler):
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
         chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.add_experimental_option("prefs", {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.default_content_setting_values.notifications": 2
+        })
+        chrome_options.set_capability("pageLoadStrategy", "eager")
         driver = webdriver.Chrome(options=chrome_options)
         page_url = f"https://thethaovanhoa.vn/{article_type}.htm"
         driver.get(page_url)
@@ -305,9 +313,10 @@ class TheThaoVanHoaCrawler(BaseCrawler):
         seen_links = set()
         last_size = 0
         wait = WebDriverWait(driver, 10)
-
+        page = 0
+        max_page = 5
         try:
-            while True:
+            while page < max_page:
                 container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "ul.news-stream")))
                 articles = container.find_elements(By.TAG_NAME, "li")
 
@@ -332,7 +341,7 @@ class TheThaoVanHoaCrawler(BaseCrawler):
                     try:
                         next_button = wait.until(EC.element_to_be_clickable((By.CSS_SELECTOR, "li.readmore")))
                         driver.execute_script("arguments[0].scrollIntoView();", next_button)
-                        time.sleep(1)
+                        page += 1
                         driver.execute_script("arguments[0].click();", next_button)
                         print("➡️ Đã click nút 'Trang sau'")
                         time.sleep(1)

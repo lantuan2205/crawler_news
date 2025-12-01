@@ -253,7 +253,7 @@ class KiemSatCrawler(BaseCrawler):
 
         except Exception as e:
             print("❌ ERROR:", e)
-            return None, None, None, None, None, [], "", "", "", ""
+            return None, None, None, None, None, [], None, None, None, None, "", "", "", ""
 
     def write_content(self, url: str, article_type: str) -> bool:
         """

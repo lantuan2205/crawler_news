@@ -280,10 +280,10 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
 
         except requests.exceptions.RequestException as e:
             print(f"Lỗi khi tải trang: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         except Exception as e:
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
-            return None, None, None, None, None, []
+            return None, None, None, None, None, [], None, None, None, None
         
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -319,7 +319,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         return article_data
     
     def get_urls_of_type_thread(self, article_type, page_number):
-        """" Get URLs of articles in a specific type on a given page"""
+
         page_url = f"https://www.qdnd.vn/{article_type}/p/{page_number}"
         if page_number == 5:
             return []
