@@ -178,6 +178,7 @@ def process_crawl(data: Dict[str, Any]):
         image_download_enable = post.get("IMAGE_DOWNLOAD", True)
         video_download_enable = post.get("VIDEO_DOWNLOAD", False)
         video_thumbnail_enable = post.get("VIDEO_THUMBNAIL", False)
+        number_post = post.get("NUMBER_OF_POSTS", 1000)
 
         # Lấy trong PROFILE
         profile_enable = profile.get("ENABLE")
@@ -194,7 +195,7 @@ def process_crawl(data: Dict[str, Any]):
         crawlId = body.get("crawlId")
         proxy_config = parsed_data.get("proxy")
         data_to_collect = body.get("dataToCollect", [])
-        number_post = body.get("numberPost") or 1000
+
         number_audio = body.get("numberAudio") or 60
         number_video = body.get("numberVideo") or 0
         has_video = "video" in data_to_collect
