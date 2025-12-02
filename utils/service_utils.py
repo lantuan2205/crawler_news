@@ -71,19 +71,14 @@ def send_profile_to_kafka(profileInfor: dict):
 
 
 def parse_datetime_to_timestamp(date_str: str) -> int:
-    # Bước 1: Loại bỏ phần (GMT+7)
     date_str_clean = date_str.split(" (")[0]
-
-    # Bước 2: Parse string thành datetime
     dt = datetime.strptime(date_str_clean, "%d/%m/%Y, %H:%M")
+    tz_local = pytz.timezone("Asia/Ho_Chi_Minh")
+    dt_local = tz_local.localize(dt)
+    dt_utc = dt_local.astimezone(pytz.UTC)
+    timestamp_sec = int(dt_utc.timestamp())
 
-    # Bước 3: Gán timezone Asia/Ho_Chi_Minh
-    tz = pytz.timezone("Asia/Ho_Chi_Minh")
-    dt = tz.localize(dt)
-
-    # Bước 4: Chuyển sang timestamp milliseconds
-    timestamp_ms = int(dt.timestamp())
-    return timestamp_ms
+    return timestamp_sec
 
 
 def save_to_db(data, output_file=None):
