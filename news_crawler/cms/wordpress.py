@@ -301,19 +301,20 @@ class WordPressCrawler:
         kw_text = [
             "tin tức", "tintuc", "bài viết", "bai viet",
             "chuyên mục", "chuyen muc", "blog", "tin công ty",
-            "tin hoạt động", "news", "event", "sự kiện", "tuyển dụng"
+            "tin hoạt động", "news", "event", "sự kiện", "tuyển dụng",
         ]
 
         # Các từ khóa có thể xuất hiện trong URL
         kw_href = [
             "/tin", "/news", "/blog", "/bai-viet", "/chuyen-muc",
             "/category", "/categories", "/posts", "/post",
-            "/event", "/su-kien", "/tuyen-dung"
+            "/event", "/su-kien", "/tuyen-dung","/tin-tuc",
+            "/cam-nang-nha-nong","/tin-tuc-moi-nhat", "/webinar",
         ]
 
         # Khu vực quan trọng: menu/navigation
         zones = [
-            "nav a[href]", ".menu a[href]", "header a[href]",
+            "nav a[href]", "header a[href]",
             ".navbar a[href]", ".navigation a[href]"
         ]
 
