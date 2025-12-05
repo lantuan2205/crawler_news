@@ -328,63 +328,63 @@ class CongAnNhanDanCrawler(BaseCrawler):
             # thumb
 
             thumbnail_url = ""
-            try:
-                chrome_options = Options()
-                chrome_options.add_argument("--headless=new")
-                chrome_options.add_argument("--disable-gpu")
-                chrome_options.add_argument("--no-sandbox")
-                chrome_options.add_argument("--remote-debugging-port=9222")
-                chrome_options.add_argument("--disable-images")
-                # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-                chrome_options.add_argument("--disable-extensions")
-                chrome_options.add_argument("--disable-popup-blocking")
-                chrome_options.add_argument("--disable-notifications")
-                chrome_options.add_argument("--blink-settings=imagesEnabled=false")
-                chrome_options.set_capability("pageLoadStrategy", "eager")
+            # try:
+            #     chrome_options = Options()
+            #     chrome_options.add_argument("--headless=new")
+            #     chrome_options.add_argument("--disable-gpu")
+            #     chrome_options.add_argument("--no-sandbox")
+            #     chrome_options.add_argument("--remote-debugging-port=9222")
+            #     chrome_options.add_argument("--disable-images")
+            #     # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+            #     chrome_options.add_argument("--disable-extensions")
+            #     chrome_options.add_argument("--disable-popup-blocking")
+            #     chrome_options.add_argument("--disable-notifications")
+            #     chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+            #     chrome_options.set_capability("pageLoadStrategy", "eager")
 
-                driver = webdriver.Chrome(options=chrome_options)
-                driver.get(url)
+            #     driver = webdriver.Chrome(options=chrome_options)
+            #     driver.get(url)
 
-                try:
-                    driver.switch_to.default_content()
+            #     try:
+            #         driver.switch_to.default_content()
 
-                    # 1) tìm đúng iframe YouTube rồi switch vào
-                    yt_iframe = WebDriverWait(driver, 8).until(
-                        EC.presence_of_element_located((
-                            By.CSS_SELECTOR,
-                            'iframe[src*="youtube.com"], iframe[src*="youtube-nocookie.com"]'
-                        ))
-                    )
-                    driver.switch_to.frame(yt_iframe)
+            #         # 1) tìm đúng iframe YouTube rồi switch vào
+            #         yt_iframe = WebDriverWait(driver, 8).until(
+            #             EC.presence_of_element_located((
+            #                 By.CSS_SELECTOR,
+            #                 'iframe[src*="youtube.com"], iframe[src*="youtube-nocookie.com"]'
+            #             ))
+            #         )
+            #         driver.switch_to.frame(yt_iframe)
 
-                    # 2) lấy background-image của div ytp-cued-thumbnail-overlay-image
-                    poster = WebDriverWait(driver, 8).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.ytp-cued-thumbnail-overlay-image"))
-                    )
-                    style_attr = poster.get_attribute("style") or ""
-                    m = re.search(r'url\((["\']?)(.*?)\1\)', style_attr)
-                    if m:
-                        thumbnail_url = m.group(2).strip()
-                    else:
-                        # computed style fallback
-                        bg = driver.execute_script(
-                            "return getComputedStyle(arguments[0]).getPropertyValue('background-image');", poster
-                        ) or ""
-                        m2 = re.search(r'url\((["\']?)(.*?)\1\)', bg)
-                        thumbnail_url = m2.group(2).strip() if m2 else ""
+            #         # 2) lấy background-image của div ytp-cued-thumbnail-overlay-image
+            #         poster = WebDriverWait(driver, 8).until(
+            #             EC.presence_of_element_located((By.CSS_SELECTOR, "div.ytp-cued-thumbnail-overlay-image"))
+            #         )
+            #         style_attr = poster.get_attribute("style") or ""
+            #         m = re.search(r'url\((["\']?)(.*?)\1\)', style_attr)
+            #         if m:
+            #             thumbnail_url = m.group(2).strip()
+            #         else:
+            #             # computed style fallback
+            #             bg = driver.execute_script(
+            #                 "return getComputedStyle(arguments[0]).getPropertyValue('background-image');", poster
+            #             ) or ""
+            #             m2 = re.search(r'url\((["\']?)(.*?)\1\)', bg)
+            #             thumbnail_url = m2.group(2).strip() if m2 else ""
 
-                    driver.switch_to.default_content()
-                except TimeoutException:
-                    thumbnail_url = ""
+            #         driver.switch_to.default_content()
+            #     except TimeoutException:
+            #         thumbnail_url = ""
 
-            except WebDriverException as e:
-                print("⚠️ Selenium error:", e)
-            finally:
-                try:
-                    if driver:
-                        driver.quit()
-                except:
-                    pass
+            # except WebDriverException as e:
+            #     print("⚠️ Selenium error:", e)
+            # finally:
+            #     try:
+            #         if driver:
+            #             driver.quit()
+            #     except:
+            #         pass
 
             return title, description, content, publish_date, author, content_images, categories, video_url, thumbnail_url, location
 
@@ -395,119 +395,119 @@ class CongAnNhanDanCrawler(BaseCrawler):
             print(f"Lỗi trong quá trình phân tích HTML: {e}")
             return None, None, None, None, None, [], None, None, None, None
     
-    def extract_comment(self, url: str):
-        chrome_options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--disable-gpu")
-        chrome_options.add_argument("--no-sandbox")
-        chrome_options.add_argument("--disable-blink-features=AutomationControlled")
-        chrome_options.add_argument("--disable-extensions")
-        chrome_options.add_argument("--disable-popup-blocking")
-        chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_experimental_option("prefs", {
-            "profile.managed_default_content_settings.images": 2,
-            "profile.default_content_setting_values.notifications": 2
-        })
-        chrome_options.set_capability("pageLoadStrategy", "eager")
+    # def extract_comment(self, url: str):
+    #     chrome_options = Options()
+    #     chrome_options.add_argument("--headless")
+    #     chrome_options.add_argument("--disable-gpu")
+    #     chrome_options.add_argument("--no-sandbox")
+    #     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    #     chrome_options.add_argument("--disable-extensions")
+    #     chrome_options.add_argument("--disable-popup-blocking")
+    #     chrome_options.add_argument("--disable-notifications")
+    #     chrome_options.add_experimental_option("prefs", {
+    #         "profile.managed_default_content_settings.images": 2,
+    #         "profile.default_content_setting_values.notifications": 2
+    #     })
+    #     chrome_options.set_capability("pageLoadStrategy", "eager")
 
-        driver = None
-        try:
-            driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(60)
+    #     driver = None
+    #     try:
+    #         driver = webdriver.Chrome(options=chrome_options)
+    #         driver.set_page_load_timeout(60)
 
-            try:
-                driver.get(url)
-            except TimeoutException:
-                print("⚠️ Load trang quá lâu, bỏ qua:", url)
+    #         try:
+    #             driver.get(url)
+    #         except TimeoutException:
+    #             print("⚠️ Load trang quá lâu, bỏ qua:", url)
 
-            # ==== Đợi đúng container comment xuất hiện ====
-            root_sel = "div.box-content.box-comment-list.bounder-content-data[data-id='comments']"
-            try:
-                root_el = WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, root_sel))
-                )
-            except TimeoutException:
-                print("❌ Không thấy container comment")
-                return []
+    #         # ==== Đợi đúng container comment xuất hiện ====
+    #         root_sel = "div.box-content.box-comment-list.bounder-content-data[data-id='comments']"
+    #         try:
+    #             root_el = WebDriverWait(driver, 15).until(
+    #                 EC.presence_of_element_located((By.CSS_SELECTOR, root_sel))
+    #             )
+    #         except TimeoutException:
+    #             print("❌ Không thấy container comment")
+    #             return []
 
-            driver.execute_script("arguments[0].scrollIntoView({block:'center'});", root_el)
+    #         driver.execute_script("arguments[0].scrollIntoView({block:'center'});", root_el)
 
-            # ==== Bấm 'Xem thêm' tới khi hết ====
-            def article_count(drv):
-                return len(drv.find_elements(
-                    By.CSS_SELECTOR,
-                    "div.uk-comment-list-bounder ul.uk-comment-list li > article.uk-comment"
-                ))
+    #         # ==== Bấm 'Xem thêm' tới khi hết ====
+    #         def article_count(drv):
+    #             return len(drv.find_elements(
+    #                 By.CSS_SELECTOR,
+    #                 "div.uk-comment-list-bounder ul.uk-comment-list li > article.uk-comment"
+    #             ))
 
-            while True:
-                before = article_count(driver)
-                try:
-                    show_more_btn = WebDriverWait(driver, 2).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "a.btn-next"))
-                    )
-                except TimeoutException:
-                    break  # không có nút
+    #         while True:
+    #             before = article_count(driver)
+    #             try:
+    #                 show_more_btn = WebDriverWait(driver, 2).until(
+    #                     EC.presence_of_element_located((By.CSS_SELECTOR, "a.btn-next"))
+    #                 )
+    #             except TimeoutException:
+    #                 break  # không có nút
 
-                # nếu nút đang disabled/ẩn thì dừng
-                cls = (show_more_btn.get_attribute("class") or "").lower()
-                aria = (show_more_btn.get_attribute("aria-disabled") or "").lower()
-                style_display = (show_more_btn.value_of_css_property("display") or "").lower()
-                if "disabled" in cls or "uk-disabled" in cls or aria == "true" or style_display == "none":
-                    break
+    #             # nếu nút đang disabled/ẩn thì dừng
+    #             cls = (show_more_btn.get_attribute("class") or "").lower()
+    #             aria = (show_more_btn.get_attribute("aria-disabled") or "").lower()
+    #             style_display = (show_more_btn.value_of_css_property("display") or "").lower()
+    #             if "disabled" in cls or "uk-disabled" in cls or aria == "true" or style_display == "none":
+    #                 break
 
-                # cuộn và click
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'});", show_more_btn)
-                time.sleep(0.2)
-                driver.execute_script("arguments[0].click();", show_more_btn)
+    #             # cuộn và click
+    #             driver.execute_script("arguments[0].scrollIntoView({block:'center'});", show_more_btn)
+    #             time.sleep(0.2)
+    #             driver.execute_script("arguments[0].click();", show_more_btn)
 
-                try:
-                    WebDriverWait(driver, 5).until(lambda d: article_count(d) > before)
-                except TimeoutException:
-                    break
+    #             try:
+    #                 WebDriverWait(driver, 5).until(lambda d: article_count(d) > before)
+    #             except TimeoutException:
+    #                 break
 
-            soup = BeautifulSoup(driver.page_source, "html.parser")
-            comments = []
+    #         soup = BeautifulSoup(driver.page_source, "html.parser")
+    #         comments = []
 
-            root = soup.select_one(root_sel)
-            bounder = root.select_one("div.uk-comment-list-bounder") if root else None
-            items = bounder.select("ul.uk-comment-list li > article.uk-comment") if bounder else []
+    #         root = soup.select_one(root_sel)
+    #         bounder = root.select_one("div.uk-comment-list-bounder") if root else None
+    #         items = bounder.select("ul.uk-comment-list li > article.uk-comment") if bounder else []
 
-            for item in items:
-                nickname = item.select_one("a.author-name")
-                username = nickname.get_text(strip=True) if nickname else ""
+    #         for item in items:
+    #             nickname = item.select_one("a.author-name")
+    #             username = nickname.get_text(strip=True) if nickname else ""
 
 
-                content_tag = item.select_one("div.uk-comment-body p") or item.select_one("div.uk-comment-body")
-                content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
+    #             content_tag = item.select_one("div.uk-comment-body p") or item.select_one("div.uk-comment-body")
+    #             content = content_tag.get_text(" ", strip=True).replace(username, "") if content_tag else ""
 
-                time_tag = item.select_one("small.uk-comment-date")
-                time_text = time_tag.get_text(strip=True) if time_tag else ""
-                time_comment = parse_vnexpress_time_ms(time_text)
+    #             time_tag = item.select_one("small.uk-comment-date")
+    #             time_text = time_tag.get_text(strip=True) if time_tag else ""
+    #             time_comment = parse_vnexpress_time_ms(time_text)
 
-                reactions = {}
-                a = item.select_one("small.uk-comment-like a.btn-like")
-                reactions["Like"] = int(a.get("data-like", "0")) if a else 0
+    #             reactions = {}
+    #             a = item.select_one("small.uk-comment-like a.btn-like")
+    #             reactions["Like"] = int(a.get("data-like", "0")) if a else 0
 
-                comments.append({
-                    "domain": normalize_url_to_root_https(url),
-                    "url": url,
-                    "commentId": f"{username}_{uuid.uuid4().hex}",
-                    "userId": username,
-                    "username": username,
-                    "userUrl": "",
-                    "avatar": "",
-                    "content": content,
-                    "time": time_comment,
-                    "reactions": reactions,
-                    "replyCount": 0
-                })
-            return comments
+    #             comments.append({
+    #                 "domain": normalize_url_to_root_https(url),
+    #                 "url": url,
+    #                 "commentId": f"{username}_{uuid.uuid4().hex}",
+    #                 "userId": username,
+    #                 "username": username,
+    #                 "userUrl": "",
+    #                 "avatar": "",
+    #                 "content": content,
+    #                 "time": time_comment,
+    #                 "reactions": reactions,
+    #                 "replyCount": 0
+    #             })
+    #         return comments
 
-        except WebDriverException as e:
-            print("⚠️ Lỗi Selenium:", e)
-        finally:
-            if driver:
-                driver.quit()
+    #     except WebDriverException as e:
+    #         print("⚠️ Lỗi Selenium:", e)
+    #     finally:
+    #         if driver:
+    #             driver.quit()
 
     def write_content(self, url: str, article_type: str) -> bool:
         """
@@ -562,48 +562,67 @@ class CongAnNhanDanCrawler(BaseCrawler):
         max_pages = 5
         page_count = 0
         ul_element = driver.find_element(By.CSS_SELECTOR, "div.box-widget-loaded")
+        wait = WebDriverWait(driver, 10)
         try:
             while page_count < max_pages:
-                wait = WebDriverWait(driver, 10)
 
-                container = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.box-widget-loaded")))
-                articles = container.find_elements(By.TAG_NAME, "article")
+                    # --- Lấy container bài viết ---
+                    container = wait.until(EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, "div.box-widget-loaded")
+                    ))
 
-                for article in articles:
-                    anchors = article.find_elements(By.TAG_NAME, "a")
-                    for a in anchors:
-                        href = a.get_attribute("href")
-                        if href and href.startswith("http") and href not in seen_links:
-                            seen_links.add(href)
+                    articles = container.find_elements(By.TAG_NAME, "article")
 
-                # articles = ul_element.find_elements(By.CSS_SELECTOR, "h3.box-category-title-text a")
-                # # Lấy các bài viết hiện tại
-                # for article in articles:
-                #         link = article.get_attribute("href")
-                #         seen_links.add(link)
-    
-                # print(f"📄 Đã lấy được {len(seen_links)} bài.")
+                    # --- Trích link ---
+                    for article in articles:
+                        anchors = article.find_elements(By.TAG_NAME, "a")
+                        for a in anchors:
+                            href = a.get_attribute("href")
+                            if href and href.startswith("http") and href not in seen_links:
+                                seen_links.add(href)
 
-                # Nếu không có thêm bài mới → thoát
-                if len(seen_links) == last_size:
-                    print("✅ Không còn bài mới. Dừng lại.")
-                    break
-                last_size = len(seen_links)
+                    # --- Nếu không tăng số lượng link => dừng ---
+                    if len(seen_links) == last_size:
+                        print("✅ Không có bài mới. Dừng lại.")
+                        break
+                    last_size = len(seen_links)
 
-                # Cuộn xuống một chút sau mỗi lần nhấn
-                driver.execute_script("window.scrollBy(0, window.innerHeight);")
-                time.sleep(1)
+                    # --- Scroll xuống một chút ---
+                    driver.execute_script("window.scrollBy(0, window.innerHeight);")
+                    time.sleep(0.8)
 
-                try:
-                        next_button = driver.find_element(By.CSS_SELECTOR, "a.btn-next-page")
-                        driver.execute_script("arguments[0].scrollIntoView();", next_button)
+                    # --- Tìm nút Trang sau ---
+                    try:
+                        next_button = driver.find_element(
+                            By.CSS_SELECTOR,
+                            "ul.uk-pagination li.btn-next a.btn-next-page"
+                        )
+
+                        # Check disabled state
+                        classes = next_button.get_attribute("class")
+                        if "uk-disabled" in classes:
+                            print("🛑 Nút Trang sau disabled. Dừng.")
+                            break
+
+                        driver.execute_script("""
+                            var rect = arguments[0].getBoundingClientRect();
+                            window.scrollTo({
+                                top: rect.top + window.pageYOffset - (window.innerHeight / 2),
+                                behavior: 'instant'
+                            });
+                        """, next_button)
+
+                        time.sleep(0.4)
                         next_button.click()
-                        print("➡️ Đã click nút 'Trang sau'")
-                        time.sleep(1)
-                        page_count += 1
+                        next_button.click()
 
-                except Exception:
-                        print("✅ Không còn nút Trang sau. Dừng lại.")
+                        print(f"➡️ Click Trang sau (page {page_count + 1})")
+                        page_count += 1
+                        time.sleep(1)
+
+                    except Exception as e:
+                        print("🛑 Không tìm thấy nút Trang sau. Dừng.")
+                        print("Lý do:", e)
                         break
         finally:    
             driver.quit()

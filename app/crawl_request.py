@@ -235,7 +235,7 @@ def process_crawl(data: Dict[str, Any]):
                 if cms == "WordPress":
                     from news_crawler.cms.wordpress import WordPressCrawler
                     crawler = WordPressCrawler(input_data, proxy_session)
-                    if profile_enable is True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     links = crawler.get_article_links(max_pages=10)
                     for url in links:
@@ -257,7 +257,7 @@ def process_crawl(data: Dict[str, Any]):
                 elif cms == "Blogger":
                     from news_crawler.cms.blogger import BloggerCrawler
                     crawler = BloggerCrawler(input_data, jobId, proxy_session)
-                    if profile_enable is True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     links = crawler.get_article_links(max_pages=10)
                     for url in links:
@@ -279,7 +279,7 @@ def process_crawl(data: Dict[str, Any]):
                 elif cms == "Joomla":
                     from news_crawler.cms.joomla import JoomlaCrawler
                     crawler = JoomlaCrawler(input_data, proxy_session)
-                    if profile_enable is True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     return
                 else:
