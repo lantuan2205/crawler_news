@@ -5,7 +5,8 @@
     ],
     "description": [
       "meta[name='description'][content]",
-      "h2.site-description"
+      "h2.site-description",
+      "p#site-description"
     ],
     "license": [
       ""
@@ -42,7 +43,8 @@
       "a[href^='tel:']"
     ],
     "email": [
-      "a[href^='mailto']"
+      "a[href^='mailto']",
+      "div.email a"
     ],
     "infor_copyright": [
       "footer .copyright",
@@ -55,7 +57,12 @@
       "div[class*='copyright']",
       "p:contains('©')",
       "span:contains('©')",
-      "div:contains('©')"
+      "div:contains('©')",
+      "p.footer-bottom-left",
+      "div#copyright-note",
+      "div.copyright-center",
+      "div#footer-info", 
+      "div.site-info"
     ],
     "logo": [
       "h1.logo a img",
@@ -68,7 +75,13 @@
       "div#header-image img",
       "a.custom-logo-link img",
       "img.custom-logo",
-      "img[alt*='logo']"
+      "img[alt*='logo']",
+      "img.logo",
+      "div.top-head a img",
+      "h1#logo a img",
+      "div.gsc-logo a img",
+      "div#header-logo-image a img",
+      "div#site-header a img"
     ]
   },
   "article_data": {
@@ -87,7 +100,11 @@
       "div[class*='HTMLToReact_wpStyleList__'] h2",
       "div[class^='PostTemplate_content__'] h1",
       "div[class^='PostTemplate_content__'] h2",
-      "div[class^='PostTemplate_title__'] h3"
+      "div[class^='PostTemplate_title__'] h3",
+      "h1.elementor-heading-title",
+      "h1.heading-2",
+      "h2.cat-name",
+      "h1[itemprop]"
     ],
     "author": [
       "div.entry-meta a.author",
@@ -100,7 +117,9 @@
       "div[class*='HTMLToReact_wpStyleList__'] span.author",
       "div.span.author",
       "p.byline a",
-      "div.post-meta span.by"
+      "div.post-meta span.by",
+      "p.tacgiam a",
+      "div.author_pulic span"
     ],
     "publishedDate": [
       "span.published",
@@ -115,7 +134,16 @@
       "div[class*='HTMLToReact_wpStyleList__'] time",
       "div[class*='PostTemplate_content__'] time",
       "span.date",
-      "p.post-date time"
+      "p.post-date time",
+      "time.published time.entry-date",
+      "meta[property='og:updated_time'][content]",
+      "span.post-date",
+      "span.posted-on",
+      "time[datetime]",
+      "span.thetime span",
+      "a.comm_date",
+      "div.entry-meta",
+      "span.elementor-post-info__item--type-date time"
     ],
     "description": [
       "div.entry-content h4 strong",
@@ -150,7 +178,12 @@
       ".post-inner .entry-content",
       "div.prose",
       "div[class*='HTMLToReact_wpStyleList__']",
-      "div[class*='PostTemplate_content__']"
+      "div[class*='PostTemplate_content__']",
+      "div.entry-body",
+      "div.details-content",
+      "div.elementor-widget-theme-post-content",
+      "div.article-content",
+      "div.thn_post_wrap"
     ],
     "contentImageUrls": [
       "div.entry-content img[src]",
@@ -174,7 +207,11 @@
       ".featured-image img",
       ".entry-featured img",
       "figure.post-thumbnail img",
-      "div.prose img[src]"
+      "div.prose img[src]",
+      "div.entry-content img[src]",
+      "div.elementor-widget-theme-post-content img[src]",
+      "div.details-content img[src]",
+      "div.et_pb_post_content img[src]"
     ],
     "categories": [
       "a[rel='tag']",
@@ -222,7 +259,19 @@
       "h4.entry-title a[href]",
       "div.post-content a[href]",
       "div.listNews div.itemNews a[href]",
-      "div.listNews div.itemNews h5.title-h5 a[href]"
+      "div.listNews div.itemNews h5.title-h5 a[href]",
+      "h3.blog-title a[href]",
+      "h3.post-one__title a[href]",
+      "h2.post-title a[href]",
+      "div.blog-post-main-item h2 a[href]",
+      "div.title.body-1 a[href]",
+      "div.post-item a[href]",
+      "div.col-item h4 a[href]",
+      "div.item h2 a[href]",
+      "h3.entry-title a[href]",
+      "h4.elementor-post__title a[href]",
+      "h3.elementor-post__title a[href]",
+      "h3.category-title a[href]"
     ],
     "nextPage": [
       "div#infinite-handle span button",
@@ -231,7 +280,11 @@
       ".wp-block-group .alignwide a.wp-block-query-pagination-next",
       ".post-navigation p a",
       "a.next-page-numbers",
-      "link[rel='next'][href]"
+      "link[rel='next'][href]",
+      "a.next_page",
+      "a.next.page-numbers",
+      "li.navi_pn a[rel='next' i][href]",
+      "a.elementor-button"
     ]
   }
 }

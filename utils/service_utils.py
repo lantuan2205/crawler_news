@@ -428,6 +428,40 @@ def parse_vnexpress_time_ms(time_str):
 def normalize_tuple_date(input_date):
     try:
         text_date = str(input_date).strip()
+        # NEW: Trường hợp "Tháng Một 7, 2025"
+        m_vi_enlike = re.match(
+            r"(?i)^tháng\s+([A-Za-zÀ-ỹ]+)\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_vi_enlike:
+            mon_token, day, year = m_vi_enlike.groups()
+
+            def _strip_accents(s: str) -> str:
+                import unicodedata
+                return ''.join(c for c in unicodedata.normalize('NFD', s)
+                            if unicodedata.category(c) != 'Mn')
+
+            key = _strip_accents(mon_token).lower().strip()
+
+            vn_months = {
+                "mot": 1, "một": 1,
+                "hai": 2,
+                "ba": 3,
+                "bon": 4, "bốn": 4, "tư": 4,
+                "nam": 5, "năm": 5,
+                "sau": 6, "sáu": 6,
+                "bay": 7, "bảy": 7,
+                "tam": 8, "tám": 8,
+                "chin": 9, "chín": 9,
+                "muoi": 10, "mười": 10,
+                "muoi mot": 11, "mười một": 11,
+                "muoi hai": 12, "mười hai": 12,
+            }
+
+            month = vn_months.get(key)
+            if month and 1 <= month <= 12:
+                return f"{int(day):02}/{int(month):02}/{int(year):04}, 00:00 (GMT+7)"
+
         # dd.MM.yyyy  hoặc  dd.MM.yyyy HH:mm
         m_dot = re.match(
             r"^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?\s*$",
@@ -454,6 +488,38 @@ def normalize_tuple_date(input_date):
             except ValueError:
                 dt = datetime.strptime(text_date, "%b %d, %Y")
             return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+        # 2b) DD Tháng <tên-tháng>, YYYY  → "1 Tháng Bảy, 2025"
+        m_vi_day_first = re.match(
+            r"(?i)^\s*(\d{1,2})\s*tháng\s*([A-Za-zÀ-ỹ]+(?:\s+[A-Za-zÀ-ỹ]+)?)\s*,?\s*(\d{4})\s*$",
+            text_date
+        )
+        if m_vi_day_first:
+            day, mon_token, year = m_vi_day_first.groups()
+
+            # bỏ dấu và chuẩn hoá token tháng
+            import unicodedata
+            def _strip_accents(s: str) -> str:
+                return ''.join(c for c in unicodedata.normalize('NFD', s)
+                            if unicodedata.category(c) != 'Mn')
+
+            key = _strip_accents(mon_token).lower().strip()
+            key = re.sub(r"\s+", " ", key)
+
+            vn_months = {
+                "mot": 1, "hai": 2, "ba": 3, "bon": 4, "tu": 4, "nam": 5,
+                "sau": 6, "bay": 7, "tam": 8, "chin": 9,
+                "muoi": 10, "muoi mot": 11, "muoi hai": 12,
+            }
+            if key.isdigit():
+                month = int(key)
+            else:
+                month = vn_months.get(key)
+                if month is None and key.startswith("muoi "):
+                    if " mot" in key: month = 11
+                    elif " hai" in key: month = 12
+
+            if month and 1 <= month <= 12:
+                return f"{int(day):02}/{int(month):02}/{int(year):04}, 00:00 (GMT+7)"
 
         # 3) Tháng <chữ/số> DD, YYYY (tiếng Việt) → "Tháng Tám 17, 2020", "tháng 12 5, 2024"
         m_vi = re.match(
@@ -492,6 +558,22 @@ def normalize_tuple_date(input_date):
 
         if not input_date or str(input_date).strip().lower() in {"", "none", "null"}:
             return ""
+
+        # Trường hợp: ISO 8601 có timezone → chuyển về dạng chuẩn dd/mm/yyyy, HH:MM (GMT+7)
+        m_iso = re.match(
+            r"^\s*(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})\+(\d{2}):?(\d{2})\s*$",
+            text_date
+        )
+        if m_iso:
+            y, m, d, hh, mm, ss, tzh, tzm = map(int, m_iso.groups())
+            dt = datetime(y, m, d, hh, mm, ss) + timedelta(hours=tzh, minutes=tzm)
+            return dt.strftime("%d/%m/%Y, %H:%M (GMT+7)")
+
+        # Trường hợp: "Ngày 25 / 08 / 2025"
+        m_ngay = re.match(r"(?i)^ngày\s*(\d{1,2})\s*/\s*(\d{1,2})\s*/\s*(\d{4})$", text_date)
+        if m_ngay:
+            d, m, y = map(int, m_ngay.groups())
+            return f"{d:02}/{m:02}/{y}, 00:00 (GMT+7)"
 
 
         # 1) Support format: "Chủ Nhật, 5 tháng 5, 2024"
