@@ -471,7 +471,7 @@ class CongLyCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading")
-        max_pages = 5
+        max_pages = 2
         page_count = 0
         try:
             while page_count < max_pages:

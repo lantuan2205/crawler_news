@@ -456,7 +456,7 @@ class DaiDoanKetCrawler(BaseCrawler):
         page_url = f"{self.base_url}{article_type}.html"
         driver.get(page_url)
         seen_links = set()
-        max_pages = 5
+        max_pages = 2
         page_count = 0
         try:
             while page_count < max_pages:
