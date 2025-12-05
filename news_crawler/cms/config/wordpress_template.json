@@ -35,7 +35,6 @@
       "footer span:contains('Hotline')",
       "footer span:contains('Điện thoại')",
       "div[class*='hotline']",
-      "div[class*='phone']",
       "p:contains('Hotline')",
       "p:contains('Điện thoại')",
       "li:contains('Hotline')",
