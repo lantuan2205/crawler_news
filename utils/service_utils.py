@@ -427,7 +427,72 @@ def parse_vnexpress_time_ms(time_str):
 
 def normalize_tuple_date(input_date):
     try:
+        # Nếu input là tuple/list thì lấy phần tử đầu tiên
+        if isinstance(input_date, (tuple, list)):
+            input_date = input_date[0] if input_date else ""
+
         text_date = str(input_date).strip()
+        # Loại bỏ tiền tố "Thứ ...," trong tiếng Việt
+        text_date = re.sub(r"^(thứ\s+[a-zA-ZÀ-ỹ]+|chủ\s+nhật),?\s*", "", text_date, flags=re.IGNORECASE)
+        m_vi_month_num = re.match(
+            r"(?i)^tháng\s+(\d{1,2})\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+
+
+        # NEW: Trường hợp tiếng Pháp có thứ trong tuần: "vendredi 7 novembre 2025"
+        m_fr_day = re.match(
+            r"^\s*[a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+\s+(\d{1,2})\s+([a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+)\s+(\d{4})$",
+            text_date,
+            re.IGNORECASE
+        )
+        if m_fr_day:
+            day, month_fr, year = m_fr_day.groups()
+            month_fr = month_fr.strip().lower()
+
+            fr_months = {
+                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3,
+                "avril": 4, "mai": 5, "juin": 6,
+                "juillet": 7, "août": 8, "aout": 8,
+                "septembre": 9, "octobre": 10,
+                "novembre": 11, "décembre": 12, "decembre": 12
+            }
+
+            month = fr_months.get(month_fr)
+            if month:
+                return f"{int(day):02}/{month:02}/{int(year)}, 00:00 (GMT+7)"
+
+        # NEW: Trường hợp ngày tiếng Pháp "03 avril 2022"
+        m_fr = re.match(
+            r"^\s*(\d{1,2})\s+([a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+)\s+(\d{4})\s*$",
+            text_date,
+            re.IGNORECASE
+        )
+        if m_fr:
+            day, month_fr, year = m_fr.groups()
+            month_fr = month_fr.strip().lower()
+
+            fr_months = {
+                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3,
+                "avril": 4, "mai": 5, "juin": 6,
+                "juillet": 7, "août": 8, "aout": 8,
+                "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
+            }
+
+            month = fr_months.get(month_fr)
+            if month:
+                return f"{int(day):02}/{month:02}/{int(year)}, 00:00 (GMT+7)"
+
+        # NEW: Trường hợp "tháng 11 13, 2020"
+        m_vi_month_num = re.match(
+            r"(?i)^tháng\s+(\d{1,2})\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_vi_month_num:
+            month, day, year = map(int, m_vi_month_num.groups())
+            if 1 <= month <= 12:
+                return f"{day:02}/{month:02}/{year}, 00:00 (GMT+7)"
+
         # NEW: Trường hợp "Tháng Một 7, 2025"
         m_vi_enlike = re.match(
             r"(?i)^tháng\s+([A-Za-zÀ-ỹ]+)\s+(\d{1,2}),\s*(\d{4})$",
