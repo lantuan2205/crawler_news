@@ -432,6 +432,34 @@ def normalize_tuple_date(input_date):
             input_date = input_date[0] if input_date else ""
 
         text_date = str(input_date).strip()
+        # NEW: Trường hợp tiếng Anh có thứ trong tuần, ví dụ: "Sunday, 31 January 2021"
+        m_en_day = re.match(
+            r"(?i)^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$",
+            text_date
+        )
+        if m_en_day:
+            _, day, month_en, year = m_en_day.groups()
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(f"{day} {month_en} {year}", "%d %B %Y")
+                return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+            except ValueError:
+                pass  # fallback to next format if needed
+
+        # NEW: Trường hợp tiếng Anh có thứ: "Wednesday, December 3, 2025"
+        m_en_day_month = re.match(
+            r"(?i)^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),\s*([a-zA-Z]+)\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_en_day_month:
+            _, month_en, day, year = m_en_day_month.groups()
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(f"{day} {month_en} {year}", "%d %B %Y")
+                return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+            except ValueError:
+                pass
+
         # Loại bỏ tiền tố "Thứ ...," trong tiếng Việt
         text_date = re.sub(r"^(thứ\s+[a-zA-ZÀ-ỹ]+|chủ\s+nhật),?\s*", "", text_date, flags=re.IGNORECASE)
         m_vi_month_num = re.match(

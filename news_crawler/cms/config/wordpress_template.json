@@ -39,8 +39,7 @@
       "p:contains('Hotline')",
       "p:contains('Điện thoại')",
       "li:contains('Hotline')",
-      "li:contains('Điện thoại')",
-      "a[href^='tel:']"
+      "li:contains('Điện thoại')"
     ],
     "email": [
       "a[href^='mailto']",
