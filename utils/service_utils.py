@@ -254,6 +254,9 @@ def clean_date(text_date):
         text_date = re.sub(r"(:\d{2})\s?\+?\d{1,2}:\d{2}", "", text_date)
 
         text_date = re.sub(r"(?<!\s)\(GMT\+7\)", r" (GMT+7)", text_date)
+        # Nếu chỉ có ngày (không có giờ), thêm mặc định 00:00
+        if re.fullmatch(r"\d{2}/\d{2}/\d{4}", text_date.strip()):
+            text_date = f"{text_date.strip()}, 00:00"
 
         if "(GMT+7)" not in text_date:
             text_date += " (GMT+7)"
@@ -427,7 +430,100 @@ def parse_vnexpress_time_ms(time_str):
 
 def normalize_tuple_date(input_date):
     try:
+        # Nếu input là tuple/list thì lấy phần tử đầu tiên
+        if isinstance(input_date, (tuple, list)):
+            input_date = input_date[0] if input_date else ""
+
         text_date = str(input_date).strip()
+        # NEW: Trường hợp tiếng Anh có thứ trong tuần, ví dụ: "Sunday, 31 January 2021"
+        m_en_day = re.match(
+            r"(?i)^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})$",
+            text_date
+        )
+        if m_en_day:
+            _, day, month_en, year = m_en_day.groups()
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(f"{day} {month_en} {year}", "%d %B %Y")
+                return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+            except ValueError:
+                pass  # fallback to next format if needed
+
+        # NEW: Trường hợp tiếng Anh có thứ: "Wednesday, December 3, 2025"
+        m_en_day_month = re.match(
+            r"(?i)^(monday|tuesday|wednesday|thursday|friday|saturday|sunday),\s*([a-zA-Z]+)\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_en_day_month:
+            _, month_en, day, year = m_en_day_month.groups()
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(f"{day} {month_en} {year}", "%d %B %Y")
+                return f"{dt.day:02}/{dt.month:02}/{dt.year}, 00:00 (GMT+7)"
+            except ValueError:
+                pass
+
+        # Loại bỏ tiền tố "Thứ ...," trong tiếng Việt
+        text_date = re.sub(r"^(thứ\s+[a-zA-ZÀ-ỹ]+|chủ\s+nhật),?\s*", "", text_date, flags=re.IGNORECASE)
+        m_vi_month_num = re.match(
+            r"(?i)^tháng\s+(\d{1,2})\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+
+
+        # NEW: Trường hợp tiếng Pháp có thứ trong tuần: "vendredi 7 novembre 2025"
+        m_fr_day = re.match(
+            r"^\s*[a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+\s+(\d{1,2})\s+([a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+)\s+(\d{4})$",
+            text_date,
+            re.IGNORECASE
+        )
+        if m_fr_day:
+            day, month_fr, year = m_fr_day.groups()
+            month_fr = month_fr.strip().lower()
+
+            fr_months = {
+                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3,
+                "avril": 4, "mai": 5, "juin": 6,
+                "juillet": 7, "août": 8, "aout": 8,
+                "septembre": 9, "octobre": 10,
+                "novembre": 11, "décembre": 12, "decembre": 12
+            }
+
+            month = fr_months.get(month_fr)
+            if month:
+                return f"{int(day):02}/{month:02}/{int(year)}, 00:00 (GMT+7)"
+
+        # NEW: Trường hợp ngày tiếng Pháp "03 avril 2022"
+        m_fr = re.match(
+            r"^\s*(\d{1,2})\s+([a-zA-Zéèêîôûàùçäëïöüÿâœæ-]+)\s+(\d{4})\s*$",
+            text_date,
+            re.IGNORECASE
+        )
+        if m_fr:
+            day, month_fr, year = m_fr.groups()
+            month_fr = month_fr.strip().lower()
+
+            fr_months = {
+                "janvier": 1, "février": 2, "fevrier": 2, "mars": 3,
+                "avril": 4, "mai": 5, "juin": 6,
+                "juillet": 7, "août": 8, "aout": 8,
+                "septembre": 9, "octobre": 10, "novembre": 11, "décembre": 12, "decembre": 12
+            }
+
+            month = fr_months.get(month_fr)
+            if month:
+                return f"{int(day):02}/{month:02}/{int(year)}, 00:00 (GMT+7)"
+
+        # NEW: Trường hợp "tháng 11 13, 2020"
+        m_vi_month_num = re.match(
+            r"(?i)^tháng\s+(\d{1,2})\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_vi_month_num:
+            month, day, year = map(int, m_vi_month_num.groups())
+            if 1 <= month <= 12:
+                return f"{day:02}/{month:02}/{year}, 00:00 (GMT+7)"
+
         # NEW: Trường hợp "Tháng Một 7, 2025"
         m_vi_enlike = re.match(
             r"(?i)^tháng\s+([A-Za-zÀ-ỹ]+)\s+(\d{1,2}),\s*(\d{4})$",
