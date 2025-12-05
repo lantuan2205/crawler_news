@@ -142,7 +142,8 @@
       "time[datetime]",
       "span.thetime span",
       "a.comm_date",
-      "div.entry-meta"
+      "div.entry-meta",
+      "span.elementor-post-info__item--type-date time"
     ],
     "description": [
       "div.entry-content h4 strong",
@@ -209,7 +210,8 @@
       "div.prose img[src]",
       "div.entry-content img[src]",
       "div.elementor-widget-theme-post-content img[src]",
-      "div.details-content img[src]"
+      "div.details-content img[src]",
+      "div.et_pb_post_content img[src]"
     ],
     "categories": [
       "a[rel='tag']",

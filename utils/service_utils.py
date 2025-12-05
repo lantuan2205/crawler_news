@@ -424,6 +424,40 @@ def parse_vnexpress_time_ms(time_str):
 def normalize_tuple_date(input_date):
     try:
         text_date = str(input_date).strip()
+        # NEW: Trường hợp "Tháng Một 7, 2025"
+        m_vi_enlike = re.match(
+            r"(?i)^tháng\s+([A-Za-zÀ-ỹ]+)\s+(\d{1,2}),\s*(\d{4})$",
+            text_date
+        )
+        if m_vi_enlike:
+            mon_token, day, year = m_vi_enlike.groups()
+
+            def _strip_accents(s: str) -> str:
+                import unicodedata
+                return ''.join(c for c in unicodedata.normalize('NFD', s)
+                            if unicodedata.category(c) != 'Mn')
+
+            key = _strip_accents(mon_token).lower().strip()
+
+            vn_months = {
+                "mot": 1, "một": 1,
+                "hai": 2,
+                "ba": 3,
+                "bon": 4, "bốn": 4, "tư": 4,
+                "nam": 5, "năm": 5,
+                "sau": 6, "sáu": 6,
+                "bay": 7, "bảy": 7,
+                "tam": 8, "tám": 8,
+                "chin": 9, "chín": 9,
+                "muoi": 10, "mười": 10,
+                "muoi mot": 11, "mười một": 11,
+                "muoi hai": 12, "mười hai": 12,
+            }
+
+            month = vn_months.get(key)
+            if month and 1 <= month <= 12:
+                return f"{int(day):02}/{int(month):02}/{int(year):04}, 00:00 (GMT+7)"
+
         # dd.MM.yyyy  hoặc  dd.MM.yyyy HH:mm
         m_dot = re.match(
             r"^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?\s*$",
