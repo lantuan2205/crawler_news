@@ -107,15 +107,9 @@ class GiaoDucThoiDaiCrawler(BaseCrawler):
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-            container = soup.select_one("header.page-header .container.header-primary")
-            h1_tag = container.find("h1") if container else None
-            a_tag = h1_tag.find("a") if h1_tag else None
+            logo_tag = soup.find("meta", attrs={"property": "og:image"})
+            info["logo"] = logo_tag["content"] if logo_tag else ""
 
-            logo_src = a_tag.get("href").strip() if a_tag and a_tag.has_attr("href") else None
-            # (tuỳ chọn) chuyển sang URL tuyệt đối
-            logo_src = urljoin(url, logo_src) if logo_src else ""
-
-            info["logo"] = logo_src or ""
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
 

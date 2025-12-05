@@ -613,7 +613,7 @@ def get_article_details(
     if crawlId:
         article_data['crawlId'] = crawlId
 
-    # save_to_json(article_data)
+    save_to_json(article_data)
     if is_within_date_range_ms(article_data["publishedDate"], date_range):
         send_clean_article_to_kafka(article_data)
     if link:
@@ -712,7 +712,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
     if crawlId:
         profile_info['crawlId'] = crawlId
     
-    # save_to_json(profile_info)
+    save_to_json(profile_info)
     send_profile_to_kafka(profile_info)
     time.sleep(0.5)
     if link:
