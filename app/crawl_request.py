@@ -1,9 +1,9 @@
 import argparse
-from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka, send_comment_article_to_kafka, normalize_url_to_root_https
+from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https
 import re
 from urllib.parse import urlencode, quote_plus
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import time
 from typing import Dict, Any, Optional
@@ -586,7 +586,7 @@ def get_article_details(
         author_id = f"{extract_main_domain(url)}_{author_clean}"
     else:
         author_id = None
-
+    crawled_at = int(datetime.now(timezone.utc).timestamp())
     article_data = {
         "dataSource": normalize_url_to_root_https(url),
         "title": title,
@@ -602,6 +602,20 @@ def get_article_details(
         "thumbnailUrl": thumbnail_url if video_thumbnail_enable else None,
         "location": location if image_download_enable else None,
         "videoUrl": video_url if video_download_enable else None,
+        "crawledAt": crawled_at,
+    }
+
+    tracking_status = {
+        "id": url,
+        "platform": "news",
+        "data_type": "content",
+        "crawled_at": crawled_at,
+        "pre_status": None,
+        "pre_processed_at": None,
+        "pre_message": None,
+        "post_status": None,
+        "post_processed_at": None,
+        "post_message": None,
     }
 
     # if has_video:
@@ -612,10 +626,12 @@ def get_article_details(
 
     if crawlId:
         article_data['crawlId'] = crawlId
+        tracking_status['crawl_id'] = crawlId
 
     # save_to_json(article_data)
     if is_within_date_range_ms(article_data["publishedDate"], date_range):
         send_clean_article_to_kafka(article_data)
+        send_tracking_status_to_kafka(tracking_status)
     if link:
         return article_data
 
@@ -663,11 +679,28 @@ def get_comment_details(crawler, url: str, link, proxy_session=None, jobId=None,
                 user_id = f"{extract_main_domain(url)}_{user_clean}"
             else:
                 user_id = None
-
+            crawled_at = int(datetime.now(timezone.utc).timestamp())
             comment["userId"] = user_id
             comment["username"] = user_clean
             comment["crawlId"] = crawlId
+            comment["crawledAt"] = crawled_at
+
+            tracking_status = {
+                "id": comment["commentId"],
+                "platform": "news",
+                "data_type": "comment",
+                "crawled_at": crawled_at,
+                "pre_status": None,
+                "pre_processed_at": None,
+                "pre_message": None,
+                "post_status": None,
+                "post_processed_at": None,
+                "post_message": None,
+                "crawl_id": crawlId
+            }
+
             send_comment_article_to_kafka(comment)
+            send_tracking_status_to_kafka(tracking_status)
             time.sleep(0.2)
         if link:
             return comments
@@ -692,7 +725,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
     except Exception as e:
         print(f"Lỗi khi lấy profile: {e}")
         return None
-
+    crawled_at = int(datetime.now(timezone.utc).timestamp())
     profile_info = {
         "domain": normalize_url_to_root_https(url),
         "name": extract_main_domain(url),
@@ -704,6 +737,20 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         "email": email,
         "inforCopyright": infor_copyright,
         "logo": logo,
+        "crawledAt": crawled_at
+    }
+
+    tracking_status = {
+        "id": normalize_url_to_root_https(url),
+        "platform": "news",
+        "data_type": "profile",
+        "crawled_at": crawled_at,
+        "pre_status": None,
+        "pre_processed_at": None,
+        "pre_message": None,
+        "post_status": None,
+        "post_processed_at": None,
+        "post_message": None,
     }
 
     if jobId:
@@ -711,9 +758,11 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
 
     if crawlId:
         profile_info['crawlId'] = crawlId
+        tracking_status['crawl_id'] = crawlId
     
     # save_to_json(profile_info)
     send_profile_to_kafka(profile_info)
+    send_tracking_status_to_kafka(tracking_status)
     time.sleep(0.5)
     if link:
         return profile_info

@@ -7,7 +7,7 @@ import re
 import os
 import uuid
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import paramiko
 from io import BytesIO
 from pathlib import Path
@@ -716,7 +716,7 @@ class VNExpressCrawler(BaseCrawler):
                 end_time_url  = meta["duration"]
                 datetime_url  = meta["publishedDate"]
                 domain_username = build_domain_username(base, author_url) if author_url else ""
-
+                crawled_at = int(datetime.now(timezone.utc).timestamp())
                 podcast = {
                     "domain": normalize_url_to_root_https(url),
                     "title": title,
@@ -729,8 +729,23 @@ class VNExpressCrawler(BaseCrawler):
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": domain_username,
-                    "crawlId": crawl_id or str(uuid.uuid4())
+                    "crawlId": crawl_id or str(uuid.uuid4()),
+                    "crawledAt": crawled_at
                 }
+                tracking_status = {
+                    "id": url,
+                    "platform": "news",
+                    "data_type": "podcast",
+                    "crawled_at": crawled_at,
+                    "pre_status": None,
+                    "pre_processed_at": None,
+                    "pre_message": None,
+                    "post_status": None,
+                    "post_processed_at": None,
+                    "post_message": None,
+                    "crawl_id": crawl_id or str(uuid.uuid4()),
+                }
+                send_tracking_status_to_kafka(tracking_status)
                 send_podcast_to_kafka(podcast)
             except Exception as e:
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")

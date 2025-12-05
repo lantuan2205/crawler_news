@@ -6,7 +6,7 @@ import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import paramiko
 from io import BytesIO
 from urllib.parse import urljoin, urlparse, parse_qs
@@ -483,7 +483,7 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
                     end_time_url  = meta["duration"]
                     datetime_url  = meta["publishedDate"]
                     domain_username = build_domain_username(domain, author_url) if author_url else ""
-
+                    crawled_at = int(datetime.now(timezone.utc).timestamp())
                     podcast = {
                         "domain": normalize_url_to_root_https(url),
                         "title": title,
@@ -496,8 +496,23 @@ class BaoTaiChinhVietNamCrawler(BaseCrawler):
                         "duration": time_to_seconds(end_time_url),
                         "publishedDate": datetime_url,
                         "authorId": domain_username,
-                        "crawlId": crawl_id or str(uuid.uuid4())
+                        "crawlId": crawl_id or str(uuid.uuid4()),
+                        "crawledAt": crawled_at
                     }
+                    tracking_status = {
+                        "id": url,
+                        "platform": "news",
+                        "data_type": "podcast",
+                        "crawled_at": crawled_at,
+                        "pre_status": None,
+                        "pre_processed_at": None,
+                        "pre_message": None,
+                        "post_status": None,
+                        "post_processed_at": None,
+                        "post_message": None,
+                        "crawl_id": crawl_id or str(uuid.uuid4()),
+                    }
+                    send_tracking_status_to_kafka(tracking_status)
                     send_podcast_to_kafka(podcast)
 
                 # Nếu trang này không có bài mới nào so với những gì đã thấy → dừng

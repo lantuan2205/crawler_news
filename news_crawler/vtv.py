@@ -8,7 +8,7 @@ import random
 import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import paramiko
 from io import BytesIO
 from selenium import webdriver
@@ -568,7 +568,7 @@ class VtvCrawler(BaseCrawler):
                 time_tag = item.select_one("span.box-category-time span.time-ago")
                 time_text = time_tag.get_text(strip=True) if time_tag else ""
                 datetime_url = parse_vnexpress_time_ms(time_text) 
-
+                crawled_at = int(datetime.now(timezone.utc).timestamp())
                 podcast = {
                     "domain": normalize_url_to_root_https(url),
                     "title": title,
@@ -582,8 +582,22 @@ class VtvCrawler(BaseCrawler):
                     "publishedDate": datetime_url,
                     "authorId": f"{author_url}_{uuid.uuid4().hex}" if author_url else "",
                     "crawlId": crawl_id or str(uuid.uuid4()),
-
+                    "crawledAt": crawled_at
                 }
+                tracking_status = {
+                    "id": url,
+                    "platform": "news",
+                    "data_type": "podcast",
+                    "crawled_at": crawled_at,
+                    "pre_status": None,
+                    "pre_processed_at": None,
+                    "pre_message": None,
+                    "post_status": None,
+                    "post_processed_at": None,
+                    "post_message": None,
+                    "crawl_id": crawl_id or str(uuid.uuid4()),
+                }
+                send_tracking_status_to_kafka(tracking_status)
                 send_podcast_to_kafka(podcast)
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)

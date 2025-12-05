@@ -21,6 +21,7 @@ from urllib.parse import urlparse
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:29092")
 KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
+KAFKA_TOPIC_TRACKING_STATUS = os.getenv("KAFKA_TRACKING_STATUS","tracking.status")
 KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
 KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
 KAFKA_TOPIC_POST_CAST = os.getenv("KAFKA_TOPIC_PODCAST","news.podcast.crawler.raw")
@@ -36,6 +37,14 @@ producer = KafkaProducer(
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
+
+def send_tracking_status_to_kafka(tracking_status: dict):
+    try:
+        producer.send(KAFKA_TOPIC_TRACKING_STATUS, tracking_status)
+        producer.flush()
+        print(f"[✓] Đã gửi tracking_status tới Kafka topic: '{KAFKA_TOPIC_TRACKING_STATUS}'")
+    except Exception as e:
+        print(f"[✗] Gửi tracking_status tới Kafka thất bại: {e}")
 
 def send_podcast_to_kafka(podcast_data: dict):
     try:

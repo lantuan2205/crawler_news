@@ -7,7 +7,7 @@ import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import paramiko
 from io import BytesIO
 from selenium import webdriver
@@ -19,7 +19,6 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException,WebDriverException, StaleElementReferenceException
 
 from selenium.webdriver.support import expected_conditions as EC
-import time
 
 
 FILE = Path(__file__).resolve()
@@ -647,7 +646,7 @@ class DaiDoanKetCrawler(BaseCrawler):
                 datetime_url  = meta["publishedDate"]
                 domain_username = build_domain_username(domain, author_url) if author_url else ""
                 title = meta["title"]
-
+                crawled_at = int(datetime.now(timezone.utc).timestamp())
                 podcast = {
                     "title": title,
                     "url": url,
@@ -659,8 +658,23 @@ class DaiDoanKetCrawler(BaseCrawler):
                     "duration": time_to_seconds(end_time_url),
                     "publishedDate": datetime_url,
                     "authorId": domain_username,
-                    "crawlId": crawl_id or str(uuid.uuid4())
+                    "crawlId": crawl_id or str(uuid.uuid4()),
+                    "crawledAt": crawled_at
                 }
+                tracking_status = {
+                    "id": url,
+                    "platform": "news",
+                    "data_type": "podcast",
+                    "crawled_at": crawled_at,
+                    "pre_status": None,
+                    "pre_processed_at": None,
+                    "pre_message": None,
+                    "post_status": None,
+                    "post_processed_at": None,
+                    "post_message": None,
+                    "crawl_id": crawl_id or str(uuid.uuid4()),
+                }
+                send_tracking_status_to_kafka(tracking_status)
                 send_podcast_to_kafka(podcast)
         except Exception as e:
             print("❌ Lỗi trong quá trình crawl:", e)
