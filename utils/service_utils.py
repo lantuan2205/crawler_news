@@ -254,6 +254,9 @@ def clean_date(text_date):
         text_date = re.sub(r"(:\d{2})\s?\+?\d{1,2}:\d{2}", "", text_date)
 
         text_date = re.sub(r"(?<!\s)\(GMT\+7\)", r" (GMT+7)", text_date)
+        # Nếu chỉ có ngày (không có giờ), thêm mặc định 00:00
+        if re.fullmatch(r"\d{2}/\d{2}/\d{4}", text_date.strip()):
+            text_date = f"{text_date.strip()}, 00:00"
 
         if "(GMT+7)" not in text_date:
             text_date += " (GMT+7)"
