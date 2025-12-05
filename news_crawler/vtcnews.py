@@ -117,23 +117,10 @@ class VTCNewsCrawler(BaseCrawler):
         try:
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser")
-            container = soup.select_one("div.topbar") 
-            logo_img = container.select_one("h1.logo img") if container else None
+            soup = BeautifulSoup(response.content, "html.parser")            
+            logo_tag = soup.find("meta", attrs={"property": "og:image:secure_url"})
+            info["logo"] = logo_tag["content"] if logo_tag else ""
 
-            src = ""
-            if logo_img:
-                # Ưu tiên src thật (nếu không phải base64)
-                real_src = logo_img.get("src") or ""
-                data_src = logo_img.get("data-src") or ""
-
-                # Nếu src bị base64 thì lấy data-src
-                if real_src.startswith("data:image"):
-                    src = data_src
-                else:
-                    src = real_src
-
-            info["logo"] = urljoin(url, src) if src else ""
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
 
@@ -183,10 +170,8 @@ class VTCNewsCrawler(BaseCrawler):
             if footer_copyright:
 
                 # Description = 2 dòng đầu tiên
-                ul = soup.select_one("ul.mb20.font13.gray-31.clearfix")
-                info["description"] = (
-                    ul.select_one(":scope > li:nth-of-type(2)").get_text(" ", strip=True) if ul else ""
-                )
+                meta_tag = soup.find("meta", attrs={"name": "twitter:description"})
+                info["description"] = meta_tag["content"] if meta_tag else ""
                 # License
                 ul = soup.select_one("ul.mb20.font13.gray-31.clearfix")
                 info["license"] = ""

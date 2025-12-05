@@ -146,7 +146,7 @@ class BaoVePhapLuatCrawler(BaseCrawler):
                 license_tag = footer_copyright.find("div", class_="col-md-12")
 
                 # Description
-                info["description"] = ""
+                info["description"] = soup.find("meta", id="MetaDescription")["content"]
 
                 # License
                 if "Giấy phép" in text:

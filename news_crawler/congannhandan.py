@@ -175,8 +175,8 @@ class CongAnNhanDanCrawler(BaseCrawler):
                 lines = text.split("\n")
 
                 # Description = 2 dòng đầu tiên
-                info["description"] =""
-
+                meta_tag = soup.find("meta", attrs={"name": "description"})
+                info["description"] = meta_tag["content"] if meta_tag else ""
                 # License
                 if "Giấy phép hoạt động báo chí" in text:
                     license_line = [line for line in lines if "Giấy phép hoạt động báo chí" in line]

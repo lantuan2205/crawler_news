@@ -129,10 +129,9 @@ class DienTuToQuocCrawler(BaseCrawler):
             response = requests.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
-            container = soup.find("div", class_="header")
-            h1_tag = container.find("a.item center") if container else None
-            logo_src = h1_tag.find("img")["src"] if h1_tag and h1_tag.find("img") else ""
-            info["logo"] = logo_src if logo_src else ""
+            logo_tag = soup.find("meta", attrs={"property": "og:image"})
+            info["logo"] = logo_tag["content"] if logo_tag else ""
+
         except Exception as e:
             print("⚠️ Lỗi khi lấy logo:", e)
 

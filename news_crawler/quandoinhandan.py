@@ -131,7 +131,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
                 lines = text.split("\n")
 
                 # Description = 2 dòng đầu tiên
-                info["description"] = ""
+                info["description"] = soup.find("meta", id="MetaDescription")["content"]
 
                 # License
                 if "Giấy phép số:" in text:

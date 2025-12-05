@@ -236,8 +236,8 @@ class BaoThanhNienCrawler(BaseCrawler):
                 text = footer_copyright.get_text("\n", strip=True)
                 lines = text.split("\n")
 
-                info["description"] = ""
-
+                meta_tag = soup.find("meta", attrs={"name": "description"})
+                info["description"] = meta_tag["content"] if meta_tag else ""
                 # License
                 if "Giấy phép" in text:
                     license_line = [line for line in lines if "Giấy phép" in line]
@@ -263,11 +263,19 @@ class BaoThanhNienCrawler(BaseCrawler):
                 info["phone"] = ", ".join(phones) if phones else ""
 
                 # Email
-                email_tag = footer_copyright.select_one("a[href^=mailto]")
-                if email_tag:
-                    info["email"] = email_tag.get_text(strip=True).replace("Email:", "").strip()
-                else: 
-                    info["email"] = ""
+                ld_json_scripts = soup.find_all("script", type="application/ld+json")
+
+                for script in ld_json_scripts:
+                    try:
+                        data = json.loads(script.string)
+                        if isinstance(data, dict) and data.get("@type") == "Organization":
+                            email = data.get("email")
+                            if email:
+                                info["email"] = email.replace("mailto:", "")
+                                break
+                    except Exception as e:
+                        print(f"❌ Lỗi khi parse JSON-LD: {e}")
+
                 # Thông tin bản quyền
                 box = footer_copyright.select_one("div.copy-right")
                 infor_copyright = ""
