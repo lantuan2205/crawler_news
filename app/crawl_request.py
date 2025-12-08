@@ -1,7 +1,6 @@
 import argparse
 from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https
 import re
-from urllib.parse import urlencode, quote_plus
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,7 +16,7 @@ import signal
 import sys
 import uuid
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse, urljoin, urlencode, quote_plus
 
 class TimeoutException(Exception):
     pass
@@ -223,6 +222,19 @@ def process_crawl(data: Dict[str, Any]):
             return get_crawler(domain, proxy_session=proxy_session)
 
         if input_data.startswith("http://") or input_data.startswith("https://"):
+
+            # ====== NEW VALIDATION: CHECK DOMAIN ======
+            parsed = urlparse(input_data)
+            hostname = parsed.hostname if parsed else None
+
+            if not hostname or "." not in hostname:
+                raise ValueError(f"Domain invalid: '{input_data}'. URL must have TLD .vn, .com ...")
+
+            # kiểm tra domain có TLD hợp lệ (.vn, .com, .net, ...)
+            # tld_pattern = r"\.[a-zA-Z]{2,}$"
+            # if not re.search(tld_pattern, hostname):
+            #     raise ValueError(f"Domain name '{hostname}' invalid (thiếu hoặc sai TLD).")
+
             domain = extract_main_domain(input_data)
             crawler = _create_crawler(domain)
 

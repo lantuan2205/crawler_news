@@ -97,8 +97,7 @@ class CongAnNhanDanCrawler(BaseCrawler):
             48: "Xa-hoi-tu-thien",
             49: "nhip-cau-nhan-ai",
             50: "Vuot-len-so-phan",
-
-    }
+        }
 
     def extract_profile_domain(self, url: str):
         job_id = 1
