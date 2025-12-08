@@ -426,12 +426,7 @@ def process_crawl(data: Dict[str, Any]):
         update_status(jobId, "FAIL", f"Crawl job failed (Details: {te})")
         return
 
-    except Exception as e:
-        print(f"[ERROR] Lỗi khi crawl: {e}")
-        return
-
     finally:
-        # Tắt alarm cho chắc chắn
         signal.alarm(0)
 
 def detect_cms(url):
