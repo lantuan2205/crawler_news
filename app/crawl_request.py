@@ -1,7 +1,6 @@
 import argparse
 from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https
 import re
-from urllib.parse import urlencode, quote_plus
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,7 +16,7 @@ import signal
 import sys
 import uuid
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse, urljoin, urlencode, quote_plus
 
 class TimeoutException(Exception):
     pass
@@ -223,6 +222,19 @@ def process_crawl(data: Dict[str, Any]):
             return get_crawler(domain, proxy_session=proxy_session)
 
         if input_data.startswith("http://") or input_data.startswith("https://"):
+
+            # ====== NEW VALIDATION: CHECK DOMAIN ======
+            parsed = urlparse(input_data)
+            hostname = parsed.hostname if parsed else None
+
+            if not hostname or "." not in hostname:
+                raise ValueError(f"Domain invalid: '{input_data}'. URL must have TLD .vn, .com ...")
+
+            # kiểm tra domain có TLD hợp lệ (.vn, .com, .net, ...)
+            # tld_pattern = r"\.[a-zA-Z]{2,}$"
+            # if not re.search(tld_pattern, hostname):
+            #     raise ValueError(f"Domain name '{hostname}' invalid (thiếu hoặc sai TLD).")
+
             domain = extract_main_domain(input_data)
             crawler = _create_crawler(domain)
 
@@ -235,7 +247,7 @@ def process_crawl(data: Dict[str, Any]):
                 if cms == "WordPress":
                     from news_crawler.cms.wordpress import WordPressCrawler
                     crawler = WordPressCrawler(input_data, proxy_session)
-                    if profile_enable is True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     links = crawler.get_article_links(max_pages=10)
                     for url in links:
@@ -257,7 +269,7 @@ def process_crawl(data: Dict[str, Any]):
                 elif cms == "Blogger":
                     from news_crawler.cms.blogger import BloggerCrawler
                     crawler = BloggerCrawler(input_data, jobId, proxy_session)
-                    if profile_enable is True or True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     links = crawler.get_article_links(max_pages=10)
                     for url in links:
@@ -279,7 +291,7 @@ def process_crawl(data: Dict[str, Any]):
                 elif cms == "Joomla":
                     from news_crawler.cms.joomla import JoomlaCrawler
                     crawler = JoomlaCrawler(input_data, proxy_session)
-                    if profile_enable is True:
+                    if "profile" in data_to_collect or  profile_enable:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     return
                 else:
@@ -414,12 +426,7 @@ def process_crawl(data: Dict[str, Any]):
         update_status(jobId, "FAIL", f"Crawl job failed (Details: {te})")
         return
 
-    except Exception as e:
-        print(f"[ERROR] Lỗi khi crawl: {e}")
-        return
-
     finally:
-        # Tắt alarm cho chắc chắn
         signal.alarm(0)
 
 def detect_cms(url):

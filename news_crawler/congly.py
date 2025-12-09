@@ -471,7 +471,7 @@ class CongLyCrawler(BaseCrawler):
         driver.get(page_url)
         seen_links = set()
         ul_element = driver.find_element(By.CSS_SELECTOR, "ul.onecms__loading")
-        max_pages = 5
+        max_pages = 2
         page_count = 0
         try:
             while page_count < max_pages:
@@ -644,16 +644,18 @@ class CongLyCrawler(BaseCrawler):
         base = "congly"
         ITEM_SELECTOR = "ul.onecms__loading > li"
 
-        # 1) Open & scroll to bottom (lazy-load hết)
         chrome_options = Options()
         chrome_options.add_argument("--headless=new")
         chrome_options.add_argument("--disable-gpu")
         chrome_options.add_argument("--no-sandbox")
+        chrome_options.add_argument("--remote-debugging-port=9222")
+        chrome_options.add_argument("--disable-images")
+        # chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_argument("--disable-extensions")
         chrome_options.add_argument("--disable-popup-blocking")
         chrome_options.add_argument("--disable-notifications")
-        chrome_options.add_argument("--window-size=1920,1080")
-        chrome_options.add_argument("--log-level=3")
+        chrome_options.add_argument("--blink-settings=imagesEnabled=false")
+        chrome_options.set_capability("pageLoadStrategy", "eager")
 
         driver = webdriver.Chrome(options=chrome_options)
         driver.get(category_url)
@@ -672,7 +674,7 @@ class CongLyCrawler(BaseCrawler):
                     last_count, stable = count, 0
                 else:
                     stable += 1
-                if stable >= 3:  # 3 vòng liên tiếp không tăng → dừng
+                if stable >= 3:
                     break
             print("✅ Đã scroll đến cuối trang")
 

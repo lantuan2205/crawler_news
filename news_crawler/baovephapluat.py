@@ -360,7 +360,7 @@ class BaoVePhapLuatCrawler(BaseCrawler):
 
         seen_links = set()
         page_count = 0
-        max_pages = 5
+        max_pages = 2
         wait = WebDriverWait(driver, 10)
 
         try:

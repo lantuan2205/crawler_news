@@ -393,7 +393,7 @@ class DienTuToQuocCrawler(BaseCrawler):
         seen_article_ids = set()  # set theo object id hoặc nội dung text
         wait = WebDriverWait(driver, 10)
         page_count = 0
-        max_pages = 5
+        max_pages = 2
         try:
             while page_count < max_pages:
                 # Scroll và đợi DOM render

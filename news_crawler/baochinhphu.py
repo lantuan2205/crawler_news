@@ -351,7 +351,7 @@ class BaoChinhPhuCrawler(BaseCrawler):
         seen_links = set()
         wait = WebDriverWait(driver, 10)
         page_count = 0
-        max_pages = 5
+        max_pages = 2
 
         try:
             while page_count < max_pages:
