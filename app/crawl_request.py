@@ -257,7 +257,7 @@ def process_crawl(data: Dict[str, Any]):
                 elif cms == "Blogger":
                     from news_crawler.cms.blogger import BloggerCrawler
                     crawler = BloggerCrawler(input_data, jobId, proxy_session)
-                    if profile_enable is True:
+                    if profile_enable is True or True:
                         get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
                     links = crawler.get_article_links(max_pages=10)
                     for url in links:
@@ -628,7 +628,7 @@ def get_article_details(
         article_data['crawlId'] = crawlId
         tracking_status['crawl_id'] = crawlId
 
-    # save_to_json(article_data)
+    save_to_json(article_data)
     if is_within_date_range_ms(article_data["publishedDate"], date_range):
         send_clean_article_to_kafka(article_data)
         send_tracking_status_to_kafka(tracking_status)
@@ -760,7 +760,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         profile_info['crawlId'] = crawlId
         tracking_status['crawl_id'] = crawlId
     
-    # save_to_json(profile_info)
+    save_to_json(profile_info)
     send_profile_to_kafka(profile_info)
     send_tracking_status_to_kafka(tracking_status)
     time.sleep(0.5)
