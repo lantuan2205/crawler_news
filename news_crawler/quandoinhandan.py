@@ -27,8 +27,12 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import extract_author_from_strong_tags ,  is_author_strong_tag, clean_prefix
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
-
+from utils.service_utils import (clean_date, get_urls_of_type,
+send_podcast_to_kafka, parse_vnexpress_time_ms,
+normalize_url_to_root_https,time_to_seconds,
+send_logs_to_kafka,
+send_tracking_status_to_kafka
+)
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
@@ -502,6 +506,16 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
                     domain_username = build_domain_username(base, author_url) if author_url else ""
 
                     crawled_at = int(datetime.now(timezone.utc).timestamp())
+                    logs = {
+                        "loggable_id": crawl_id,
+                        "loggable_type": "Crawl podcast website",
+                        "log_level": "INFO",
+                        "message": f"Crawl podcast url: {audio_url}",
+                        "created_at": crawled_at,
+                        "metadata": f"Crawl podcast url: {audio_url}",
+                        "exception": None
+                    }
+                    send_logs_to_kafka(logs)
                     podcast = {
                         "domain": normalize_url_to_root_https(url),
                         "title": title,
@@ -550,7 +564,16 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         }
 
         BASE_URL = "https://www.qdnd.vn/da-phuong-tien/"
-
+        logs = {
+            "loggable_id": crawl_id,
+            "loggable_type": "Crawl podcast website",
+            "log_level": "INFO",
+            "message": f"Crawl podcast website: {BASE_URL}",
+            "created_at": crawled_at,
+            "metadata": f"Crawl podcast website: {BASE_URL}",
+            "exception": None
+        }
+        send_logs_to_kafka(logs)
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")

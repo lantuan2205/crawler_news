@@ -33,7 +33,12 @@ if str(ROOT) not in sys.path:
 from logger import log
 from news_crawler.base_crawler import BaseCrawler
 from utils.beautifulSoup_utils import get_text_from_tag
-from utils.service_utils import clean_date, get_urls_of_type,time_to_seconds, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https
+from utils.service_utils import (clean_date, get_urls_of_type,
+send_podcast_to_kafka, parse_vnexpress_time_ms,
+normalize_url_to_root_https,time_to_seconds,
+send_logs_to_kafka,
+send_tracking_status_to_kafka
+)
 from utils.mongodb_utils import save_image_metadata
 
 headers = {
@@ -646,6 +651,17 @@ class VietNamNetCrawler(BaseCrawler):
         end_time_url  = meta["duration"]
         datetime_url  = meta["publishedDate"]
         domain_username = build_domain_username(domain, author_url) if author_url else ""
+        crawled_at = int(datetime.now(timezone.utc).timestamp())
+        logs = {
+            "loggable_id": crawl_id,
+            "loggable_type": "Crawl podcast website",
+            "log_level": "INFO",
+            "message": f"Crawl podcast url: {audio_url}",
+            "created_at": crawled_at,
+            "metadata": f"Crawl podcast url: {audio_url}",
+            "exception": None
+        }
+        send_logs_to_kafka(logs)
 
         podcast = {
             "domain": normalize_url_to_root_https(url),
@@ -659,8 +675,23 @@ class VietNamNetCrawler(BaseCrawler):
             "duration": end_time_url,
             "publishedDate": datetime_url,
             "authorId": domain_username,
-            "crawlId": crawl_id or str(uuid.uuid4())
+            "crawlId": crawl_id or str(uuid.uuid4()),
+            "crawled_at": crawled_at,
         }
+        tracking_status = {
+            "id": url,
+            "platform": "news",
+            "data_type": "podcast",
+            "crawled_at": crawled_at,
+            "pre_status": None,
+            "pre_processed_at": None,
+            "pre_message": None,
+            "post_status": None,
+            "post_processed_at": None,
+            "post_message": None,
+            "crawl_id": crawl_id or str(uuid.uuid4()),
+        }
+        send_tracking_status_to_kafka(tracking_status)
         send_podcast_to_kafka(podcast)
 
     def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
@@ -675,7 +706,17 @@ class VietNamNetCrawler(BaseCrawler):
         n_category = len(podcast_type_dict)
         per_category = max(1, number_post // n_category)
         BASE_URL = "https://vietnamnet.vn/podcast"
-
+        crawled_at = int(datetime.now(timezone.utc).timestamp())
+        logs = {
+            "loggable_id": crawl_id,
+            "loggable_type": "Crawl podcast website",
+            "log_level": "INFO",
+            "message": f"Crawl podcast website: {BASE_URL}",
+            "created_at": crawled_at,
+            "metadata": f"Crawl podcast website: {BASE_URL}",
+            "exception": None
+        }
+        send_logs_to_kafka(logs)
         for idx, slug in podcast_type_dict.items():
             urls = self.get_url_podcast(BASE_URL, slug)
             for idx, url in enumerate(urls):

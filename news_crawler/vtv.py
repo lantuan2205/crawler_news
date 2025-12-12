@@ -23,8 +23,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
 
 from typing import Optional
-from utils.service_utils import clean_date, get_urls_of_type, send_podcast_to_kafka, parse_vnexpress_time_ms, normalize_url_to_root_https, time_to_seconds
-
+from utils.service_utils import (clean_date, get_urls_of_type,
+send_podcast_to_kafka, parse_vnexpress_time_ms,
+normalize_url_to_root_https,time_to_seconds,
+send_logs_to_kafka,
+send_tracking_status_to_kafka
+)
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[1]  # root directory
@@ -569,6 +573,16 @@ class VtvCrawler(BaseCrawler):
                 time_text = time_tag.get_text(strip=True) if time_tag else ""
                 datetime_url = parse_vnexpress_time_ms(time_text) 
                 crawled_at = int(datetime.now(timezone.utc).timestamp())
+                logs = {
+                    "loggable_id": crawl_id,
+                    "loggable_type": "Crawl podcast website",
+                    "log_level": "INFO",
+                    "message": f"Crawl podcast url: {audio_url}",
+                    "created_at": crawled_at,
+                    "metadata": f"Crawl podcast url: {audio_url}",
+                    "exception": None
+                }
+                send_logs_to_kafka(logs)
                 podcast = {
                     "domain": normalize_url_to_root_https(url),
                     "title": title,
@@ -618,7 +632,17 @@ class VtvCrawler(BaseCrawler):
         n_category = len(podcast_type_dict)
         per_category = max(1, number_post // n_category)
         BASE_URL = "https://vtv.vn/podcast/"
-
+        crawled_at = int(datetime.now(timezone.utc).timestamp())
+        logs = {
+            "loggable_id": crawl_id,
+            "loggable_type": "Crawl podcast website",
+            "log_level": "INFO",
+            "message": f"Crawl podcast website: {BASE_URL}",
+            "created_at": crawled_at,
+            "metadata": f"Crawl podcast website: {BASE_URL}",
+            "exception": None
+        }
+        send_logs_to_kafka(logs)
         for idx, slug in podcast_type_dict.items():
             category_url = BASE_URL + slug
             print(f"🔎 Crawl category {slug} => {category_url}")

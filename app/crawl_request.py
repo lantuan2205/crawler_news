@@ -1,5 +1,6 @@
 import argparse
-from utils.service_utils import save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https
+from utils.service_utils import (save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,
+send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https, send_logs_to_kafka)
 import re
 import json
 from datetime import datetime, timedelta, timezone
@@ -198,8 +199,17 @@ def process_crawl(data: Dict[str, Any]):
         number_audio = body.get("numberAudio") or 60
         number_video = body.get("numberVideo") or 0
         has_video = "video" in data_to_collect
-
-
+        crawled_at = int(datetime.now(timezone.utc).timestamp())
+        logs = {
+            "loggable_id": crawlId,
+            "loggable_type": "Crawl website",
+            "log_level": "INFO",
+            "message": f"Start crawl website: {input_data}",
+            "created_at": crawled_at,
+            "metadata": f"Crawl website: {input_data}",
+            "exception": None
+        }
+        send_logs_to_kafka(logs)
         if source != "NEWS" or action != "GENERAL":
             raise ValueError("False source or action")
 
@@ -594,6 +604,18 @@ def get_article_details(
     else:
         author_id = None
     crawled_at = int(datetime.now(timezone.utc).timestamp())
+
+    logs = {
+        "loggable_id": crawlId,
+        "loggable_type": "Crawl post website",
+        "log_level": "INFO",
+        "message": f"Crawl Url: {url}",
+        "created_at": crawled_at,
+        "metadata": f"Crawl Url: {url}",
+        "exception": None
+    }
+    send_logs_to_kafka(logs)
+
     article_data = {
         "dataSource": normalize_url_to_root_https(url),
         "title": title,
@@ -733,6 +755,16 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         print(f"Lỗi khi lấy profile: {e}")
         return None
     crawled_at = int(datetime.now(timezone.utc).timestamp())
+    logs = {
+        "loggable_id": crawlId,
+        "loggable_type": "Crawl profile news",
+        "log_level": "INFO",
+        "message": f"Profile has been crawled!: {normalize_url_to_root_https(url)}",
+        "created_at": crawled_at,
+        "metadata": "Crawl profile news",
+        "exception": None
+    }
+    
     profile_info = {
         "domain": normalize_url_to_root_https(url),
         "name": extract_main_domain(url),
@@ -770,6 +802,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
     # save_to_json(profile_info)
     send_profile_to_kafka(profile_info)
     send_tracking_status_to_kafka(tracking_status)
+    send_logs_to_kafka(logs)
     time.sleep(0.5)
     if link:
         return profile_info

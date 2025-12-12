@@ -25,6 +25,7 @@ KAFKA_TOPIC_TRACKING_STATUS = os.getenv("KAFKA_TRACKING_STATUS","tracking.status
 KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
 KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
 KAFKA_TOPIC_POST_CAST = os.getenv("KAFKA_TOPIC_PODCAST","news.podcast.crawler.raw")
+KAFKA_TOPIC_LOGS = os.getenv("KAFKA_TOPIC_LOGS","raw.logs")
 OUTPUT_FILE = "crawl_result.json"
 UPLOAD_API_HOST = "192.168.132.250"
 # UPLOAD_API_HOST = "localhost"
@@ -37,6 +38,14 @@ producer = KafkaProducer(
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
     value_serializer=lambda v: json.dumps(v).encode("utf-8")
 )
+
+def send_logs_to_kafka(logs: dict):
+    try:
+        producer.send(KAFKA_TOPIC_LOGS, logs)
+        producer.flush()
+        print(f"[✓] Đã gửi logs tới Kafka topic: '{KAFKA_TOPIC_LOGS}'")
+    except Exception as e:
+        print(f"[✗] Gửi logs tới Kafka thất bại: {e}")
 
 def send_tracking_status_to_kafka(tracking_status: dict):
     try:
@@ -91,16 +100,7 @@ def parse_datetime_to_timestamp(date_str: str) -> int:
 
 
 def save_to_db(data, output_file=None):
-    """
-    Lưu dữ liệu vào MongoDB
-    
-    Args:
-        data (dict/list): Dữ liệu cần lưu
-        output_file (str, optional): Không sử dụng trong MongoDB, giữ lại để tương thích
-    
-    Returns:
-        str: ID của bản ghi đã lưu hoặc None nếu có lỗi
-    """
+
     try:
         if isinstance(data, list):
             # Nếu là danh sách bài viết
@@ -146,10 +146,7 @@ def save_to_db(data, output_file=None):
         print(f"❌ Lỗi khi lưu dữ liệu vào MongoDB: {e}")
         return None
 
-
-# Hàm lưu dữ liệu vào file JSON
 def save_to_json(data):
-    """Lưu dữ liệu vào file JSON"""
     try:
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -427,7 +424,6 @@ def parse_vnexpress_time_ms(time_str):
 
     return None  # Không parse được
 
-
 def normalize_tuple_date(input_date):
     try:
         # Nếu input là tuple/list thì lấy phần tử đầu tiên
@@ -652,7 +648,7 @@ def normalize_tuple_date(input_date):
         if isinstance(input_date, (tuple, list)):
             input_date = input_date[0] if input_date else ""
 
-        if not input_date or str(input_date).strip().lower() in {"", "none", "null"}:
+        if not input_date or str(input_date).strip().lower() in {"", "none", "None"}:
             return ""
 
         # Trường hợp: ISO 8601 có timezone → chuyển về dạng chuẩn dd/mm/yyyy, HH:MM (GMT+7)
