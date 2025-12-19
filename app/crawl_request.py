@@ -128,314 +128,154 @@ def extract_main_domain(url: str) -> str | None:
         return parts[-1]
     return host or None
 
-def process_crawl(data: Dict[str, Any]):
+def safe_json(val, default=None):
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return default or {}
+    return default or {}
 
-    TIMEOUT_SECONDS = 900
-    signal.alarm(TIMEOUT_SECONDS)
+def parse_crawl_setting(raw):
+    setting = safe_json(raw)
+    post = setting.get("POST", {})
+    profile = setting.get("PROFILE", {})
+
+    return {
+        "audience_enable": post.get("AUDIENCE_INFORMATION", True),
+        "comments_enable": post.get("COMMENTS", {}).get("ENABLE", True),
+        "comments_limit": post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS", 10),
+        "date_range": post.get("DATE_RANGE", 30),
+        "post_enable": post.get("ENABLE", True),
+        "location_enable": post.get("LOCATION", False),
+        "image_download_enable": post.get("IMAGE_DOWNLOAD", True),
+        "video_download_enable": post.get("VIDEO_DOWNLOAD", False),
+        "video_thumbnail_enable": post.get("VIDEO_THUMBNAIL", False),
+        "number_post": post.get("NUMBER_OF_POSTS", 1000),
+        "profile_enable": profile.get("ENABLE", False),
+    }
+
+def crawl_by_cms(cms, input_url, crawler, proxy_session, jobId, crawlId,
+                 has_video, profile_enable, data_to_collect,
+                 image_download_enable, video_download_enable,
+                 location_enable, video_thumbnail_enable):
+
+    url = re.sub(r"/+$", "", input_url)
+
+    if "profile" in data_to_collect or profile_enable:
+        get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+
+    if cms in ("WordPress", "Blogger"):
+        links = crawler.get_article_links(max_pages=10)
+        for link in links:
+            get_article_details(
+                crawler, link, False, has_video, proxy_session,
+                jobId, crawlId, None,
+                image_download_enable,
+                video_download_enable,
+                location_enable,
+                video_thumbnail_enable
+            )
+        return
+
+    if cms == "Joomla":
+        return
+
+    raise ValueError(f"Không hỗ trợ CMS: {cms}")
+
+def process_crawl(data: Dict[str, Any]):
+    signal.alarm(900)
 
     try:
-        """
-        Xử lý tác vụ crawl web, hỗ trợ crawl URL cụ thể hoặc tìm kiếm theo từ khóa.
-        """
-        print(f"Processing message: {data}")
-        print(f"START crawling.....")
+        parsed = safe_json(data.get("message"))
+        body = parsed.get("body", {})
 
-        try:
-            parsed_data = json.loads(data["message"]) if isinstance(data["message"], str) else data["message"]
-        except (json.JSONDecodeError, TypeError):
-            raise ValueError("Invalid JSON format")
-
-        body = parsed_data.get("body") or {}
-
-        source = parsed_data.get("source")
-        action = parsed_data.get("action")
+        source, action = parsed.get("source"), parsed.get("action")
         input_data = body.get("inputData")
-        crawl_setting_raw = body.get("crawlSetting")
-        if not crawl_setting_raw:
-            crawl_setting = {}
-        elif isinstance(crawl_setting_raw, str):
-            try:
-                crawl_setting = json.loads(crawl_setting_raw)
-            except Exception as e:
-                print(f"Lỗi khi parse crawlSetting: {e}")
-                crawl_setting = {}
-        elif isinstance(crawl_setting_raw, dict):
-            crawl_setting = crawl_setting_raw
-        else:
-            crawl_setting = {}
+        jobId, crawlId = body.get("jobId"), body.get("crawlId")
 
-        # Lấy từng nhóm
-        post = crawl_setting.get("POST", {})
-        profile = crawl_setting.get("PROFILE", {})
+        if source != "NEWS" or action != "GENERAL":
+            raise ValueError("False source or action")
+        if not input_data:
+            raise ValueError("URL is required")
 
-        # Lấy các giá trị trong POST
-        audience_enable = post.get("AUDIENCE_INFORMATION", True)
-        comments_enable = post.get("COMMENTS", {}).get("ENABLE", True)
-        comments_limit = post.get("COMMENTS", {}).get("NUMBER_OF_COMMENTS", 10)
-        date_range = post.get("DATE_RANGE", 30)
-        post_enable = post.get("ENABLE", True)
-        location_enable = post.get("LOCATION", False)
-        image_download_enable = post.get("IMAGE_DOWNLOAD", True)
-        video_download_enable = post.get("VIDEO_DOWNLOAD", False)
-        video_thumbnail_enable = post.get("VIDEO_THUMBNAIL", False)
-        number_post = post.get("NUMBER_OF_POSTS", 1000)
-
-        # Lấy trong PROFILE
-        profile_enable = profile.get("ENABLE")
-
-        # In kết quả
-        # print("POST settings:")
-        # print(audience_enable, comments_enable, comments_limit, date_range,
-        #     post_enable, image_download_enable,
-        #     video_download_enable, video_thumbnail_enable)
-
-        # print("PROFILE settings:")
-        # print(profile_enable)
-        jobId = body.get("jobId")
-        crawlId = body.get("crawlId")
-        proxy_config = parsed_data.get("proxy")
+        crawl_cfg = parse_crawl_setting(body.get("crawlSetting"))
         data_to_collect = body.get("dataToCollect", [])
-
-        number_audio = body.get("numberAudio") or 60
-        number_video = body.get("numberVideo") or 0
         has_video = "video" in data_to_collect
-        crawled_at = int(datetime.now(timezone.utc).timestamp())
-        logs = {
+
+        send_logs_to_kafka({
             "loggable_id": crawlId,
             "loggable_type": "Crawl website",
             "log_level": "INFO",
             "message": f"Start crawl website: {input_data}",
-            "created_at": crawled_at,
-            "metadata": f"Crawl website: {input_data}",
-            "exception": None
-        }
-        send_logs_to_kafka(logs)
-        if source != "NEWS" or action != "GENERAL":
-            raise ValueError("False source or action")
+            "created_at": int(datetime.now(timezone.utc).timestamp()),
+        })
 
-        if not input_data:
-            raise ValueError("URL or keyword is required")
+        proxy_session, _ = setup_proxy_session(parsed.get("proxy"))
 
-        # Thiết lập proxy session nếu có
-        # Hàm setup_proxy_session() được giả định đã được cập nhật
-        # để trả về một requests.Session đã cấu hình proxy.
-        proxy_session, proxy_msg = setup_proxy_session(proxy_config)
+        if not input_data.startswith(("http://", "https://")):
+            raise ValueError("No support for keyword crawl")
 
-        if proxy_session:
-            print(f"[INFO] Sử dụng proxy: {proxy_config.get('host')}:{proxy_config.get('port')}")
-        else:
-            print("[INFO] Không sử dụng proxy")
+        parsed_url = urlparse(input_data)
+        if not parsed_url.hostname or "." not in parsed_url.hostname:
+            raise ValueError(f"Domain invalid: {input_data}")
 
-        # Sử dụng session để tạo crawler
-        def _create_crawler(domain: str):
-            from news_crawler.factory import get_crawler
-            return get_crawler(domain, proxy_session=proxy_session)
+        domain = extract_main_domain(input_data)
+        from news_crawler.factory import get_crawler
+        crawler = get_crawler(domain, proxy_session=proxy_session)
 
-        if input_data.startswith("http://") or input_data.startswith("https://"):
-
-            # ====== NEW VALIDATION: CHECK DOMAIN ======
-            parsed = urlparse(input_data)
-            hostname = parsed.hostname if parsed else None
-
-            if not hostname or "." not in hostname:
-                raise ValueError(f"Domain invalid: '{input_data}'. URL must have TLD .vn, .com ...")
-
-            # kiểm tra domain có TLD hợp lệ (.vn, .com, .net, ...)
-            # tld_pattern = r"\.[a-zA-Z]{2,}$"
-            # if not re.search(tld_pattern, hostname):
-            #     raise ValueError(f"Domain name '{hostname}' invalid (thiếu hoặc sai TLD).")
-
-            domain = extract_main_domain(input_data)
-            crawler = _create_crawler(domain)
-
-            if not crawler:
-                print(f"[INFO] Không có crawler cho {domain}, thử nhận diện CMS...")
-                cms_info = detect_cms(input_data)
-                cms = cms_info.get("cms")
-                print(f"[INFO] CMS detect: {cms}")
-                url_cms = re.sub(r"/+$", "", input_data)
-                if cms == "WordPress":
-                    from news_crawler.cms.wordpress import WordPressCrawler
-                    crawler = WordPressCrawler(input_data, proxy_session)
-                    if "profile" in data_to_collect or  profile_enable:
-                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                    links = crawler.get_article_links(max_pages=10)
-                    for url in links:
-                        get_article_details(
-                            crawler=crawler,
-                            url=url,
-                            link=False,
-                            has_video=has_video,
-                            proxy_session=proxy_session,
-                            jobId=jobId,
-                            crawlId=crawlId,
-                            date_range=None,
-                            image_download_enable=image_download_enable,
-                            video_download_enable=video_download_enable,
-                            location_enable=location_enable,
-                            video_thumbnail_enable=video_thumbnail_enable
-                        )
-                    return
-                elif cms == "Blogger":
-                    from news_crawler.cms.blogger import BloggerCrawler
-                    crawler = BloggerCrawler(input_data, jobId, proxy_session)
-                    if "profile" in data_to_collect or  profile_enable:
-                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                    links = crawler.get_article_links(max_pages=10)
-                    for url in links:
-                        get_article_details(
-                            crawler=crawler,
-                            url=url,
-                            link=False,
-                            has_video=has_video,
-                            proxy_session=proxy_session,
-                            jobId=jobId,
-                            crawlId=crawlId,
-                            date_range=None,
-                            image_download_enable=image_download_enable,
-                            video_download_enable=video_download_enable,
-                            location_enable=location_enable,
-                            video_thumbnail_enable=video_thumbnail_enable
-                        )
-                    return
-                elif cms == "Joomla":
-                    from news_crawler.cms.joomla import JoomlaCrawler
-                    crawler = JoomlaCrawler(input_data, proxy_session)
-                    if "profile" in data_to_collect or  profile_enable:
-                        get_profile_domain(crawler, url_cms, False, proxy_session, jobId, crawlId)
-                    return
-                else:
-                    raise ValueError(f"Không hỗ trợ domain {domain} (không có crawler & không nhận diện CMS được)")
-
-            response = {
-                "status": "success",
-                "url": input_data,
-                "articles": [],
-            }
-
-            # Kiểm tra xem có phải là URL bài viết cụ thể không
-            is_article = any([
-                re.search(r'\d{6,}\.htm[l]?$', input_data),
-                re.search(r'/[^/]+-\d+\.htm[l]?$', input_data),
-                re.search(r'/[^/]+/\d{4}/\d{2}/\d{2}/', input_data),
-                re.search(r'/[^/]+/\d{4}/\d{2}/', input_data),
-                re.search(r'-i\d+/?$', input_data),
-                re.search(r'-post\d+\.vov($|\?)', input_data),
-                re.search(r'-\d+\.vov($|\?)', input_data),
-                re.search(r'/[^/]+\.htm[l]?$', input_data),
-                re.search(r'-(?!page-)\d+(?:/|$|\?)', input_data),  
-            ])
-
-            url = re.sub(r"/+$", "", input_data)
-            if is_article:
-                raise ValueError("No support for single article crawl in this mode")
-                # article = get_article_details(crawler, url, True, has_video, proxy_session, jobId, crawlId)
-                # if "comment" in data_to_collect or comments_enable:
-                #     get_comment_details(crawler, url, False, proxy_session, jobId, crawlId, limit=comments_limit)
-                # if not article:
-                #     raise ValueError("Không tìm thấy bài viết hoặc URL không hợp lệ")
-                # response["articles"].append(article)
-                # return response
+        if not crawler:
+            cms = detect_cms(input_data).get("cms")
+            if cms == "WordPress":
+                from news_crawler.cms.wordpress import WordPressCrawler
+                crawler = WordPressCrawler(input_data, proxy_session)
+            elif cms == "Blogger":
+                from news_crawler.cms.blogger import BloggerCrawler
+                crawler = BloggerCrawler(input_data, jobId, proxy_session)
+            elif cms == "Joomla":
+                from news_crawler.cms.joomla import JoomlaCrawler
+                crawler = JoomlaCrawler(input_data, proxy_session)
             else:
-                if "profile" in data_to_collect or profile_enable:
-                    get_profile_domain(crawler, url, False, proxy_session, jobId, crawlId)
+                raise ValueError(f"Không hỗ trợ domain {domain}")
 
-                if post_enable:
-                    stop = False
-                    total_articles_crawled = 0
-                    for category in crawler.article_type_dict.values():
-                        urls = crawler.get_all_articles(category)
-                        for article_url in urls:
-                            if number_post and total_articles_crawled >= number_post:
-                                stop = True
-                                break
+            crawl_by_cms(cms, input_data, crawler, proxy_session,
+                         jobId, crawlId, has_video,
+                         crawl_cfg["profile_enable"], data_to_collect,
+                         crawl_cfg["image_download_enable"],
+                         crawl_cfg["video_download_enable"],
+                         crawl_cfg["location_enable"],
+                         crawl_cfg["video_thumbnail_enable"])
+            return
 
-                            if article_url:
-                                get_article_details(
-                                    crawler=crawler,
-                                    url=article_url,
-                                    link=False,
-                                    has_video=has_video,
-                                    proxy_session=proxy_session,
-                                    jobId=jobId,
-                                    crawlId=crawlId,
-                                    date_range=date_range,
-                                    image_download_enable=image_download_enable,
-                                    video_download_enable=image_download_enable,
-                                    location_enable=location_enable,
-                                    video_thumbnail_enable=video_thumbnail_enable
-                                )
-                                if "comment" in data_to_collect and comments_enable:
-                                    get_comment_details(crawler, article_url, False, proxy_session, jobId, crawlId, limit=comments_limit)
-                                total_articles_crawled += 1
-                        if stop:
-                            break
-                    if "podcast" in data_to_collect and audience_enable:
-                        if hasattr(crawler, "crawl_postcast") and callable(getattr(crawler, "crawl_postcast")):
-                            data = crawler.crawl_postcast(number_post=number_audio, crawl_id=crawlId)
-                            return
-                        else:
-                            print("⚠ Crawler does not support crawl_postcast")
+        if crawl_cfg["profile_enable"] or "profile" in data_to_collect:
+            get_profile_domain(crawler, input_data, False, proxy_session, jobId, crawlId)
 
-        else:
-            raise ValueError("No support for keyword crawl in this mode")
-            # keyword = input_data.strip()
-            # domains_to_crawl = [
-            #     "vietnamnet",
-            #     "vnexpress",
-            #     "dantri",
-            #     "thoibaotaichinhvietnam",
-            #     "thanhtra",
-            #     "qdnd",
-            #     "baotintuc",
-            #     "baovephapluat",
-            #     "baodantoc",
-            #     "tapchicongthuong",
-            #     "tainguyenvamoitruong",
-            #     "dangcongsan",
-            #     "phunumoi",
-            #     "vneconomy",
-            #     "kinhtedouong",
-            #     "thuonghieuvaphapluat",
-            # ]
+        if crawl_cfg["post_enable"]:
+            count = 0
+            for category in crawler.article_type_dict.values():
+                for url in crawler.get_all_articles(category):
+                    if crawl_cfg["number_post"] and count >= crawl_cfg["number_post"]:
+                        return
+                    get_article_details(
+                        crawler, url, False, has_video, proxy_session,
+                        jobId, crawlId,
+                        crawl_cfg["date_range"],
+                        crawl_cfg["image_download_enable"],
+                        crawl_cfg["video_download_enable"],
+                        crawl_cfg["location_enable"],
+                        crawl_cfg["video_thumbnail_enable"]
+                    )
+                    if "comment" in data_to_collect and crawl_cfg["comments_enable"]:
+                        get_comment_details(
+                            crawler, url, False, proxy_session,
+                            jobId, crawlId, crawl_cfg["comments_limit"]
+                        )
+                    count += 1
 
-            # for domain in domains_to_crawl:
-            #     try:
-            #         search_url = build_search_url(domain, keyword)
-            #         print(f"[INFO] Search URL for {domain}: {search_url}")
-            #         # Tạo crawler với proxy session
-            #         if proxy_session:
-            #             from news_crawler.factory import get_crawler
-            #             try:
-            #                 crawler = get_crawler(domain, proxy_session=proxy_session)
-            #             except KeyError as e:
-            #                 print(f"[ERROR] {e}")
-            #                 continue
-            #         else:
-            #             crawler = CRAWLERS.get(domain)
-
-            #         if not crawler:
-            #             print(f"[WARN] Không hỗ trợ crawler cho domain: {domain}")
-            #             continue
-
-            #         urls = crawler.get_all_articles_by_keyword(search_url)
-            #         print(f"[INFO] Found {len(urls)} articles for {domain}")
-
-            #         for article_url in urls:
-            #             if article_url:
-            #                 get_article_details(crawler, article_url, False, has_video, proxy_session, jobId, crawlId)
-
-            #     except Exception as e:
-            #         print(f"[ERROR] Lỗi khi crawl {domain}: {e}")
-            #         update_status(jobId, "FAIL", f"Crawl job failed (Details: {e})")
-            #         continue
-
-            # return {"status": "ok", "keyword": keyword, "message": "Đã hoàn thành crawl theo keyword. Dữ liệu đang được lưu."}
-    except TimeoutException as te:
-        print(f"[TIMEOUT] Crawl bị timeout: {te}")
-        update_status(jobId, "FAIL", f"Crawl job failed (Details: {te})")
-        return
-
+    except TimeoutException as e:
+        update_status(jobId, "FAIL", str(e))
     finally:
         signal.alarm(0)
 
