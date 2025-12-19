@@ -210,6 +210,19 @@ def clean_date(text_date):
             text_date = f"{day}/{month}/{year}, {int(hour):02}:{minute} (GMT+7)"
             return parse_datetime_to_timestamp(text_date)
         text_date = unicodedata.normalize('NFC', text_date or "")
+
+        match_vn_full = re.search(
+            r"(Chủ\s*nhật|Thứ\s*\w+)\s*,?\s*(\d{1,2}/\d{1,2}/\d{4})\s*\|\s*(\d{1,2}:\d{2}:\d{2})",
+            text_date,
+            flags=re.IGNORECASE
+        )
+        if match_vn_full:
+            _, date_part, time_part = match_vn_full.groups()
+            d, m, y = date_part.split("/")
+            h, mi, _ = time_part.split(":")
+            text_date = f"{int(d):02}/{int(m):02}/{y}, {int(h):02}:{mi} (GMT+7)"
+            return parse_datetime_to_timestamp(text_date)
+
         text_date = re.sub(r"\s*[-|]\s*", ", ", text_date)
         text_date = re.sub(r"^Cập nhật lúc\s*", "", text_date, flags=re.IGNORECASE).strip()
         text_date = re.sub(r"(Thứ\s\w+|Chủ\sNhật)[,\s-]*(ngày\s*)?", "", text_date, flags=re.IGNORECASE).strip()
