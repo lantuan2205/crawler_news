@@ -192,7 +192,7 @@ WEBNAMES = {"vnexpress": VNExpressCrawler,
 
 def get_crawler(webname, **kwargs):
     print(f"🛠️ get_crawler đang xử lý webname = {repr(webname)}")
-    print(f"📦 Danh sách key hợp lệ: {list(WEBNAMES.keys())}")
+    # print(f"📦 Danh sách key hợp lệ: {list(WEBNAMES.keys())}")
 
     if webname not in WEBNAMES:
         return None

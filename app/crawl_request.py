@@ -30,6 +30,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
+URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.160.61:8000/crawl")
 
 # try:
 #     from app.server import start_background_server
@@ -185,6 +186,122 @@ def crawl_by_cms(cms, input_url, crawler, proxy_session, jobId, crawlId,
 
     raise ValueError(f"Không hỗ trợ CMS: {cms}")
 
+
+def create_darkweb_crawl(crawl_id, start_url):
+    payload = {
+        "crawl_id": crawl_id,
+        "start_url": start_url,
+        "strategy": "HYBRID",
+        "options": {
+            "raw_html": False,
+            "download_images": True,
+            "recrawl_policy": "force",
+            "max_pages": 500,
+            "max_runtime_hours": 2,
+            "max_urls": 10000,
+            "max_depth": 5,
+        }
+    }
+
+    resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",,
+        json=payload,
+        timeout=10
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+def check_darkweb_status(crawl_id):
+    resp = requests.get(
+        f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}/status",
+        timeout=10
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+def is_onion_url(url: str) -> bool:
+    try:
+        host = urlparse(url).hostname or ""
+        return host.endswith(".onion")
+    except Exception:
+        return False
+
+def get_darkweb_results(
+    crawl_id: str,
+    from_crawled_at: str | None = None,
+    limit: int = 1000,
+    fmt: str = "json",
+    enrich: bool = True,
+):
+    params = {
+        "limit": limit,
+        "format": fmt,
+        "enrich": enrich,
+    }
+    if from_crawled_at:
+        params["from_crawled_at"] = from_crawled_at
+
+    resp = requests.get(
+        f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}/results",
+        params=params,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+def poll_darkweb_results(
+    crawl_id,
+    jobId,
+    crawlId,
+    poll_interval=60,
+    max_idle_rounds=3,
+):
+    last_crawled_at = None
+    idle_rounds = 0
+
+    try:
+        while True:
+            result = get_darkweb_results(
+                crawl_id=crawl_id,
+                from_crawled_at=last_crawled_at,
+                limit=1000,
+                enrich=True,
+            )
+
+            items = result.get("items", [])
+            if not items:
+                idle_rounds += 1
+                if idle_rounds >= max_idle_rounds:
+                    print("[ONION] No new data, stop polling")
+                    break
+            else:
+                idle_rounds = 0
+                for item in items:
+                    save_darkweb_article(item, jobId, crawlId)
+
+                last_crawled_at = max(
+                    item.get("crawled_at")
+                    for item in items
+                    if item.get("crawled_at")
+                )
+
+            time.sleep(poll_interval)
+
+    finally:
+        # 🔥 LUÔN cleanup crawl job
+        try:
+            delete_darkweb_crawl(crawl_id)
+            print(f"[ONION] Crawl {crawl_id} deleted")
+        except Exception as e:
+            print(f"[WARN] Cannot delete crawl {crawl_id}: {e}")
+
+def delete_darkweb_crawl(crawl_id: str):
+    resp = requests.delete(
+        f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}",
+        timeout=10
+    )
+    resp.raise_for_status()
+    return resp.json()
+
 def process_crawl(data: Dict[str, Any]):
     signal.alarm(900)
 
@@ -219,12 +336,43 @@ def process_crawl(data: Dict[str, Any]):
             raise ValueError("No support for keyword crawl")
 
         parsed_url = urlparse(input_data)
-        if not parsed_url.hostname or "." not in parsed_url.hostname:
-            raise ValueError(f"Domain invalid: {input_data}")
+        if not parsed_url.hostname:
+            raise ValueError(f"Invalid URL: {input_data}")
 
         domain = extract_main_domain(input_data)
         from news_crawler.factory import get_crawler
         crawler = get_crawler(domain, proxy_session=proxy_session)
+
+        if is_onion_url(input_data):
+            create_darkweb_crawl(crawlId, input_data)
+
+            start = time.time()
+            timeout = 60 * 60 * 2
+
+            while True:
+                status_resp = check_darkweb_status(crawlId)
+                status = status_resp.get("status")
+
+                if status == "completed":
+                    print("[ONION] Crawl completed")
+                    poll_darkweb_results(
+                        crawl_id=crawlId,
+                        jobId=jobId,
+                        crawlId=crawlId,
+                        poll_interval=60,
+                        max_idle_rounds=3,
+                    )
+                    update_status(jobId, "DONE", "Dark web crawl completed")
+                    return
+
+                if status in ("FAILED", "TIMEOUT"):
+                    raise ValueError(f"Dark web crawl failed: {status}")
+
+                if time.time() - start > timeout:
+                    raise TimeoutException("Dark web crawl timeout")
+
+                time.sleep(15)
+            return
 
         if not crawler:
             cms = detect_cms(input_data).get("cms")
