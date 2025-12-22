@@ -43,7 +43,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
-URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.160.88:8000/crawl")
+URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.161.69:8000/crawl")
 
 # try:
 #     from app.server import start_background_server
@@ -208,13 +208,13 @@ def create_darkweb_crawl(crawl_id, start_url):
         "start_url": start_url,
         "strategy": "HYBRID",
         "options": {
-            "raw_html": False,
+            "raw_html": True,
             "download_images": True,
             "recrawl_policy": "force",
-            "max_pages": 500,
+            "max_pages": 5,
             "max_runtime_hours": 2,
-            "max_urls": 10000,
-            "max_depth": 5,
+            "max_urls": 100,
+            "max_depth": 3,
         }
     }
 
@@ -223,6 +223,7 @@ def create_darkweb_crawl(crawl_id, start_url):
         timeout=10
     )
     resp.raise_for_status()
+    print(f"[ONION] Created crawl: {crawl_id} for {start_url}")
     return resp.json()
 
 def check_darkweb_status(crawl_id):
@@ -268,13 +269,15 @@ def poll_darkweb_results(
     jobId,
     crawlId,
     poll_interval=60,
-    max_idle_rounds=100,
+    max_idle_rounds=30,
+    crawl_cfg: dict = None,
 ):
     last_crawled_at = None
-    idle_rounds = 0
-
+    number_post = 0
+    idle_round = 0
+    max_post = crawl_cfg.get("number_post", 0) if crawl_cfg else 0
     try:
-        while True:
+        while idle_round <= max_idle_rounds:
             result = get_darkweb_results(
                 crawl_id=crawl_id,
                 from_crawled_at=last_crawled_at,
@@ -289,21 +292,19 @@ def poll_darkweb_results(
             #     items = result.get("items", [])
 
             if not items:
-                idle_rounds += 1
-                if idle_rounds >= max_idle_rounds:
-                    print("[ONION] No new data, stop polling")
-                    break
-            else:
-                idle_rounds = 0
-                for item in items:
-                    save_darkweb_article(item, crawlId)
+                print(f"[ONION] No new items, idle round")
 
-                last_crawled_at = max(
-                    item.get("crawled_at")
-                    for item in items
-                    if item.get("crawled_at")
-                )
+            for item in items:
+                if crawl_cfg["post_enable"]:
+                    save_darkweb_article(item, crawlId, crawl_cfg)
+                return
 
+            last_crawled_at = max(
+                item.get("crawled_at")
+                for item in items
+                if item.get("crawled_at")
+            )
+            idle_round += 1
             time.sleep(poll_interval)
 
     finally:
@@ -380,10 +381,12 @@ def save_darkweb_profile(url, crawlId):
 
 def save_darkweb_article(
     item,
-    crawlId
+    crawlId,
+    crawl_cfg: dict = None
 ):
 
-    image_download_enable=True
+    # image_download_enable=crawl_cfg["image_download_enable"] or False # comment downloan image darkweb
+    image_download_enable= False
     
     video_download_enable=False
     video_thumbnail_enable=False
@@ -400,7 +403,7 @@ def save_darkweb_article(
     content = content_obj.get("text") or content_obj.get("html")
 
     # ===== Images =====
-    content_image_urls = content_obj.get("image_urls", [])
+    content_image_urls = item.get("images", [])
     photoInfos = content_obj.get("photo_infos", {})
 
     # ===== Categories / tags =====
@@ -466,7 +469,6 @@ def save_darkweb_article(
     send_clean_article_to_kafka(article_data)
     send_tracking_status_to_kafka(tracking_status)
 
-
 def process_crawl(data: Dict[str, Any]):
     signal.alarm(900)
 
@@ -516,10 +518,11 @@ def process_crawl(data: Dict[str, Any]):
 
             while True:
                 status_resp = check_darkweb_status(crawlId)
+                print(f"[ONION] Crawl status: {status_resp}")
                 status = status_resp.get("status")
                 # Get items from file for testing
                 # status = "completed"
-                if status == "completed":
+                if status == "running" or status == "completed":
                     save_darkweb_profile(input_data, crawlId)
                     print("[ONION] Crawl completed")
                     poll_darkweb_results(
@@ -528,6 +531,7 @@ def process_crawl(data: Dict[str, Any]):
                         crawlId=crawlId,
                         poll_interval=60,
                         max_idle_rounds=100,
+                        crawl_cfg=crawl_cfg,
                     )
                     update_status(jobId, "DONE", "Dark web crawl completed")
                     return
