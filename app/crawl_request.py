@@ -18,6 +18,19 @@ import sys
 import uuid
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin, urlencode, quote_plus
+import json
+import time
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent
+JSON_PATH = BASE_DIR / "dark.json"
+
+def load_items_from_file():
+    if not JSON_PATH.exists():
+        return []
+    with open(JSON_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 
 class TimeoutException(Exception):
     pass
@@ -104,6 +117,8 @@ def extract_main_domain(url: str) -> str | None:
     parsed = urlparse(url)
     host = parsed.hostname or ''
     host = host.lower()
+    if host.endswith('.onion'):
+        return host.replace('.onion', '')
 
     # --- Special platforms ---
     if host.endswith('.blogspot.com'):
@@ -266,8 +281,13 @@ def poll_darkweb_results(
                 limit=1000,
                 enrich=True,
             )
-
+            # items = []
             items = result.get("items", [])
+            # Get items from file for testing
+            # if not items:
+            #     result = load_items_from_file()
+            #     items = result.get("items", [])
+
             if not items:
                 idle_rounds += 1
                 if idle_rounds >= max_idle_rounds:
@@ -276,7 +296,7 @@ def poll_darkweb_results(
             else:
                 idle_rounds = 0
                 for item in items:
-                    save_darkweb_article(item, jobId, crawlId)
+                    save_darkweb_article(item, crawlId)
 
                 last_crawled_at = max(
                     item.get("crawled_at")
@@ -313,6 +333,7 @@ def save_darkweb_profile(url, crawlId):
     address = None
     infor_copyright = None
     logo = None
+    description = None
 
     # ===== Logs =====
     logs = {
@@ -496,7 +517,8 @@ def process_crawl(data: Dict[str, Any]):
             while True:
                 status_resp = check_darkweb_status(crawlId)
                 status = status_resp.get("status")
-
+                # Get items from file for testing
+                # status = "completed"
                 if status == "completed":
                     save_darkweb_profile(input_data, crawlId)
                     print("[ONION] Crawl completed")
@@ -505,7 +527,7 @@ def process_crawl(data: Dict[str, Any]):
                         jobId=jobId,
                         crawlId=crawlId,
                         poll_interval=60,
-                        max_idle_rounds=3,
+                        max_idle_rounds=100,
                     )
                     update_status(jobId, "DONE", "Dark web crawl completed")
                     return
