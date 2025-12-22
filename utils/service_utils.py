@@ -204,6 +204,17 @@ def clean_date(text_date):
     """Chuẩn hóa định dạng ngày giờ: giữ số 0, chuyển AM/PM sang 24h, thêm (GMT+7) nếu thiếu."""
     # Loại bỏ phần "Thứ ..., ngày", "Chủ Nhật, ngày", hoặc "Thứ ... -" / "Chủ Nhật -"
     try:
+        iso_match = re.match(
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?",
+            text_date
+        )
+        if iso_match:
+            dt = datetime.fromisoformat(text_date)
+            dt = dt.replace(tzinfo=timezone.utc).astimezone(
+                timezone(timedelta(hours=7))
+            )
+            return int(dt.timestamp())
+
         match_dash_date = re.match(r"(\d{2})-(\d{2})-(\d{4})\s+(\d{1,2}):(\d{2})", text_date)
         if match_dash_date:
             day, month, year, hour, minute = match_dash_date.groups()

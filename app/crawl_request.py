@@ -30,7 +30,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
-URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.160.61:8000/crawl")
+URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.160.88:8000/crawl")
 
 # try:
 #     from app.server import start_background_server
@@ -203,7 +203,7 @@ def create_darkweb_crawl(crawl_id, start_url):
         }
     }
 
-    resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",,
+    resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",
         json=payload,
         timeout=10
     )
@@ -253,7 +253,7 @@ def poll_darkweb_results(
     jobId,
     crawlId,
     poll_interval=60,
-    max_idle_rounds=3,
+    max_idle_rounds=100,
 ):
     last_crawled_at = None
     idle_rounds = 0
@@ -287,7 +287,6 @@ def poll_darkweb_results(
             time.sleep(poll_interval)
 
     finally:
-        # 🔥 LUÔN cleanup crawl job
         try:
             delete_darkweb_crawl(crawl_id)
             print(f"[ONION] Crawl {crawl_id} deleted")
@@ -301,6 +300,151 @@ def delete_darkweb_crawl(crawl_id: str):
     )
     resp.raise_for_status()
     return resp.json()
+
+def save_darkweb_profile(url, crawlId):
+
+    crawled_at = int(datetime.now(timezone.utc).timestamp())
+
+    email =  None
+    phone =  None
+
+    license_infor = None
+    editor_in_chief = None
+    address = None
+    infor_copyright = None
+    logo = None
+
+    # ===== Logs =====
+    logs = {
+        "loggable_id": crawlId,
+        "loggable_type": "Crawl profile news",
+        "log_level": "INFO",
+        "message": f"Profile has been crawled!: {normalize_url_to_root_https(url)}",
+        "created_at": crawled_at,
+        "metadata": "Crawl profile news",
+        "exception": None
+    }
+
+    # ===== Profile Info =====
+    profile_info = {
+        "domain": normalize_url_to_root_https(url),
+        "name": extract_main_domain(url),
+        "description": description,
+        "license": license_infor,
+        "editorInChief": editor_in_chief,
+        "address": address,
+        "phone": phone,
+        "email": email,
+        "inforCopyright": infor_copyright,
+        "logo": logo,
+        "crawledAt": crawled_at
+    }
+
+    # ===== Tracking Status =====
+    tracking_status = {
+        "id": normalize_url_to_root_https(url),
+        "platform": "darkweb",
+        "data_type": "profile",
+        "crawled_at": crawled_at,
+        "pre_status": None,
+        "pre_processed_at": None,
+        "pre_message": None,
+        "post_status": None,
+        "post_processed_at": None,
+        "post_message": None,
+    }
+    send_profile_to_kafka(profile_info)
+    send_tracking_status_to_kafka(tracking_status)
+    send_logs_to_kafka(logs)
+
+def save_darkweb_article(
+    item,
+    crawlId
+):
+
+    image_download_enable=True
+    
+    video_download_enable=False
+    video_thumbnail_enable=False
+    url = item.get("url")
+    crawled_at = int(datetime.now(timezone.utc).timestamp())
+
+    title = item.get("title")
+    description = item.get("description")
+    author = item.get("author")
+    published_date = item.get("crawled_at")
+
+    # ===== Content =====
+    content_obj = item.get("content", {})
+    content = content_obj.get("text") or content_obj.get("html")
+
+    # ===== Images =====
+    content_image_urls = content_obj.get("image_urls", [])
+    photoInfos = content_obj.get("photo_infos", {})
+
+    # ===== Categories / tags =====
+    categories = item.get("tags", [])
+
+    # ===== Video =====
+    video_url = content_obj.get("video_url")
+    thumbnail_url = content_obj.get("thumbnail_url")
+
+    # ===== Location (darkweb thường null) =====
+    location = None
+
+    # ===== AuthorId (darkweb thường không có) =====
+    author_id = None
+
+    # ================= LOGS =================
+    logs = {
+        "loggable_id": crawlId,
+        "loggable_type": "Crawl post website",
+        "log_level": "INFO",
+        "message": f"Crawl Url: {url}",
+        "created_at": crawled_at,
+        "metadata": f"Crawl Url: {url}",
+        "exception": None
+    }
+    send_logs_to_kafka(logs)
+
+    # ================= ARTICLE DATA =================
+    article_data = {
+        "dataSource": normalize_url_to_root_https(url),
+        "title": title,
+        "url": url,
+        "author": author,
+        "authorId": author_id,
+        "publishedDate": clean_date(published_date),
+        "description": description,
+        "content": content,
+        "contentImageUrls": content_image_urls if image_download_enable else [],
+        "photoInfos": photoInfos if image_download_enable else {},
+        "categories": categories,
+        "thumbnailUrl": thumbnail_url if video_thumbnail_enable else None,
+        "location": location if image_download_enable else None,
+        "videoUrl": video_url if video_download_enable else None,
+        "crawledAt": crawled_at,
+    }
+
+    print("darkweb article:", article_data["title"], article_data["url"])
+
+    # ================= TRACKING STATUS =================
+    tracking_status = {
+        "id": url,
+        "platform": "news",
+        "data_type": "content",
+        "crawled_at": crawled_at,
+        "pre_status": None,
+        "pre_processed_at": None,
+        "pre_message": None,
+        "post_status": None,
+        "post_processed_at": None,
+        "post_message": None,
+    }
+
+    send_clean_article_to_kafka(article_data)
+    send_tracking_status_to_kafka(tracking_status)
+
 
 def process_crawl(data: Dict[str, Any]):
     signal.alarm(900)
@@ -354,6 +498,7 @@ def process_crawl(data: Dict[str, Any]):
                 status = status_resp.get("status")
 
                 if status == "completed":
+                    save_darkweb_profile(input_data, crawlId)
                     print("[ONION] Crawl completed")
                     poll_darkweb_results(
                         crawl_id=crawlId,
