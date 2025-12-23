@@ -32,7 +32,6 @@ def load_items_from_file():
     with open(JSON_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 class TimeoutException(Exception):
     pass
 
@@ -202,7 +201,6 @@ def crawl_by_cms(cms, input_url, crawler, proxy_session, jobId, crawlId,
 
     raise ValueError(f"Không hỗ trợ CMS: {cms}")
 
-
 def create_darkweb_crawl(crawl_id, start_url):
     payload = {
         "crawl_id": crawl_id,
@@ -218,14 +216,28 @@ def create_darkweb_crawl(crawl_id, start_url):
             "max_depth": 3,
         }
     }
+    try:
+        resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",
+            json=payload,
+            timeout=10
+        )
+        resp.raise_for_status()
+        print(f"[ONION] Created crawl: {crawl_id} for {start_url}")
+        return resp.json()
+    except requests.exceptions.Timeout:
+        raise TimeoutException("Darkweb create crawl timeout")
 
-    resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",
-        json=payload,
-        timeout=10
-    )
-    resp.raise_for_status()
-    print(f"[ONION] Created crawl: {crawl_id} for {start_url}")
-    return resp.json()
+    except requests.exceptions.HTTPError as e:
+        status = e.response.status_code if e.response else "N/A"
+        body = e.response.text if e.response else ""
+        raise RuntimeError(
+            f"Darkweb create crawl failed (HTTP {status}): {body}"
+        )
+
+    except requests.exceptions.RequestException as e:
+        raise RuntimeError(
+            f"Darkweb create crawl connection error: {e}"
+        )
 
 def check_darkweb_status(crawl_id):
     resp = requests.get(
@@ -248,7 +260,7 @@ def get_darkweb_results(
     limit: int = 1000,
     fmt: str = "json",
     enrich: bool = True,
-):
+    ):
     params = {
         "limit": limit,
         "format": fmt,
@@ -272,7 +284,7 @@ def poll_darkweb_results(
     poll_interval=60,
     max_idle_rounds=30,
     crawl_cfg: dict = None,
-):
+    ):
     last_crawled_at = None
     number_post = 0
     idle_round = 0
@@ -383,7 +395,7 @@ def save_darkweb_article(
     item,
     crawlId,
     crawl_cfg: dict = None
-):
+    ):
 
     # image_download_enable=crawl_cfg["image_download_enable"] or False # comment downloan image darkweb
     image_download_enable= False
@@ -522,22 +534,23 @@ def process_crawl(data: Dict[str, Any]):
                 status = status_resp.get("status")
                 # Get items from file for testing
                 # status = "completed"
-                if status == "running" or status == "completed":
-                    save_darkweb_profile(input_data, crawlId)
-                    print("[ONION] Crawl completed")
-                    print(status)
-                    poll_darkweb_results(
-                        crawl_id=crawlId,
-                        jobId=jobId,
-                        crawlId=crawlId,
-                        poll_interval=60,
-                        max_idle_rounds=100,
-                        crawl_cfg=crawl_cfg,
-                    )
-                    update_status(jobId, "DONE", "Dark web crawl completed")
-                    return
 
-                if status in ("FAILED", "TIMEOUT"):
+
+                save_darkweb_profile(input_data, crawlId)
+                # print("[ONION] Crawl completed")
+                print(status)
+                poll_darkweb_results(
+                    crawl_id=crawlId,
+                    jobId=jobId,
+                    crawlId=crawlId,
+                    poll_interval=60,
+                    max_idle_rounds=100,
+                    crawl_cfg=crawl_cfg,
+                )
+                update_status(jobId, "DONE", "Dark web crawl completed")
+                return
+
+                if status in ("cancelled", "TIMEOUT"):
                     raise ValueError(f"Dark web crawl failed: {status}")
 
                 if time.time() - start > timeout:
@@ -596,6 +609,8 @@ def process_crawl(data: Dict[str, Any]):
 
     except TimeoutException as e:
         update_status(jobId, "FAIL", str(e))
+    except Exception as e:
+        update_status(jobId, "FAIL", f"Darkweb error: {e}")
     finally:
         signal.alarm(0)
 
@@ -731,7 +746,7 @@ def get_article_details(
     video_download_enable: Optional[bool] = None,
     location_enable: Optional[bool] = None,
     video_thumbnail_enable: Optional[bool] = None,
-) -> Optional[Dict]:
+    ) -> Optional[Dict]:
     """Hàm lấy chi tiết bài báo"""
     # Inject proxy session vào crawler nếu có
     if proxy_session:
