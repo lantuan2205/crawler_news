@@ -480,7 +480,7 @@ def process_crawl(data: Dict[str, Any]):
         input_data = body.get("inputData")
         jobId, crawlId = body.get("jobId"), body.get("crawlId")
 
-        if source != "NEWS" or action != "GENERAL":
+        if source not in ("NEWS", "DARKWEB") or action != "GENERAL":
             raise ValueError("False source or action")
         if not input_data:
             raise ValueError("URL is required")
