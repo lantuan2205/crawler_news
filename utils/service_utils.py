@@ -21,8 +21,10 @@ from urllib.parse import urlparse
 # Cấu hình Kafka
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:29092")
 KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
+KAFKA_TOPIC_DARK_WEB = os.getenv("KAFKA_TOPIC_DARK_WEB","darkweb.crawler.raw")
 KAFKA_TOPIC_TRACKING_STATUS = os.getenv("KAFKA_TRACKING_STATUS","tracking.status")
 KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
+KAFKA_TOPIC_PROFILE_DARK_WEB = os.getenv("KAFKA_TOPIC_PROFILE_DARK_WEB","darkweb.profile.crawler.raw")
 KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
 KAFKA_TOPIC_POST_CAST = os.getenv("KAFKA_TOPIC_PODCAST","news.podcast.crawler.raw")
 KAFKA_TOPIC_LOGS = os.getenv("KAFKA_TOPIC_LOGS","raw.logs")
@@ -71,11 +73,27 @@ def send_clean_article_to_kafka(article_data: dict):
     except Exception as e:
         print(f"[✗] Gửi article tới Kafka thất bại: {e}")
 
+def send_clean_article_dark_web_to_kafka(article_data: dict):
+    try:
+        producer.send(KAFKA_TOPIC_DARK_WEB, article_data)
+        producer.flush()
+        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_DARK_WEB}'")
+    except Exception as e:
+        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+
 def send_comment_article_to_kafka(comment_data: dict):
     try:
         producer.send(KAFKA_TOPIC_COMMENT, comment_data)
         producer.flush()
         print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_COMMENT}'")
+    except Exception as e:
+        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+
+def send_profile_dark_web_to_kafka(profileInfor: dict):
+    try:
+        producer.send(KAFKA_TOPIC_PROFILE_DARK_WEB, profileInfor)
+        producer.flush()
+        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_PROFILE_DARK_WEB}'")
     except Exception as e:
         print(f"[✗] Gửi article tới Kafka thất bại: {e}")
 

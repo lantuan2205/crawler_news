@@ -1,6 +1,7 @@
 import argparse
 from utils.service_utils import (save_to_json, clean_date, send_clean_article_to_kafka, send_profile_to_kafka,
-send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https, send_logs_to_kafka)
+send_tracking_status_to_kafka ,send_comment_article_to_kafka, normalize_url_to_root_https, send_logs_to_kafka,
+send_profile_dark_web_to_kafka, send_clean_article_dark_web_to_kafka)
 import re
 import json
 from datetime import datetime, timedelta, timezone
@@ -297,8 +298,7 @@ def poll_darkweb_results(
             for item in items:
                 if crawl_cfg["post_enable"]:
                     save_darkweb_article(item, crawlId, crawl_cfg)
-                return
-
+                else : return
             last_crawled_at = max(
                 item.get("crawled_at")
                 for item in items
@@ -309,7 +309,7 @@ def poll_darkweb_results(
 
     finally:
         try:
-            delete_darkweb_crawl(crawl_id)
+            # delete_darkweb_crawl(crawl_id)
             print(f"[ONION] Crawl {crawl_id} deleted")
         except Exception as e:
             print(f"[WARN] Cannot delete crawl {crawl_id}: {e}")
@@ -375,7 +375,7 @@ def save_darkweb_profile(url, crawlId):
         "post_processed_at": None,
         "post_message": None,
     }
-    send_profile_to_kafka(profile_info)
+    send_profile_dark_web_to_kafka(profile_info)
     send_tracking_status_to_kafka(tracking_status)
     send_logs_to_kafka(logs)
 
@@ -407,8 +407,8 @@ def save_darkweb_article(
     photoInfos = content_obj.get("photo_infos", {})
 
     # ===== Categories / tags =====
-    categories = item.get("tags", [])
-
+    categories_list = item.get("tags", [])
+    categories = ",".join(categories_list)
     # ===== Video =====
     video_url = content_obj.get("video_url")
     thumbnail_url = content_obj.get("thumbnail_url")
@@ -422,7 +422,7 @@ def save_darkweb_article(
     # ================= LOGS =================
     logs = {
         "loggable_id": crawlId,
-        "loggable_type": "Crawl post website",
+        "loggable_type": "Crawl post Darkweb",
         "log_level": "INFO",
         "message": f"Crawl Url: {url}",
         "created_at": crawled_at,
@@ -455,7 +455,7 @@ def save_darkweb_article(
     # ================= TRACKING STATUS =================
     tracking_status = {
         "id": url,
-        "platform": "news",
+        "platform": "darkweb",
         "data_type": "content",
         "crawled_at": crawled_at,
         "pre_status": None,
@@ -466,7 +466,7 @@ def save_darkweb_article(
         "post_message": None,
     }
 
-    send_clean_article_to_kafka(article_data)
+    send_clean_article_dark_web_to_kafka(article_data)
     send_tracking_status_to_kafka(tracking_status)
 
 def process_crawl(data: Dict[str, Any]):
@@ -512,7 +512,7 @@ def process_crawl(data: Dict[str, Any]):
 
         if is_onion_url(input_data):
             create_darkweb_crawl(crawlId, input_data)
-
+            time.sleep(60)
             start = time.time()
             timeout = 60 * 60 * 2
 
@@ -525,6 +525,7 @@ def process_crawl(data: Dict[str, Any]):
                 if status == "running" or status == "completed":
                     save_darkweb_profile(input_data, crawlId)
                     print("[ONION] Crawl completed")
+                    print(status)
                     poll_darkweb_results(
                         crawl_id=crawlId,
                         jobId=jobId,
