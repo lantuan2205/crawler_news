@@ -547,7 +547,7 @@ def process_crawl(data: Dict[str, Any]):
                     max_idle_rounds=100,
                     crawl_cfg=crawl_cfg,
                 )
-                update_status(jobId, "DONE", "Dark web crawl completed")
+                update_status(jobId, "SUCCESS", "Completed")
                 return
 
                 if status in ("cancelled", "TIMEOUT"):
@@ -1011,7 +1011,7 @@ if __name__ == "__main__":
         # Gọi process_crawl như cũ
         result = process_crawl({"message": data})
         print("✅ Done:")
-        update_status(jobId, "SUCCESS", "Crawl completed successfully!")
+        update_status(jobId, "SUCCESS", "Completed")
         # pid = 1
         # os.kill(pid, signal.SIGTERM)
         exit(0)
