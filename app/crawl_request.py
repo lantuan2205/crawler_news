@@ -607,6 +607,14 @@ def process_crawl(data: Dict[str, Any]):
                         )
                     count += 1
 
+        if crawl_cfg["audience_enable"]:
+            number_audio = 60
+            if hasattr(crawler, "crawl_podcast") and callable(getattr(crawler, "crawl_podcast")):
+                data = crawler.crawl_podcast(number_post=number_audio, crawl_id=crawlId)
+                return
+            else:
+                print("⚠ Crawler does not support crawl_podcast")
+
     except TimeoutException as e:
         update_status(jobId, "FAIL", str(e))
     except Exception as e:

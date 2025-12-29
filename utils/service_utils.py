@@ -17,93 +17,163 @@ from kafka import KafkaProducer
 import json
 import pytz
 from urllib.parse import urlparse
+from kafka.errors import KafkaError
+import logging
+from kafka.admin import KafkaAdminClient, NewTopic, NewPartitions
 
 # Cấu hình Kafka
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:29092")
-KAFKA_TOPIC = os.getenv("KAFKA_RESULT_TOPIC","news.crawler.raw")
-KAFKA_TOPIC_DARK_WEB = os.getenv("KAFKA_TOPIC_DARK_WEB","darkweb.crawler.raw")
-KAFKA_TOPIC_TRACKING_STATUS = os.getenv("KAFKA_TRACKING_STATUS","tracking.status")
-KAFKA_TOPIC_PROFILE = os.getenv("KAFKA_TOPIC_PROFILE","news.profile.crawler.raw")
-KAFKA_TOPIC_PROFILE_DARK_WEB = os.getenv("KAFKA_TOPIC_PROFILE_DARK_WEB","darkweb.profile.crawler.raw")
-KAFKA_TOPIC_COMMENT = os.getenv("KAFKA_TOPIC_COMMENT","news.comment.crawler.raw")
-KAFKA_TOPIC_POST_CAST = os.getenv("KAFKA_TOPIC_PODCAST","news.podcast.crawler.raw")
-KAFKA_TOPIC_LOGS = os.getenv("KAFKA_TOPIC_LOGS","raw.logs")
-OUTPUT_FILE = "crawl_result.json"
-UPLOAD_API_HOST = "192.168.132.250"
-# UPLOAD_API_HOST = "localhost"
-UPLOAD_API_PORT = "8080"
-UPLOAD_API_ENDPOINT = "/api/upload/multiple"
-UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}{UPLOAD_API_ENDPOINT}"
+# 1. Cấu hình Logging (Thay vì dùng print)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s | %(levelname)s | %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Khởi tạo Kafka Producer (singleton)
+# 2. Cấu hình Env
+NUM_PARTITIONS = 5
+REPLICATION_FACTOR = 1
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "192.168.161.69:29092")
+
+# Topic Configs
+TOPIC_MAP = {
+    "DEFAULT": os.getenv("KAFKA_RESULT_TOPIC", "news.crawler.raw"),
+    "DARK_WEB": os.getenv("KAFKA_TOPIC_DARK_WEB", "darkweb.crawler.raw"),
+    "TRACKING": os.getenv("KAFKA_TRACKING_STATUS", "tracking.status"),
+    "PROFILE": os.getenv("KAFKA_TOPIC_PROFILE", "news.profile.crawler.raw"),
+    "PROFILE_DARK_WEB": os.getenv("KAFKA_TOPIC_PROFILE_DARK_WEB", "darkweb.profile.crawler.raw"),
+    "COMMENT": os.getenv("KAFKA_TOPIC_COMMENT", "news.comment.crawler.raw"),
+    "PODCAST": os.getenv("KAFKA_TOPIC_PODCAST", "news.podcast.crawler.raw"),
+    "LOGS": os.getenv("KAFKA_TOPIC_LOGS", "raw.logs"),
+}
+
+OUTPUT_FILE = "crawl_result.json"
+# API Configs (Giữ nguyên nếu bạn dùng ở chỗ khác)
+UPLOAD_API_HOST = "192.168.132.250"
+UPLOAD_API_PORT = "8080"
+UPLOAD_API_URL = f"http://{UPLOAD_API_HOST}:{UPLOAD_API_PORT}/api/upload/multiple"
+
+
+def ensure_all_topics_setup():
+    """
+    Duyệt qua TẤT CẢ topic trong TOPIC_MAP.
+    Đảm bảo cái nào cũng phải có 5 partitions.
+    """
+    logger.info("--- Bắt đầu kiểm tra cấu hình Kafka Topics ---")
+    try:
+        admin_client = KafkaAdminClient(
+            bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+            client_id='admin_initializer'
+        )
+        
+        existing_topics = admin_client.list_topics()
+        
+        # Lấy danh sách các topic cần check (loại bỏ trùng lặp)
+        topics_to_check = set(TOPIC_MAP.values())
+
+        for topic_name in topics_to_check:
+            # TH1: Topic chưa tồn tại -> Tạo mới
+            if topic_name not in existing_topics:
+                logger.info(f"[+] Tạo MỚI topic '{topic_name}' ({NUM_PARTITIONS} partitions).")
+                new_topic = NewTopic(
+                    name=topic_name, 
+                    num_partitions=NUM_PARTITIONS, 
+                    replication_factor=REPLICATION_FACTOR
+                )
+                admin_client.create_topics([new_topic])
+            
+            # TH2: Topic đã tồn tại -> Kiểm tra và Nâng cấp nếu cần
+            else:
+                topic_desc = admin_client.describe_topics([topic_name])
+                current_parts = len(topic_desc[0]['partitions'])
+                
+                if current_parts < NUM_PARTITIONS:
+                    logger.warning(f"[^] Nâng cấp '{topic_name}': {current_parts} -> {NUM_PARTITIONS} partitions.")
+                    try:
+                        admin_client.create_partitions({
+                            topic_name: NewPartitions(total_count=NUM_PARTITIONS)
+                        })
+                    except Exception as create_err:
+                        logger.error(f"Không thể nâng cấp {topic_name}: {create_err}")
+                else:
+                    logger.info(f"[OK] '{topic_name}' đã đủ {current_parts} partitions.")
+
+        admin_client.close()
+    except Exception as e:
+        logger.error(f"Lỗi khởi tạo Kafka Admin: {e}")
+
+# Chạy setup ngay lập tức
+ensure_all_topics_setup()
+
+# 3. Khởi tạo Producer tối ưu
+# - linger_ms: Đợi 5ms để gom batch (tăng throughput)
+# - compression_type: Nén dữ liệu (tiết kiệm băng thông)
 producer = KafkaProducer(
     bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
-    value_serializer=lambda v: json.dumps(v).encode("utf-8")
+    value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+    linger_ms=5, 
+    compression_type='gzip' 
 )
 
-def send_logs_to_kafka(logs: dict):
+# 4. Callback Functions (Xử lý kết quả bất đồng bộ)
+def on_send_success(record_metadata):
+    # Chỉ log debug để tránh spam console khi chạy production
+    logger.info(f"Gửi thành công tới {record_metadata.topic} - Part: {record_metadata.partition} - Offset: {record_metadata.offset}")
+
+def on_send_error(excp):
+    logger.error(f"Gửi Kafka thất bại: {excp}", exc_info=True)
+
+# 5. Hàm Generic gửi dữ liệu
+def _send_generic(topic_key, data, sync=False):
+    topic = TOPIC_MAP.get(topic_key)
+    if not topic:
+        logger.error(f"Topic key '{topic_key}' không tồn tại.")
+        return
+
     try:
-        producer.send(KAFKA_TOPIC_LOGS, logs)
-        producer.flush()
-        print(f"[✓] Đã gửi logs tới Kafka topic: '{KAFKA_TOPIC_LOGS}'")
+        future = producer.send(topic, data)
+        # Gắn callback để xử lý kết quả mà không chặn luồng chính
+        future.add_callback(on_send_success).add_errback(on_send_error)
+        
+        # Chỉ flush khi thực sự cần thiết (VD: Logs quan trọng hoặc khi tắt app)
+        if sync:
+            producer.flush()
+            logger.info(f"[Sync] Đã gửi tới {topic}")
+            
     except Exception as e:
-        print(f"[✗] Gửi logs tới Kafka thất bại: {e}")
+        logger.error(f"Lỗi khởi tạo gửi tới {topic}: {e}")
+
+# 6. Các hàm Wrapper (Giữ lại interface cũ để không phải sửa code gọi)
+def send_logs_to_kafka(logs: dict):
+    # Logs có thể cần sync nếu là critical error, nếu không thì để async
+    _send_generic("LOGS", logs, sync=False)
 
 def send_tracking_status_to_kafka(tracking_status: dict):
-    try:
-        producer.send(KAFKA_TOPIC_TRACKING_STATUS, tracking_status)
-        producer.flush()
-        print(f"[✓] Đã gửi tracking_status tới Kafka topic: '{KAFKA_TOPIC_TRACKING_STATUS}'")
-    except Exception as e:
-        print(f"[✗] Gửi tracking_status tới Kafka thất bại: {e}")
+    _send_generic("TRACKING", tracking_status)
 
 def send_podcast_to_kafka(podcast_data: dict):
-    try:
-        producer.send(KAFKA_TOPIC_POST_CAST, podcast_data)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_POST_CAST}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("PODCAST", podcast_data)
 
 def send_clean_article_to_kafka(article_data: dict):
-    try:
-        producer.send(KAFKA_TOPIC, article_data)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("DEFAULT", article_data)
 
 def send_clean_article_dark_web_to_kafka(article_data: dict):
-    try:
-        producer.send(KAFKA_TOPIC_DARK_WEB, article_data)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_DARK_WEB}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("DARK_WEB", article_data)
 
 def send_comment_article_to_kafka(comment_data: dict):
-    try:
-        producer.send(KAFKA_TOPIC_COMMENT, comment_data)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_COMMENT}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("COMMENT", comment_data)
 
 def send_profile_dark_web_to_kafka(profileInfor: dict):
-    try:
-        producer.send(KAFKA_TOPIC_PROFILE_DARK_WEB, profileInfor)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_PROFILE_DARK_WEB}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("PROFILE_DARK_WEB", profileInfor)
 
 def send_profile_to_kafka(profileInfor: dict):
-    try:
-        producer.send(KAFKA_TOPIC_PROFILE, profileInfor)
-        producer.flush()
-        print(f"[✓] Đã gửi article tới Kafka topic: '{KAFKA_TOPIC_PROFILE}'")
-    except Exception as e:
-        print(f"[✗] Gửi article tới Kafka thất bại: {e}")
+    _send_generic("PROFILE", profileInfor)
+
+# Lưu ý: Khi ứng dụng crawler kết thúc, hãy gọi producer.flush() một lần cuối cùng
+# để đảm bảo các tin nhắn còn trong bộ đệm được đẩy đi hết.
+def close_producer():
+    logger.info("Đang flush dữ liệu và đóng producer...")
+    producer.flush()
+    producer.close()
 
 
 def parse_datetime_to_timestamp(date_str: str) -> int:

@@ -558,7 +558,7 @@ class QuanDoiNhanDanCrawler(BaseCrawler):
         print(f"🎯 Tổng số bài đã thu thập: {len(podcasts)}")
         return podcasts
 
-    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
+    def crawl_podcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "podcast",
         }

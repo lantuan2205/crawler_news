@@ -703,7 +703,7 @@ class BaoVanHoaCrawler(BaseCrawler):
             # ngủ nhẹ tránh bị chặn
             time.sleep(random.uniform(0.8, 1.8))
 
-    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
+    def crawl_podcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "podcast/",
         }

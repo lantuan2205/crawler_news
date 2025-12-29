@@ -694,7 +694,7 @@ class VietNamNetCrawler(BaseCrawler):
         send_tracking_status_to_kafka(tracking_status)
         send_podcast_to_kafka(podcast)
 
-    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
+    def crawl_podcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0:  "doc-la",
             1:  "goc-nhin",

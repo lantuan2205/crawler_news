@@ -620,7 +620,7 @@ class VtvCrawler(BaseCrawler):
             except:
                 pass
 
-    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
+    def crawl_podcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "hat-giong-tam-hon.htm",
             1: "oi-nghe-ne.htm",

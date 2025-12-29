@@ -632,5 +632,5 @@ class DanTriCrawler(BaseCrawler):
         except Exception as e:
             return []
     
-    def crawl_postcast(self):
+    def crawl_podcast(self):
         return

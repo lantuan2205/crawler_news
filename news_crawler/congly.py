@@ -777,7 +777,7 @@ class CongLyCrawler(BaseCrawler):
                 print(f"⚠️ Lỗi trong quá trình crawl {url}: {e}")
                 continue
 
-    def crawl_postcast(self, number_post: int, crawl_id: Optional[str] = None):
+    def crawl_podcast(self, number_post: int, crawl_id: Optional[str] = None):
         podcast_type_dict = {
             0: "",
         }
