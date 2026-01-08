@@ -43,7 +43,7 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
-URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "http://192.168.161.69:8000/crawl")
+URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "https://darkweb-api.timdapan.com/crawl")
 
 # try:
 #     from app.server import start_background_server
