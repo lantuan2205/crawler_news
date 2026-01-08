@@ -14,11 +14,12 @@ from selenium.webdriver.common.by import By
 from urllib.parse import urljoin, urlparse
 
 class WordPressCrawler:
-    def __init__(self, input_data, proxy_session=None, template_path="./config/wordpress_template.json", driver=None):
+    def __init__(self, input_data, proxy_session=None, template_path="./config/wordpress_template.json", driver=None, limit_posts=None):
 
         self.base_url = input_data
         self.driver = driver
         self.job_id = input_data
+        self.limit_posts = limit_posts
         self.session = proxy_session or requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -595,9 +596,11 @@ class WordPressCrawler:
                 break
 
             collected.update(links)
-
+        result_list = list(collected)
+        
         print(f"✅ Total {len(collected)} article URLs found.")
-        return list(collected)
+        if self.limit_posts:
+            return result_list[:self.limit_posts]
 
     def extract_content(self, article_url, has_video):
         try:

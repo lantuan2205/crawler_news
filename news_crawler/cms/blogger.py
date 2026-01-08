@@ -25,7 +25,7 @@ from typing import Optional
 
 
 class BloggerCrawler:
-    def __init__(self, input_data, jobId, proxy_session=None, template_path="./config/blogspot_template.json", driver=None):
+    def __init__(self, input_data, jobId, proxy_session=None, template_path="./config/blogspot_template.json", driver=None, limit_posts=None):
         """
         input_data: dict chứa ít nhất 'url' website cần crawl
         proxy_session: requests.Session (nếu có proxy)
@@ -34,6 +34,7 @@ class BloggerCrawler:
         self.base_url = input_data
         self.driver = driver
         self.job_id = jobId
+        self.limit_posts = limit_posts
         self.session = proxy_session or requests.Session()
         self.session.headers.update({
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -246,7 +247,10 @@ class BloggerCrawler:
             time.sleep(1.5)
 
         print(f"✅ Total {len(collected)} article URLs found.")
-        return list(collected)
+        result_list = list(collected)
+        
+        if self.limit_posts:
+            return result_list[:self.limit_posts]
 
     def extract_content(self, article_url, has_video):
         try:

@@ -563,10 +563,10 @@ def process_crawl(data: Dict[str, Any]):
             cms = detect_cms(input_data).get("cms")
             if cms == "WordPress":
                 from news_crawler.cms.wordpress import WordPressCrawler
-                crawler = WordPressCrawler(input_data, proxy_session)
+                crawler = WordPressCrawler(input_data, proxy_session, limit_posts=crawl_cfg["number_post"])
             elif cms == "Blogger":
                 from news_crawler.cms.blogger import BloggerCrawler
-                crawler = BloggerCrawler(input_data, jobId, proxy_session)
+                crawler = BloggerCrawler(input_data, jobId, proxy_session, limit_posts=crawl_cfg["number_post"])
             elif cms == "Joomla":
                 from news_crawler.cms.joomla import JoomlaCrawler
                 crawler = JoomlaCrawler(input_data, proxy_session)
