@@ -43,7 +43,13 @@ signal.signal(signal.SIGALRM, timeout_handler)
 
 
 BACKEND_CRAWL_MANAGEMENT_SERVER = os.getenv("BACKEND_CRAWL_MANAGEMENT_SERVER", "http://192.168.161.69:8001")
-URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "https://darkweb-api.timdapan.com/crawl")
+URL_SERVICE_CRAWL_DARK_WEB = os.getenv("URL_SERVICE_CRAWL_DARK_WEB", "https://blackweb.cloud/crawl")
+API_TOKEN="darkwebcrawler"
+
+headers_darkweb = {
+    "Authorization": f"Bearer {API_TOKEN}",
+    "Content-Type": "application/json"
+}
 
 # try:
 #     from app.server import start_background_server
@@ -216,13 +222,23 @@ def create_darkweb_crawl(crawl_id, start_url):
             "max_depth": 3,
         }
     }
+
+    print(f"[ONION] Created crawl: {payload}")
     try:
-        resp = requests.post(f"{URL_SERVICE_CRAWL_DARK_WEB}",
+        print(f"🚀 Connecting to: {URL_SERVICE_CRAWL_DARK_WEB} ...")
+        
+        resp = requests.post(
+            f"{URL_SERVICE_CRAWL_DARK_WEB}",
             json=payload,
+            headers=headers_darkweb,
             timeout=10
         )
+        
+        # Log trạng thái trả về
+        print(f"✅ Status Code: {resp.status_code}")
+        print(f"📄 Response Body: {resp.text}") # Hoặc resp.json() nếu server trả về json
         resp.raise_for_status()
-        print(f"[ONION] Created crawl: {crawl_id} for {start_url}")
+        print(f"[ONION] Created crawl DONE: {crawl_id} for {start_url}")
         return resp.json()
     except requests.exceptions.Timeout:
         raise TimeoutException("Darkweb create crawl timeout")
@@ -242,6 +258,7 @@ def create_darkweb_crawl(crawl_id, start_url):
 def check_darkweb_status(crawl_id):
     resp = requests.get(
         f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}/status",
+        headers=headers_darkweb,
         timeout=10
     )
     resp.raise_for_status()
@@ -272,6 +289,7 @@ def get_darkweb_results(
     resp = requests.get(
         f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}/results",
         params=params,
+        headers=headers_darkweb,
         timeout=30,
     )
     resp.raise_for_status()
@@ -309,7 +327,7 @@ def poll_darkweb_results(
 
             for item in items:
                 if crawl_cfg["post_enable"]:
-                    save_darkweb_article(item, crawlId, crawl_cfg)
+                    save_darkweb_article(item, crawlId, jobId, crawl_cfg)
                 else : return
             last_crawled_at = max(
                 item.get("crawled_at")
@@ -329,12 +347,13 @@ def poll_darkweb_results(
 def delete_darkweb_crawl(crawl_id: str):
     resp = requests.delete(
         f"{URL_SERVICE_CRAWL_DARK_WEB}/{crawl_id}",
+        headers=headers_darkweb,
         timeout=10
     )
     resp.raise_for_status()
     return resp.json()
 
-def save_darkweb_profile(url, crawlId):
+def save_darkweb_profile(url, crawlId, jobId):
 
     crawled_at = int(datetime.now(timezone.utc).timestamp())
 
@@ -351,11 +370,11 @@ def save_darkweb_profile(url, crawlId):
     # ===== Logs =====
     logs = {
         "loggable_id": crawlId,
-        "loggable_type": "Crawl profile news",
+        "loggable_type": "Crawl profile Darkweb",
         "log_level": "INFO",
         "message": f"Profile has been crawled!: {normalize_url_to_root_https(url)}",
         "created_at": crawled_at,
-        "metadata": "Crawl profile news",
+        "metadata": "Crawl profile Darkweb",
         "exception": None
     }
 
@@ -387,6 +406,14 @@ def save_darkweb_profile(url, crawlId):
         "post_processed_at": None,
         "post_message": None,
     }
+
+    if jobId:
+        profile_info['jobId'] = jobId
+
+    if crawlId:
+        profile_info['crawlId'] = crawlId
+        tracking_status['crawlId'] = crawlId
+
     send_profile_dark_web_to_kafka(profile_info)
     send_tracking_status_to_kafka(tracking_status)
     send_logs_to_kafka(logs)
@@ -394,6 +421,7 @@ def save_darkweb_profile(url, crawlId):
 def save_darkweb_article(
     item,
     crawlId,
+    jobId,
     crawl_cfg: dict = None
     ):
 
@@ -478,6 +506,13 @@ def save_darkweb_article(
         "post_message": None,
     }
 
+    if jobId:
+        article_data['jobId'] = jobId
+
+    if crawlId:
+        article_data['crawlId'] = crawlId
+        tracking_status['crawl_id'] = crawlId
+
     send_clean_article_dark_web_to_kafka(article_data)
     send_tracking_status_to_kafka(tracking_status)
 
@@ -536,7 +571,7 @@ def process_crawl(data: Dict[str, Any]):
                 # status = "completed"
 
 
-                save_darkweb_profile(input_data, crawlId)
+                save_darkweb_profile(input_data, crawlId, jobId)
                 # print("[ONION] Crawl completed")
                 print(status)
                 poll_darkweb_results(
