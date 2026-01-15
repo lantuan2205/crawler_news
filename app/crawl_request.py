@@ -513,8 +513,14 @@ def save_darkweb_article(
         article_data['crawlId'] = crawlId
         tracking_status['crawl_id'] = crawlId
 
-    send_clean_article_dark_web_to_kafka(article_data)
-    send_tracking_status_to_kafka(tracking_status)
+    s_title = title.strip() if title else ""
+    s_content = content.strip() if content else ""
+    is_valid_title = len(s_title) > 0
+    is_valid_content = len(s_content) > 20
+
+    if is_valid_title and is_valid_content:
+        send_clean_article_dark_web_to_kafka(article_data)
+        send_tracking_status_to_kafka(tracking_status)
 
 def process_crawl(data: Dict[str, Any]):
     signal.alarm(900)
