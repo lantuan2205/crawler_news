@@ -101,6 +101,54 @@ def ensure_all_topics_setup():
     except Exception as e:
         logger.error(f"Lỗi khởi tạo Kafka Admin: {e}")
 
+def wait_for_consumer_group(group_id, timeout=60):
+    """
+    Chặn luồng xử lý cho đến khi Consumer Group cụ thể đã online và sẵn sàng nhận tin.
+    Khắc phục lỗi mất tin nhắn đầu tiên khi dùng auto.offset.reset=latest.
+    """
+    logger.info(f"⏳ Đang kiểm tra trạng thái Consumer Group: '{group_id}'...")
+    
+    try:
+        admin_client = KafkaAdminClient(bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS)
+        start_time = time.time()
+        
+        while True:
+            try:
+                # Lấy thông tin group
+                group_desc = admin_client.describe_consumer_groups([group_id])
+                
+                if not group_desc:
+                    logger.warning(f"Group '{group_id}' chưa tìm thấy. Service Java có thể chưa bật.")
+                else:
+                    state = group_desc[0].state
+                    members = group_desc[0].members
+                    
+                    # Log trạng thái để debug
+                    # logger.info(f"Group State: {state} | Active Members: {len(members)}")
+
+                    # Điều kiện thành công: Trạng thái STABLE hoặc đang cân bằng tải (REBALANCING) VÀ có ít nhất 1 member
+                    if len(members) > 0:
+                        logger.info(f"✅ Consumer Group '{group_id}' đã SẴN SÀNG! (Đang có {len(members)} consumer kết nối).")
+                        break
+                
+                # Check Timeout
+                if time.time() - start_time > timeout:
+                    logger.warning(f"⚠️ Quá thời gian chờ ({timeout}s). Consumer '{group_id}' vẫn chưa sẵn sàng. Tiếp tục gửi và chấp nhận rủi ro.")
+                    break
+                    
+                time.sleep(2) # Chờ 2 giây rồi check lại
+                
+            except Exception as inner_e:
+                logger.warning(f"Đang chờ kết nối admin: {inner_e}")
+                time.sleep(2)
+
+        admin_client.close()
+    except Exception as e:
+        logger.error(f"Không thể khởi tạo Admin Client để check consumer: {e}")
+
+CONSUMER_GROUP_ID_TO_WAIT = "news.profile.crawler.raw" 
+wait_for_consumer_group(CONSUMER_GROUP_ID_TO_WAIT, timeout=45)
+
 # Chạy setup ngay lập tức
 ensure_all_topics_setup()
 
