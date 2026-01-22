@@ -297,52 +297,75 @@ def get_darkweb_results(
 
 def poll_darkweb_results(
     crawl_id,
-    jobId,
-    crawlId,
+    job_id,  # Đã sửa thành snake_case cho đồng bộ
     poll_interval=60,
     max_idle_rounds=30,
     crawl_cfg: dict = None,
-    ):
+):
+    # 1. Xử lý trường hợp crawl_cfg là None để tránh lỗi sau này
+    if crawl_cfg is None:
+        crawl_cfg = {}
+
     last_crawled_at = None
     number_post = 0
     idle_round = 0
-    max_post = crawl_cfg.get("number_post", 0) if crawl_cfg else 0
+    
+    # Lấy cấu hình
+    post_enable = crawl_cfg.get("post_enable", False)
+    max_post = crawl_cfg.get("number_post", 0)
+
+    print(f"[ONION] Bắt đầu poll cho crawl_id: {crawl_id}")
+
     try:
         while idle_round <= max_idle_rounds:
+            # 2. Kiểm tra giới hạn số lượng bài viết (nếu có config)
+            if max_post > 0 and number_post >= max_post:
+                print(f"[ONION] Đã đạt giới hạn max_post ({max_post}). Dừng lại.")
+                break
+
+            # Gọi hàm lấy kết quả
             result = get_darkweb_results(
                 crawl_id=crawl_id,
                 from_crawled_at=last_crawled_at,
                 limit=1000,
                 enrich=True,
             )
-            # items = []
+            
             items = result.get("items", [])
-            # Get items from file for testing
-            # if not items:
-            #     result = load_items_from_file()
-            #     items = result.get("items", [])
 
+            # 3. Xử lý khi KHÔNG có item nào (Idle)
             if not items:
-                print(f"[ONION] No new items, idle round")
-
+                print(f"[ONION] Không có item mới. Idle round {idle_round}/{max_idle_rounds}")
+                idle_round += 1
+                time.sleep(poll_interval)
+                continue # Quay lại đầu vòng lặp while, bỏ qua các lệnh bên dưới
+            
+            # 4. Nếu CÓ items: Reset idle_round về 0 để tiếp tục chạy
+            idle_round = 0 
+            
             for item in items:
-                if crawl_cfg["post_enable"]:
-                    save_darkweb_article(item, crawlId, jobId, crawl_cfg)
-                else : return
-            last_crawled_at = max(
-                item.get("crawled_at")
-                for item in items
-                if item.get("crawled_at")
-            )
-            idle_round += 1
+                if post_enable:
+                    # Lưu ý: Đảm bảo save_darkweb_article nhận đúng tên tham số
+                    save_darkweb_article(item, crawl_id, job_id, crawl_cfg)
+                    number_post += 1 # Tăng biến đếm bài viết
+                
+            # 5. Cập nhật last_crawled_at an toàn (tránh lỗi max() trên list rỗng)
+            current_batch_timestamps = [
+                item.get("crawled_at") for item in items if item.get("crawled_at")
+            ]
+            
+            if current_batch_timestamps:
+                last_crawled_at = max(current_batch_timestamps)
+
+            # Sleep sau khi xử lý xong batch hiện tại (để tránh spam server quá nhanh)
             time.sleep(poll_interval)
 
     finally:
         try:
             # delete_darkweb_crawl(crawl_id)
-            print(f"[ONION] Crawl {crawl_id} deleted")
+            print(f"[ONION] Crawl {crawl_id} đã kết thúc/đã xóa")
         except Exception as e:
-            print(f"[WARN] Cannot delete crawl {crawl_id}: {e}")
+            print(f"[WARN] Không thể xóa crawl {crawl_id}: {e}")
 
 def delete_darkweb_crawl(crawl_id: str):
     resp = requests.delete(
