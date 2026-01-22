@@ -562,6 +562,7 @@ def process_crawl(data: Dict[str, Any]):
             raise ValueError("URL is required")
 
         crawl_cfg = parse_crawl_setting(body.get("crawlSetting"))
+        print("====================[INFO] Crawl config=====================:", crawl_cfg)
         data_to_collect = body.get("dataToCollect", [])
         has_video = "video" in data_to_collect
 
@@ -652,9 +653,11 @@ def process_crawl(data: Dict[str, Any]):
         if crawl_cfg["post_enable"]:
             count = 0
             for category in crawler.article_type_dict.values():
+                if crawl_cfg["number_post"] and count >= crawl_cfg["number_post"]:
+                    break
                 for url in crawler.get_all_articles(category):
                     if crawl_cfg["number_post"] and count >= crawl_cfg["number_post"]:
-                        return
+                        break
                     get_article_details(
                         crawler, url, False, has_video, proxy_session,
                         jobId, crawlId,
@@ -671,6 +674,8 @@ def process_crawl(data: Dict[str, Any]):
                         )
                     count += 1
 
+                if crawl_cfg["number_post"] and count >= crawl_cfg["number_post"]:
+                    break
         if crawl_cfg["audience_enable"]:
             number_audio = 60
             if hasattr(crawler, "crawl_podcast") and callable(getattr(crawler, "crawl_podcast")):
