@@ -909,7 +909,7 @@ def get_article_details(
         article_data['crawlId'] = crawlId
         tracking_status['crawl_id'] = crawlId
 
-    # save_to_json(article_data)
+    save_to_json(article_data)
     if is_within_date_range_ms(article_data["publishedDate"], date_range):
         send_clean_article_to_kafka(article_data)
         send_tracking_status_to_kafka(tracking_status)
@@ -1051,7 +1051,7 @@ def get_profile_domain(crawler, url: str, link, proxy_session=None, jobId=None, 
         profile_info['crawlId'] = crawlId
         tracking_status['crawl_id'] = crawlId
     
-    # save_to_json(profile_info)
+    save_to_json(profile_info)
     send_profile_to_kafka(profile_info)
     send_tracking_status_to_kafka(tracking_status)
     send_logs_to_kafka(logs)
